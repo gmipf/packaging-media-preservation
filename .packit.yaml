@@ -1,0 +1,28 @@
+specfile_path: fedora/redumper/redumper.spec
+upstream_project_url: https://github.com/superg/redumper
+upstream_tag_template: "b{version}"
+issue_repository: https://github.com/gmipf/media-preservation-packaging
+
+srpm_build_deps:
+  - rpm-build
+
+jobs:
+  - job: pull_from_upstream
+    trigger: release
+    dist_git_branches:
+      - fedora-43
+
+  - job: copr_build
+    trigger: commit
+    branch: main
+    owner: gmipf
+    project: media-preservation
+    targets:
+      - fedora-43-x86_64
+
+  - job: copr_build
+    trigger: pull_request
+    owner: gmipf
+    project: media-preservation
+    targets:
+      - fedora-43-x86_64
