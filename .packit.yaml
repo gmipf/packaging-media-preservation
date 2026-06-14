@@ -10,11 +10,14 @@ srpm_build_deps:
 # This repo only contains packaging recipes — no upstream source code.
 # Override Packit's default `git archive` (which would archive the spec
 # file) with explicit spectool fetch of Source0 from the spec.
+# create-archive must output the archive path (relative to repo root)
+# as the final stdout line.
 actions:
   get-current-version:
     - bash -c "rpmspec -q --queryformat '%{version}\n' fedora/redumper/redumper.spec | head -1"
   create-archive:
-    - bash -c "cd fedora/redumper && spectool -g redumper.spec && ls -1 *.tar.gz | head -1"
+    - bash -c "spectool -g fedora/redumper/redumper.spec 1>&2"
+    - bash -c "ls -1 redumper-b*.tar.gz | head -1"
 
 jobs:
   - job: pull_from_upstream
