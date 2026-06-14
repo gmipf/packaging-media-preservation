@@ -5,6 +5,16 @@ issue_repository: https://github.com/gmipf/media-preservation-packaging
 
 srpm_build_deps:
   - rpm-build
+  - rpmdevtools
+
+# This repo only contains packaging recipes — no upstream source code.
+# Override Packit's default `git archive` (which would archive the spec
+# file) with explicit spectool fetch of Source0 from the spec.
+actions:
+  get-current-version:
+    - bash -c "rpmspec -q --queryformat '%{version}\n' fedora/redumper/redumper.spec | head -1"
+  create-archive:
+    - bash -c "cd fedora/redumper && spectool -g redumper.spec && ls -1 *.tar.gz | head -1"
 
 jobs:
   - job: pull_from_upstream
