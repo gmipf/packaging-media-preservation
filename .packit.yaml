@@ -31,11 +31,17 @@ jobs:
     owner: gmipf
     project: media-preservation
     targets:
+      - fedora-42-x86_64
       - fedora-43-x86_64
+      - fedora-44-x86_64
+      - fedora-rawhide-x86_64
 
   - job: copr_build
     trigger: pull_request
     owner: gmipf
     project: media-preservation
     targets:
+      - fedora-42-x86_64
       - fedora-43-x86_64
+      - fedora-44-x86_64
+      - fedora-rawhide-x86_64
