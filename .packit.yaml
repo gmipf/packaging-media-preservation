@@ -17,12 +17,16 @@ packages:
     specfile_path: redumper.spec
     upstream_project_url: https://github.com/superg/redumper
     upstream_tag_template: "b{version}"
+    # Repackage of upstream prebuilt linux-x64 ZIP (since Phase 6).
+    # spectool also fetches LICENSE + README via raw.githubusercontent.
+    # create-archive returns the linux-x64.zip as the primary archive;
+    # SRPM packs all three Source* URLs.
     actions:
       get-current-version:
         - bash -c "rpmspec -q --queryformat '%{version}\n' redumper.spec | head -1"
       create-archive:
         - bash -c "spectool -g redumper.spec 1>&2"
-        - bash -c "ls -1 redumper-b*.tar.gz | head -1"
+        - bash -c "ls -1 redumper-b*-linux-x64.zip | head -1"
 
   mpf:
     paths:
@@ -45,14 +49,16 @@ packages:
       - fedora/discimagecreator/
     specfile_path: discimagecreator.spec
     upstream_project_url: https://github.com/saramibreak/DiscImageCreator
-    # Multi-source build: spectool -g fetches all 4 Source* archives
-    # (DiscImageCreator + EccEdc + DVDAuth + unscrambler helper tools).
-    # create-archive returns the main DIC tarball as the primary archive;
-    # SRPM packs all four automatically.
+    # Repackage of upstream linux_amd64 release tarball (since Phase 6).
+    # The Source0 URL is the release-body-linked user-attachment;
+    # watch-dic-releases.yml polls daily and rewrites it on tag bumps.
+    # create-archive returns the resolved DiscImageCreator_<tag>.tar.gz
+    # name (underscore, not dash) — different naming from the previous
+    # source-tarball.
     actions:
       create-archive:
         - bash -c "spectool -g discimagecreator.spec 1>&2"
-        - bash -c "ls -1 DiscImageCreator-*.tar.gz | head -1"
+        - bash -c "ls -1 DiscImageCreator_*.tar.gz | head -1"
 
   aaru:
     paths:

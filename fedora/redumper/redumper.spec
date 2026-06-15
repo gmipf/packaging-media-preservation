@@ -1,26 +1,30 @@
+%global debug_package %{nil}
+
 Name:           redumper
 Version:        724
-Release:        2%{?dist}
+Release:        3%{?dist}
 Summary:        A low-level byte-perfect CD disc dumper
-
-# Release build strips debug symbols anyway; auto-generated debuginfo
-# and debugsource subpackages would be empty / fail.
-%global debug_package %{nil}
 
 License:        GPL-3.0-only
 URL:            https://github.com/superg/redumper
-Source0:        %{url}/archive/refs/tags/b%{version}.tar.gz#/%{name}-b%{version}.tar.gz
-Source1:        redumper.1
 
-BuildRequires:  cmake >= 3.28
-BuildRequires:  ninja-build
-BuildRequires:  clang >= 18
-BuildRequires:  lld
-BuildRequires:  libcxx-devel
-BuildRequires:  libcxx-static
-BuildRequires:  libcxxabi-static
-BuildRequires:  llvm-libunwind-static
-BuildRequires:  glibc-static
+# Repackage of the upstream prebuilt linux-x64 release ZIP. The binary
+# inside is a single statically linked ELF (clang + libc++ + -static),
+# built by upstream's own CI matching the same toolchain we previously
+# used for our source build.
+Source0:        %{url}/releases/download/b%{version}/redumper-b%{version}-linux-x64.zip
+
+# LICENSE + README aren't shipped in the release zip; fetched separately
+# from the same tag so %%license / %%doc work without a full source clone.
+Source1:        https://raw.githubusercontent.com/superg/redumper/b%{version}/LICENSE
+Source2:        https://raw.githubusercontent.com/superg/redumper/b%{version}/README.md
+
+# Handwritten manpage (upstream provides none); pinned to b%%{version},
+# see NOTES section inside the page for the drift caveat.
+Source3:        redumper.1
+
+ExclusiveArch:  x86_64
+BuildRequires:  unzip
 
 %description
 redumper is a low-level byte-perfect disc dumper for CD, DVD, HD-DVD and
@@ -32,33 +36,21 @@ This RPM ships the binary with the cap_sys_rawio file capability so
 vendor SCSI passthrough commands work without sudo.
 
 %prep
-%autosetup -n %{name}-b%{version}
-
-# Drop the tests subdir — its CMakeLists pulls googletest via FetchContent,
-# which needs network access (off by default in COPR for reproducibility).
-# Tests aren't packaged anyway.
-sed -i '/^enable_testing()/d; /^add_subdirectory("tests")/d' CMakeLists.txt
+%setup -q -c -T
+unzip -q %{SOURCE0}
 
 %build
-# Match upstream binary release: clang + libc++ + -static (single
-# self-contained binary like the GitHub release ZIPs). -lunwind is
-# explicit because libc++abi's static unwinder dep isn't auto-pulled
-# under -static.
-cmake -B BUILD -G Ninja \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_INSTALL_PREFIX=%{_prefix} \
-    -DCMAKE_CXX_COMPILER=clang++ \
-    -DCMAKE_CXX_FLAGS="-stdlib=libc++" \
-    -DCMAKE_EXE_LINKER_FLAGS="-stdlib=libc++ -lunwind" \
-    -DREDUMPER_VERSION_BUILD=%{version}
-cmake --build BUILD --config Release
+# Self-contained statically linked binary; nothing to compile.
 
 %install
-DESTDIR=%{buildroot} cmake --install BUILD
+install -d %{buildroot}%{_bindir}
+install -m 0755 redumper-b%{version}-linux-x64/bin/redumper %{buildroot}%{_bindir}/redumper
 
-# Manpage (handwritten; upstream provides none)
+install -p -m 0644 %{SOURCE1} LICENSE
+install -p -m 0644 %{SOURCE2} README.md
+
 install -d %{buildroot}%{_mandir}/man1
-install -m 0644 %{SOURCE1} %{buildroot}%{_mandir}/man1/redumper.1
+install -m 0644 %{SOURCE3} %{buildroot}%{_mandir}/man1/redumper.1
 
 %files
 %license LICENSE
@@ -67,6 +59,21 @@ install -m 0644 %{SOURCE1} %{buildroot}%{_mandir}/man1/redumper.1
 %{_mandir}/man1/redumper.1*
 
 %changelog
+* Tue Jun 16 2026 gmipf <gmipf64@gmail.com> - 724-3
+- Switch from source build to repackage of upstream prebuilt linux-x64
+  release ZIP. The upstream binary is statically linked with the same
+  clang + libc++ toolchain we used; the resulting RPM contents are
+  effectively bit-identical to what users get from the GitHub release.
+- Drops BuildRequires on cmake / ninja / clang / lld / libcxx-* /
+  llvm-libunwind-static / glibc-static — none of these are needed in
+  the chroot anymore. Build time per chroot drops from minutes to
+  seconds and the spec is no longer exposed to upstream toolchain
+  drift (no more googletest %prep patch, no more C++20-module
+  surprises on clang bumps).
+- LICENSE and README are pulled from raw.githubusercontent at the
+  tagged revision so %license / %doc still work without the source
+  tarball.
+
 * Mon Jun 15 2026 gmipf <gmipf64@gmail.com> - 724-2
 - Add handwritten redumper(1) manpage (upstream provides none); pinned
   to b724 — flagged stale-friendly in NOTES section if upstream syntax

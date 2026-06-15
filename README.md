@@ -12,9 +12,9 @@ respective project URLs (see below).
 
 | Tool | Update mode | Fedora | Debian | Arch | Alpine |
 |---|---|---|---|---|---|
-| [redumper](https://github.com/superg/redumper) | manual bump on new upstream tags (source-built) | ✅ | — | — | — |
+| [redumper](https://github.com/superg/redumper) | manual bump on new upstream tags (binary repackage) | ✅ | — | — | — |
 | [MPF suite](https://github.com/SabreTools/MPF) | rolling, auto-tracked every 6 h (binary repackage); meta-package `mpf` pulls in `mpf-check` (validator), `mpf-cli` (headless orchestrator) and `mpf-gui` (Avalonia desktop UI) | ✅ | — | — | — |
-| [DiscImageCreator suite](https://github.com/saramibreak/DiscImageCreator) | manual bump; bundles DIC + EccEdc + DVDAuth + unscrambler in one RPM (source-built) | ✅ | — | — | — |
+| [DiscImageCreator suite](https://github.com/saramibreak/DiscImageCreator) | auto-tracked daily on quarterly upstream tags (binary repackage); bundles DIC + EccEdc + DVDAuth + unscrambler in one RPM | ✅ | — | — | — |
 | [Aaru](https://github.com/aaru-dps/Aaru) | manual bump on new alphas; CLI + Avalonia GUI ship as one binary, launch the GUI via `aaru gui` (binary repackage) | ✅ | — | — | — |
 
 For the currently shipping versions and full install instructions,
@@ -26,11 +26,14 @@ see the [COPR project page](https://copr.fedorainfracloud.org/coprs/gmipf/media-
 .
 ├── .packit.yaml                            # Packit-as-a-Service config (drives Fedora COPR builds)
 ├── .github/workflows/
-│   └── watch-mpf-rolling.yml               # 6h watcher for MPF's rolling tag
+│   ├── watch-mpf-rolling.yml               # 6h watcher for MPF's rolling tag
+│   └── watch-dic-releases.yml              # daily watcher for DiscImageCreator's user-attachment releases
 ├── LICENSE                                 # MIT (recipes only; tools keep their own licenses)
 ├── README.md
 └── fedora/
-    ├── redumper/redumper.spec              # source build (clang + libc++ -static)
+    ├── redumper/
+    │   ├── redumper.spec                   # repackage of upstream prebuilt linux-x64 ZIP
+    │   └── redumper.1                      # handwritten manpage
     ├── mpf/
     │   ├── mpf.spec                        # multi-subpackage: mpf + mpf-check + mpf-cli + mpf-gui
     │   ├── mpf-gui.desktop                 # menu entry for `mpf-gui`
@@ -38,8 +41,9 @@ see the [COPR project page](https://copr.fedorainfracloud.org/coprs/gmipf/media-
     │   ├── mpf-{32,64,128,256,512}.png     # hicolor icons (from upstream Icon.ico)
     │   └── .rolling-sha                    # last seen upstream rolling SHA (written by watcher)
     ├── discimagecreator/
-    │   ├── discimagecreator.spec           # multi-source: DIC + 3 helpers in one fat RPM
-    │   └── discimagecreator.1              # handwritten manpage
+    │   ├── discimagecreator.spec           # repackage of upstream linux_amd64 tarball (bundles 4 binaries)
+    │   ├── discimagecreator.1              # handwritten manpage
+    │   └── .upstream-tag                   # last seen upstream tag (written by watcher)
     └── aaru/
         ├── aaru.spec                       # repackage of upstream .NET self-contained binary
         ├── aaru.desktop                    # menu entry for `aaru gui`
@@ -64,16 +68,23 @@ touches a tool's `fedora/<tool>/` path triggers Packit to fetch sources, build
 the SRPM, and ship a build to COPR project `gmipf/media-preservation`. No
 manual `copr-cli build` needed.
 
-The `mpf` suite rolls — upstream force-pushes its `rolling` tag on every
-release. `.github/workflows/watch-mpf-rolling.yml` polls every six hours,
-rewrites the spec's `%global mpfver` + `%global mpfsnap` lines and stores
-the new upstream SHA when something has actually changed, and commits the
-bump — which then triggers Packit normally. All three subpackages
-(mpf-check, mpf-cli, mpf-gui) ship synchronously since they share one
-upstream `<VersionPrefix>`.
+Two of the four packages have GitHub-hosted watchers:
 
-The other three packages (redumper, discimagecreator, aaru) are manually
-bumped on new upstream tags.
+- **mpf** rolls — upstream force-pushes its `rolling` tag on every
+  release. `watch-mpf-rolling.yml` polls every six hours, rewrites the
+  spec's `%global mpfver` + `%global mpfsnap` lines and stores the new
+  upstream SHA when something has changed. All three subpackages
+  (mpf-check, mpf-cli, mpf-gui) ship synchronously since they share one
+  upstream `<VersionPrefix>`.
+- **discimagecreator** bumps quarterly. sarami links the Linux tarball
+  inline in the release-body markdown instead of attaching it as a
+  proper release asset, so `watch-dic-releases.yml` polls
+  `releases/latest` daily, parses the body markdown to extract the
+  user-attachment URL, and rewrites both `%global dicver` and the
+  Source0 URL on a tag bump.
+
+`redumper` and `aaru` are manually bumped on new upstream tags. redumper
+uses Packit's `pull_from_upstream` job to auto-handle release events.
 
 See `.packit.yaml` for the per-tool trigger configuration.
 
