@@ -73,6 +73,17 @@ sed -i \
 sed -i '1i #include <cstdint>' \
     EccEdc-%{eccedcver}/EccEdc/_external/ecm.cpp
 
+# All three helper makefiles omit -fPIE; Fedora's default ld invokes -pie
+# (PIE hardening), which then rejects non-PIC relocations from the .o
+# files. Append -fPIE to the first CFLAGS/CXXFLAGS assignment in each
+# makefile so the implicit %.o rules pick it up. LDFLAGS=-pie is added
+# at make-invocation time in %build.
+sed -i -e '0,/^CFLAGS\s*:=/{/^CFLAGS\s*:=/s/$/ -fPIE/}' \
+       -e '0,/^CXXFLAGS\s*:=/{/^CXXFLAGS\s*:=/s/$/ -fPIE/}' \
+    EccEdc-%{eccedcver}/EccEdc/makefile \
+    DVDAuth-%{dvdauthver}/DVDAuth/makefile \
+    unscrambler-%{unscramblver}/makefile
+
 %build
 # Main DiscImageCreator via meson against system openssl/zlib/libarchive
 %meson
@@ -80,10 +91,11 @@ sed -i '1i #include <cstdint>' \
 
 # Three helper tools via their bundled makefiles. CXX=g++ forces the
 # compiler (the makefiles default to $(CXX) which may not be set in COPR
-# clean chroots).
-make -C EccEdc-%{eccedcver}/EccEdc       CXX=g++ %{?_smp_mflags}
-make -C DVDAuth-%{dvdauthver}/DVDAuth    CXX=g++ %{?_smp_mflags}
-make -C unscrambler-%{unscramblver}      CXX=g++ %{?_smp_mflags}
+# clean chroots). LDFLAGS=-pie pairs with the -fPIE injection in %prep
+# so Fedora's default PIE-hardened linker accepts the final binary.
+make -C EccEdc-%{eccedcver}/EccEdc       CXX=g++ LDFLAGS=-pie %{?_smp_mflags}
+make -C DVDAuth-%{dvdauthver}/DVDAuth    CXX=g++ LDFLAGS=-pie %{?_smp_mflags}
+make -C unscrambler-%{unscramblver}      CXX=g++ LDFLAGS=-pie %{?_smp_mflags}
 
 %install
 # meson installs binary to %{_bindir}/DiscImageCreator and data files
