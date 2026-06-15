@@ -57,17 +57,13 @@ packages:
     specfile_path: aaru.spec
     upstream_project_url: https://github.com/aaru-dps/Aaru
     # Aaru is currently on v6 alpha pre-releases; we pin manually in
-    # the spec (no watcher). create-archive fetches the maintainer's
-    # signed rootless source tarball, then repacks it into a properly
-    # named top-level dir (aaru-6.0.0-alpha.19/) so %setup -q -n works
-    # without hitting Fedora rpm 4.20's _builddir cleanup quirk.
+    # the spec (no watcher). spectool -g pulls both upstream tarballs
+    # (prebuilt linux_amd64 binary + signed source) and the SRPM packs
+    # them both.
     actions:
       create-archive:
-        - bash -c "curl -fsSL -o aaru-src.tar.xz https://github.com/aaru-dps/Aaru/releases/download/v6.0.0-alpha.19/aaru-src-6.0.0-alpha.19.tar.xz"
-        - bash -c "mkdir aaru-6.0.0-alpha.19 && tar -xJf aaru-src.tar.xz -C aaru-6.0.0-alpha.19"
-        - bash -c "tar --owner=0 --group=0 -czf aaru-6.0.0-alpha.19.tar.gz aaru-6.0.0-alpha.19/"
-        - bash -c "rm -rf aaru-6.0.0-alpha.19 aaru-src.tar.xz"
-        - bash -c "ls aaru-6.0.0-alpha.19.tar.gz"
+        - bash -c "spectool -g aaru.spec 1>&2"
+        - bash -c "ls -1 aaru-*-alpha.19_linux_amd64.tar.xz | head -1"
 
 jobs:
   - job: pull_from_upstream

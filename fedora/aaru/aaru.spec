@@ -3,16 +3,17 @@
 %global aarutag       v%{aaruver}-%{aaruprerel}
 %global aarudir       /opt/Aaru
 
-# Don't strip .NET binaries / generate debug subpackage / produce
-# build-id links — the self-contained single-file launcher does not
-# carry the standard ELF .note sections those macros expect.
+# Don't strip the self-contained .NET single-file launcher / generate
+# debug subpackage / produce build-id links — none of those macros
+# understand the embedded-runtime ELF layout used by single-file
+# .NET publishes.
 %global __strip /bin/true
 %global _build_id_links none
 %global debug_package %{nil}
 
-# Self-contained .NET single-file embeds many shared objects whose
-# names rpm's automatic dep scanner can't resolve. The pattern matches
-# the upstream pkg/rpm/aaru.spec convention.
+# The single-file binary embeds shared objects whose names rpm's
+# automatic dep scanner can't resolve (Avalonia/SkiaSharp/etc).
+# Mirrors the upstream pkg/rpm/aaru.spec convention.
 %global __requires_exclude ^lib.*\.so.*$
 %global __provides_exclude ^lib.*\.so.*$
 
@@ -25,19 +26,23 @@ Summary:        Data preservation suite for optical, magnetic and solid-state me
 
 License:        GPL-3.0-or-later AND LGPL-2.1-or-later AND MIT
 URL:            https://github.com/aaru-dps/Aaru
-# The packit create-archive action repacks the maintainer-signed
-# source tarball into a properly-named %{name}-%{version}-%{prerel}/
-# top-level layout that %setup expects.
-Source0:        aaru-%{aaruver}-%{aaruprerel}.tar.gz
-Source1:        aaru.1
+
+# Two-source layout: the prebuilt linux_amd64 binary tarball gives us
+# the self-contained `aaru` executable; the maintainer-signed source
+# tarball provides icons, the aaruformat MIME definition, and the
+# license/doc tree. Building from source ourselves needs NuGet access
+# at build time, which COPR's enable_net=on does not actually grant
+# for external hosts like api.nuget.org — so we repackage instead.
+Source0:        %{url}/releases/download/%{aarutag}/aaru-%{aaruver}-%{aaruprerel}_linux_amd64.tar.xz
+Source1:        %{url}/releases/download/%{aarutag}/aaru-src-%{aaruver}-%{aaruprerel}.tar.xz
+Source2:        aaru.1
 
 ExclusiveArch:  x86_64
+BuildRequires:  tar
+BuildRequires:  xz
 
-BuildRequires:  dotnet-sdk-10.0
-
-# Native runtime deps of the self-contained .NET single-file (these
-# are what the bundled runtime dynamically links to). Mirrors the
-# upstream pkg/rpm/aaru.spec dep set.
+# Native runtime deps that the bundled .NET runtime dynamically links
+# to. Mirrors the upstream pkg/rpm/aaru.spec dep set.
 Requires:       libicu
 Requires:       krb5-libs
 Requires:       libunwind
@@ -49,11 +54,10 @@ Requires:       shared-mime-info
 Requires:       desktop-file-utils
 Requires(post): shared-mime-info, desktop-file-utils, hicolor-icon-theme
 
-# The same `aaru` binary serves CLI and Avalonia GUI (gui is a
-# ProjectReference; launched via `aaru gui`). Headless installs only
-# need the CLI side and should not be forced to pull in the X11 / GL
-# stack — declared as Recommends so dnf installs them by default but
-# `--setopt=install_weak_deps=False` skips them cleanly.
+# The same `aaru` binary serves CLI and Avalonia GUI (`aaru gui`).
+# Avalonia.Desktop 11.x targets X11; this set covers both pure X11
+# sessions and Wayland-via-XWayland sessions. Headless installs skip
+# them with `--setopt=install_weak_deps=False` and the CLI still works.
 Recommends:     libX11
 Recommends:     libICE
 Recommends:     libSM
@@ -79,60 +83,50 @@ cap_sys_rawio is set on the launcher binary so vendor SCSI passthrough
 commands work without sudo.
 
 %prep
-%setup -q -n %{name}-%{aaruver}-%{aaruprerel}
-
-# Strip the maintainer's Syncthing conflict copies that leaked into
-# nupkgs/; they collide with the real package versions on restore.
-find nupkgs -name "*sync-conflict*" -delete 2>/dev/null || true
+# Two tarballs, manually extracted side-by-side. The binary tarball
+# is rootless (drops aaru + docs in cwd); the source tarball is also
+# rootless and gets extracted into a `src/` subdir so the two file
+# sets don't collide.
+%setup -q -c -T
+tar -xJf %{SOURCE0}
+mkdir -p src
+tar -xJf %{SOURCE1} -C src
 
 %build
-# Self-contained PublishSingleFile build, mirroring upstream's
-# pkg/rpm/aaru.spec %build. EnableCompressionInSingleFile shaves the
-# single-file binary from ~150 MB to ~80 MB; the runtime trade-off is
-# a slightly slower first-launch decompression — acceptable for a CLI
-# tool that is not in any hot path.
-cd Aaru
-dotnet publish -f net10.0 -c Release \
-    --self-contained -r linux-x64 \
-    -p:PublishSingleFile=true \
-    -p:IncludeNativeLibrariesForSelfExtract=true \
-    -p:EnableCompressionInSingleFile=true \
-    -p:DebugType=none \
-    -p:DebugSymbols=false
+# Nothing to build — Source0 is the upstream prebuilt self-contained
+# .NET single-file binary, repackaged unmodified.
 
 %install
-# Real binary in /opt/Aaru (per upstream packaging), /usr/bin symlink
-# for PATH. file capabilities live on the real binary; the kernel
-# follows symlinks when exec'ing so the symlink invocation inherits
-# them automatically.
-install -D -m 0755 Aaru/bin/Release/net10.0/linux-x64/publish/aaru \
-    %{buildroot}%{aarudir}/aaru
-install -D -m 0644 README.md      %{buildroot}%{aarudir}/README.md
-install -D -m 0644 Changelog.md   %{buildroot}%{aarudir}/Changelog.md
-install -D -m 0644 CONTRIBUTING.md %{buildroot}%{aarudir}/CONTRIBUTING.md
+install -D -m 0755 aaru %{buildroot}%{aarudir}/aaru
+
 install -D -m 0644 LICENSE        %{buildroot}%{aarudir}/LICENSE
 install -D -m 0644 LICENSE.MIT    %{buildroot}%{aarudir}/LICENSE.MIT
 install -D -m 0644 LICENSE.LGPL   %{buildroot}%{aarudir}/LICENSE.LGPL
+install -D -m 0644 README.md      %{buildroot}%{aarudir}/README.md
+install -D -m 0644 Changelog.md   %{buildroot}%{aarudir}/Changelog.md
+install -D -m 0644 CONTRIBUTING.md %{buildroot}%{aarudir}/CONTRIBUTING.md
 
 # MIME type (.aif / .aaruformat / .dicf / .dicformat / .aaruf)
-install -D -m 0644 Aaru/aaruformat.xml \
+install -D -m 0644 src/Aaru/aaruformat.xml \
     %{buildroot}%{_datadir}/mime/packages/aaruformat.xml
 
-# Desktop entry
-install -D -m 0644 Aaru/aaru.desktop \
+# Desktop entry (we use the one from the source tarball — same content
+# as the one in the binary tarball, but kept consistent with icons)
+install -D -m 0644 src/Aaru/aaru.desktop \
     %{buildroot}%{_datadir}/applications/aaru.desktop
 
-# Icons (five sizes shipped upstream)
-install -D -m 0644 icons/32x32/aaru.png    %{buildroot}%{_datadir}/icons/hicolor/32x32/apps/aaru.png
-install -D -m 0644 icons/64x64/aaru.png    %{buildroot}%{_datadir}/icons/hicolor/64x64/apps/aaru.png
-install -D -m 0644 icons/128x128/aaru.png  %{buildroot}%{_datadir}/icons/hicolor/128x128/apps/aaru.png
-install -D -m 0644 icons/256x256/aaru.png  %{buildroot}%{_datadir}/icons/hicolor/256x256/apps/aaru.png
-install -D -m 0644 icons/512x512/aaru.png  %{buildroot}%{_datadir}/icons/hicolor/512x512/apps/aaru.png
+# Icons — five hicolor sizes shipped upstream
+install -D -m 0644 src/icons/32x32/aaru.png    %{buildroot}%{_datadir}/icons/hicolor/32x32/apps/aaru.png
+install -D -m 0644 src/icons/64x64/aaru.png    %{buildroot}%{_datadir}/icons/hicolor/64x64/apps/aaru.png
+install -D -m 0644 src/icons/128x128/aaru.png  %{buildroot}%{_datadir}/icons/hicolor/128x128/apps/aaru.png
+install -D -m 0644 src/icons/256x256/aaru.png  %{buildroot}%{_datadir}/icons/hicolor/256x256/apps/aaru.png
+install -D -m 0644 src/icons/512x512/aaru.png  %{buildroot}%{_datadir}/icons/hicolor/512x512/apps/aaru.png
 
 # Manpage (handwritten — upstream provides none)
-install -D -m 0644 %{SOURCE1} %{buildroot}%{_mandir}/man1/aaru.1
+install -D -m 0644 %{SOURCE2} %{buildroot}%{_mandir}/man1/aaru.1
 
-# PATH entry
+# PATH entry — symlink to the real binary; the kernel follows symlinks
+# for cap_sys_rawio inheritance on exec.
 install -d %{buildroot}%{_bindir}
 ln -sf %{aarudir}/aaru %{buildroot}%{_bindir}/aaru
 
@@ -171,19 +165,19 @@ gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
 %{_mandir}/man1/aaru.1*
 
 %changelog
-* Mon Jun 15 2026 gmipf <gmipf64@gmail.com> - 6.0.0-0.alpha.19.2
-- Rewrite based on upstream pkg/rpm/aaru.spec template
-- Switch to self-contained PublishSingleFile build (matches upstream),
-  drops the framework-dependent / dotnet-runtime-10.0 Requires path
-- Install layout moves to /opt/Aaru with /usr/bin/aaru symlink (caps
-  on real binary, kernel follows symlink for cap inheritance)
-- Ship the upstream desktop entry, MIME type (.aif / .dicformat /
-  .aaruformat / .aaruf), and five icon sizes
-- Add %post / %postun / %posttrans MIME + icon + desktop cache hooks
-- Keep handwritten aaru(1) manpage (upstream provides none)
-- X11/GL/fontconfig stack remains in Recommends so headless installs
-  stay lean while desktop installs get the full GUI experience
-
 * Mon Jun 15 2026 gmipf <gmipf64@gmail.com> - 6.0.0-0.alpha.19.1
-- Initial COPR build attempt (failed in %prep due to rootless tarball
-  conflict with Fedora rpm 4.20's _builddir cleanup)
+- Initial COPR build of Aaru v6.0.0-alpha.19
+- Repackage of the upstream prebuilt linux_amd64 self-contained .NET
+  single-file binary (api.nuget.org is unreachable from COPR's build
+  chroot even with enable_net=on, so building from source isn't a
+  viable path here)
+- Source tarball is consumed for icons, the aaruformat MIME definition
+  and the desktop entry; binary tarball provides the executable and
+  the LICENSE/README/Changelog
+- /opt/Aaru install layout with /usr/bin/aaru symlink (caps live on
+  the real binary; the kernel follows the symlink for cap inheritance)
+- Five hicolor icon sizes + MIME type (.aif / .dicformat / .aaruformat /
+  .aaruf) + GTK icon-cache and desktop-database hooks
+- Handwritten aaru(1) manpage (upstream provides none)
+- X11 library stack in Recommends so headless installs stay lean
+  while desktop installs get the full GUI experience
