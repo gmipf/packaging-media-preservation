@@ -1,7 +1,7 @@
 %global aaruver       6.0.0
 %global aaruprerel    alpha.19
 %global aarutag       v%{aaruver}-%{aaruprerel}
-%global aarudir       /opt/Aaru
+%global aarudir       %{_libdir}/aaru
 
 # Don't strip the self-contained .NET single-file launcher / generate
 # debug subpackage / produce build-id links — none of those macros
@@ -21,7 +21,7 @@ Name:           aaru
 Version:        %{aaruver}
 # Pre-release sort: leading 0. ensures future stable 6.0.0-1 outranks
 # any 0.alpha.NN.M from this line.
-Release:        0.%{aaruprerel}.1%{?dist}
+Release:        0.%{aaruprerel}.2%{?dist}
 Summary:        Data preservation suite for optical, magnetic and solid-state media
 
 License:        GPL-3.0-or-later AND LGPL-2.1-or-later AND MIT
@@ -49,10 +49,13 @@ Requires:       libunwind
 Requires:       openssl-libs
 Requires:       zlib
 
-# Desktop integration
+# Desktop integration — the three packages also provide Fedora file
+# triggers that auto-refresh the MIME, desktop and icon-cache databases
+# whenever something installs into their respective tree, so no
+# explicit %post / %posttrans scriptlets are needed.
 Requires:       shared-mime-info
 Requires:       desktop-file-utils
-Requires(post): shared-mime-info, desktop-file-utils, hicolor-icon-theme
+Requires:       hicolor-icon-theme
 
 # The same `aaru` binary serves CLI and Avalonia GUI (`aaru gui`).
 # Avalonia.Desktop 11.x targets X11; this set covers both pure X11
@@ -130,22 +133,6 @@ install -D -m 0644 %{SOURCE2} %{buildroot}%{_mandir}/man1/aaru.1
 install -d %{buildroot}%{_bindir}
 ln -sf %{aarudir}/aaru %{buildroot}%{_bindir}/aaru
 
-%post
-touch --no-create %{_datadir}/icons/hicolor &>/dev/null || :
-update-mime-database %{_datadir}/mime &>/dev/null || :
-update-desktop-database &>/dev/null || :
-
-%postun
-if [ $1 -eq 0 ] ; then
-    touch --no-create %{_datadir}/icons/hicolor &>/dev/null
-    gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
-fi
-update-mime-database %{_datadir}/mime &>/dev/null || :
-update-desktop-database &>/dev/null || :
-
-%posttrans
-gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
-
 %files
 %caps(cap_sys_rawio=ep) %attr(0755,root,root) %{aarudir}/aaru
 %{aarudir}/README.md
@@ -165,19 +152,21 @@ gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
 %{_mandir}/man1/aaru.1*
 
 %changelog
+* Mon Jun 15 2026 gmipf <gmipf64@gmail.com> - 6.0.0-0.alpha.19.2
+- Move install layout from /opt/Aaru to %{_libdir}/aaru — Fedora
+  packaging guidelines disallow /opt for hosted-COPR packages
+- Drop %post / %postun / %posttrans GTK / MIME / desktop-database
+  refresh scriptlets; Fedora 26+ ships file triggers in
+  hicolor-icon-theme / desktop-file-utils / shared-mime-info that
+  refresh those caches automatically when files land in their tree
+
 * Mon Jun 15 2026 gmipf <gmipf64@gmail.com> - 6.0.0-0.alpha.19.1
 - Initial COPR build of Aaru v6.0.0-alpha.19
 - Repackage of the upstream prebuilt linux_amd64 self-contained .NET
   single-file binary (api.nuget.org is unreachable from COPR's build
-  chroot even with enable_net=on, so building from source isn't a
-  viable path here)
-- Source tarball is consumed for icons, the aaruformat MIME definition
+  chroot even with enable_net=on, so source-build isn't viable)
+- Source tarball is consumed for icons, aaruformat MIME definition,
   and the desktop entry; binary tarball provides the executable and
   the LICENSE/README/Changelog
-- /opt/Aaru install layout with /usr/bin/aaru symlink (caps live on
-  the real binary; the kernel follows the symlink for cap inheritance)
-- Five hicolor icon sizes + MIME type (.aif / .dicformat / .aaruformat /
-  .aaruf) + GTK icon-cache and desktop-database hooks
 - Handwritten aaru(1) manpage (upstream provides none)
 - X11 library stack in Recommends so headless installs stay lean
-  while desktop installs get the full GUI experience
