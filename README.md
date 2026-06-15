@@ -13,7 +13,7 @@ respective project URLs (see below).
 | Tool | Update mode | Fedora | Debian | Arch | Alpine |
 |---|---|---|---|---|---|
 | [redumper](https://github.com/superg/redumper) | manual bump on new upstream tags (source-built) | ✅ | — | — | — |
-| [MPF.Check](https://github.com/SabreTools/MPF) | rolling, auto-tracked every 6 h (binary repackage) | ✅ | — | — | — |
+| [MPF suite](https://github.com/SabreTools/MPF) | rolling, auto-tracked every 6 h (binary repackage); meta-package `mpf` pulls in `mpf-check` (validator), `mpf-cli` (headless orchestrator) and `mpf-gui` (Avalonia desktop UI) | ✅ | — | — | — |
 | [DiscImageCreator suite](https://github.com/saramibreak/DiscImageCreator) | manual bump; bundles DIC + EccEdc + DVDAuth + unscrambler in one RPM (source-built) | ✅ | — | — | — |
 | [Aaru](https://github.com/aaru-dps/Aaru) | manual bump on new alphas; CLI + Avalonia GUI ship as one binary, launch the GUI via `aaru gui` (binary repackage) | ✅ | — | — | — |
 
@@ -31,8 +31,11 @@ see the [COPR project page](https://copr.fedorainfracloud.org/coprs/gmipf/media-
 ├── README.md
 └── fedora/
     ├── redumper/redumper.spec              # source build (clang + libc++ -static)
-    ├── mpf-check/
-    │   ├── mpf-check.spec                  # repackage of upstream .NET self-contained binary
+    ├── mpf/
+    │   ├── mpf.spec                        # multi-subpackage: mpf + mpf-check + mpf-cli + mpf-gui
+    │   ├── mpf-gui.desktop                 # menu entry for `mpf-gui`
+    │   ├── mpf-check.1 / mpf-cli.1 / mpf-gui.1  # handwritten manpages
+    │   ├── icons/mpf-{32,64,128,256,512}.png    # hicolor icons (from upstream Icon.ico)
     │   └── .rolling-sha                    # last seen upstream rolling SHA (written by watcher)
     ├── discimagecreator/
     │   ├── discimagecreator.spec           # multi-source: DIC + 3 helpers in one fat RPM
@@ -61,10 +64,13 @@ touches a tool's `fedora/<tool>/` path triggers Packit to fetch sources, build
 the SRPM, and ship a build to COPR project `gmipf/media-preservation`. No
 manual `copr-cli build` needed.
 
-`MPF.Check` rolls — upstream force-pushes its `rolling` tag on every release.
-`.github/workflows/watch-mpf-rolling.yml` polls every six hours, rewrites the
-spec's Version and stores the new upstream SHA when something has actually
-changed, and commits the bump — which then triggers Packit normally.
+The `mpf` suite rolls — upstream force-pushes its `rolling` tag on every
+release. `.github/workflows/watch-mpf-rolling.yml` polls every six hours,
+rewrites the spec's `%global mpfver` + `%global mpfsnap` lines and stores
+the new upstream SHA when something has actually changed, and commits the
+bump — which then triggers Packit normally. All three subpackages
+(mpf-check, mpf-cli, mpf-gui) ship synchronously since they share one
+upstream `<VersionPrefix>`.
 
 The other three packages (redumper, discimagecreator, aaru) are manually
 bumped on new upstream tags.
@@ -75,18 +81,25 @@ See `.packit.yaml` for the per-tool trigger configuration.
 
 ```sh
 sudo dnf copr enable gmipf/media-preservation
-sudo dnf install redumper discimagecreator mpf-check aaru
+sudo dnf install redumper discimagecreator aaru mpf
 ```
 
-`aaru` ships both the CLI and its Avalonia GUI in one binary — launch the GUI
-via `aaru gui` or via the `Aaru` desktop entry. The other three are
-CLI-only.
+`mpf` is a meta-package; it pulls in `mpf-check` (log validator),
+`mpf-cli` (headless dump orchestrator) and `mpf-gui` (Avalonia desktop
+frontend). Install the individual subpackages if you only need part of
+the suite (`sudo dnf install mpf-check`, etc.). Launch the GUI via
+`mpf-gui` or the `MPF` desktop entry.
+
+`aaru` ships both the CLI and its Avalonia GUI in one binary — launch
+the GUI via `aaru gui` or via the `Aaru` desktop entry. `redumper` and
+`discimagecreator` are CLI-only.
 
 `cap_sys_rawio` is preset on the dumper binaries (redumper, discimagecreator,
-aaru) so vendor SCSI passthrough commands work without sudo. Drive-node
-access (`/dev/sr*`) is granted automatically via `uaccess` when logged in at
-a local desktop seat; for headless / SSH use add yourself to the `cdrom`
-group. See the [COPR project page](https://copr.fedorainfracloud.org/coprs/gmipf/media-preservation/)
+aaru, mpf-check, mpf-cli, mpf-gui) so vendor SCSI passthrough commands work
+without sudo. Drive-node access (`/dev/sr*`) is granted automatically via
+`uaccess` when logged in at a local desktop seat; for headless / SSH use add
+yourself to the `cdrom` group. See the
+[COPR project page](https://copr.fedorainfracloud.org/coprs/gmipf/media-preservation/)
 for details.
 
 ## Versioning convention
