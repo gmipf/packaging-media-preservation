@@ -18,10 +18,19 @@
 %global __provides_exclude ^lib.*\.so.*$
 
 Name:           aaru
-Version:        %{aaruver}
-# Pre-release sort: leading 0. ensures future stable 6.0.0-1 outranks
-# any 0.alpha.NN.M from this line.
-Release:        0.%{aaruprerel}.2%{?dist}
+# Epoch bump (0 -> 1) is needed once-only on this rewrite: previous
+# build was aaru-6.0.0-0.alpha.19.2 and the new tilde-style Version
+# (6.0.0~alpha.19) sorts LOWER than the bare 6.0.0 that prior Release
+# claimed (`~` outranks empty string). Without Epoch, dnf would see
+# the migration as a downgrade. Epoch stays at 1 from here on — even
+# after a future stable 6.0.0 ships, since Epoch is forever.
+Epoch:          1
+# Tilde-style pre-release (mirrors upstream pkg/rpm/aaru.spec):
+#   6.0.0~alpha.19  <  6.0.0  <  6.0.1
+# Future stable v6.0.0 will sort higher automatically — no clever
+# leading-0 dance in Release needed.
+Version:        %{aaruver}~%{aaruprerel}
+Release:        1%{?dist}
 Summary:        Data preservation suite for optical, magnetic and solid-state media
 
 License:        GPL-3.0-or-later AND LGPL-2.1-or-later AND MIT
@@ -152,6 +161,16 @@ ln -sf %{aarudir}/aaru %{buildroot}%{_bindir}/aaru
 %{_mandir}/man1/aaru.1*
 
 %changelog
+* Mon Jun 15 2026 gmipf <gmipf64@gmail.com> - 1:6.0.0~alpha.19-1
+- Migrate to upstream-style tilde versioning (Version: 6.0.0~alpha.19,
+  Release: 1). Matches the upstream pkg/rpm/aaru.spec convention and
+  removes the leading-0.Release hack now that ~ does the pre-release
+  sort cleanly. Future bumps will just edit %{aaruprerel}.
+- Bump Epoch to 1 (was implicit 0): the new Version sorts LOWER than
+  the previous Release form (6.0.0~alpha.19 < 6.0.0), so without Epoch
+  the format switch would look like a downgrade to dnf. Epoch=1 is
+  permanent from here on out.
+
 * Mon Jun 15 2026 gmipf <gmipf64@gmail.com> - 6.0.0-0.alpha.19.2
 - Move install layout from /opt/Aaru to %{_libdir}/aaru — Fedora
   packaging guidelines disallow /opt for hosted-COPR packages
