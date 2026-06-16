@@ -14,7 +14,7 @@ respective project URLs (see below).
 |---|---|---|---|---|---|
 | [redumper](https://github.com/superg/redumper) | manual bump on new upstream tags (binary repackage) | ✅ | — | — | — |
 | [MPF suite](https://github.com/SabreTools/MPF) | rolling, auto-tracked every 6 h (binary repackage); meta-package `mpf` pulls in `mpf-check` (validator), `mpf-cli` (headless orchestrator) and `mpf-gui` (Avalonia desktop UI) | ✅ | — | — | — |
-| [DiscImageCreator suite](https://github.com/saramibreak/DiscImageCreator) | auto-tracked daily on quarterly upstream tags (binary repackage); bundles DIC + EccEdc + DVDAuth + unscrambler in one RPM | ✅ | — | — | — |
+| [DiscImageCreator suite](https://github.com/saramibreak/DiscImageCreator) | auto-tracked daily on quarterly upstream tags (built from source — upstream binary links against EOL OpenSSL 1.1); bundles DIC + EccEdc + DVDAuth + unscrambler in one RPM | ✅ | — | — | — |
 | [Aaru](https://github.com/aaru-dps/Aaru) | manual bump on new alphas; CLI + Avalonia GUI ship as one binary, launch the GUI via `aaru gui` (binary repackage) | ✅ | — | — | — |
 
 For the currently shipping versions and full install instructions,
@@ -41,7 +41,7 @@ see the [COPR project page](https://copr.fedorainfracloud.org/coprs/gmipf/media-
     │   ├── mpf-{32,64,128,256,512}.png     # hicolor icons (from upstream Icon.ico)
     │   └── .rolling-sha                    # last seen upstream rolling SHA (written by watcher)
     ├── discimagecreator/
-    │   ├── discimagecreator.spec           # repackage of upstream linux_amd64 tarball (bundles 4 binaries)
+    │   ├── discimagecreator.spec           # source-build of DIC + EccEdc + DVDAuth + unscrambler
     │   ├── discimagecreator.1              # handwritten manpage
     │   └── .upstream-tag                   # last seen upstream tag (written by watcher)
     └── aaru/
@@ -76,12 +76,13 @@ Two of the four packages have GitHub-hosted watchers:
   upstream SHA when something has changed. All three subpackages
   (mpf-check, mpf-cli, mpf-gui) ship synchronously since they share one
   upstream `<VersionPrefix>`.
-- **discimagecreator** bumps quarterly. sarami links the Linux tarball
-  inline in the release-body markdown instead of attaching it as a
-  proper release asset, so `watch-dic-releases.yml` polls
-  `releases/latest` daily, parses the body markdown to extract the
-  user-attachment URL, and rewrites both `%global dicver` and the
-  Source0 URL on a tag bump.
+- **discimagecreator** bumps quarterly. `watch-dic-releases.yml` polls
+  `releases/latest` daily and rewrites `%global dicver` on a tag bump.
+  Built from source: the upstream Linux release binary links against
+  EOL OpenSSL 1.1 (no longer in default Fedora/Ubuntu/Debian/Arch
+  repos), so we recompile against OpenSSL 3 ourselves until upstream
+  ([saramibreak/DiscImageCreator#321](https://github.com/saramibreak/DiscImageCreator/issues/321))
+  migrates or static-links.
 
 `redumper` and `aaru` are manually bumped on new upstream tags. redumper
 uses Packit's `pull_from_upstream` job to auto-handle release events.

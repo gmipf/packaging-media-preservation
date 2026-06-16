@@ -49,16 +49,17 @@ packages:
       - fedora/discimagecreator/
     specfile_path: discimagecreator.spec
     upstream_project_url: https://github.com/saramibreak/DiscImageCreator
-    # Repackage of upstream linux_amd64 release tarball (since Phase 6).
-    # The Source0 URL is the release-body-linked user-attachment;
-    # watch-dic-releases.yml polls daily and rewrites it on tag bumps.
-    # create-archive returns the resolved DiscImageCreator_<tag>.tar.gz
-    # name (underscore, not dash) — different naming from the previous
-    # source-tarball.
+    # Source-build (Phase 6 binary-repackage was reverted because the
+    # upstream Linux binary links against EOL OpenSSL 1.1 — see
+    # saramibreak/DiscImageCreator#321). spectool -g fetches all four
+    # upstream source tarballs (DIC + EccEdc + DVDAuth + unscrambler);
+    # SRPM packs them all. watch-dic-releases.yml polls daily and
+    # rewrites %global dicver on tag bumps — Source0 URL is
+    # deterministic from the tag, no body-parsing needed.
     actions:
       create-archive:
         - bash -c "spectool -g discimagecreator.spec 1>&2"
-        - bash -c "ls -1 DiscImageCreator_*.tar.gz | head -1"
+        - bash -c "ls -1 DiscImageCreator-*.tar.gz | head -1"
 
   aaru:
     paths:

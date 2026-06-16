@@ -1,10 +1,10 @@
 name: watch-dic-releases
 
 # DIC bumps quarterly (4× per year). Daily polling is overkill but cheap,
-# and ensures we never miss a release. sarami uploads the Linux tarball
-# as a user-attachment linked from the release body markdown rather than
-# as a proper release asset — there's no API to enumerate user-attached
-# files, so we parse the body markdown.
+# and ensures we never miss a release. With source-build (no body-parse
+# needed since reverting binary-repackage in commit dXXXXXXX), we only
+# need to rewrite the %global dicver line — Source0 is a deterministic
+# archive URL derived from the tag, so it doesn't change separately.
 
 on:
   schedule:
@@ -36,38 +36,9 @@ jobs:
             exit 0
           fi
 
-          # Extract the Linux user-attachment URL from the release body.
-          # sarami uses a stable format:
-          #   Linux: \n[DiscImageCreator_<tag>.tar.gz](<url>)
-          # Some releases keep "Linux:" and the link on the same line,
-          # so the regex spans up to the next link bracket.
-          URL=$(gh api "repos/saramibreak/DiscImageCreator/releases/tags/${UPSTREAM_TAG}" --jq '.body' \
-                | grep -oP 'Linux:[^[]*\[[^]]+\]\(\K[^)]+' \
-                | head -1)
-
-          if [ -z "$URL" ]; then
-            echo "Failed to extract Linux tarball URL from release body of tag ${UPSTREAM_TAG}"
-            exit 1
-          fi
-
-          echo "Upstream: tag=$UPSTREAM_TAG url=$URL"
-
-          # Verify the URL actually serves something before committing.
-          if ! curl -sIL -o /dev/null -w '%{http_code}' "$URL" | grep -q '^200$'; then
-            echo "URL did not return HTTP 200: $URL"
-            exit 1
-          fi
-
+          echo "Upstream tag changed: $LOCAL_TAG -> $UPSTREAM_TAG"
           echo "$UPSTREAM_TAG" > "$MARKER"
-
-          # Rewrite the spec: %global dicver gets the new tag, Source0
-          # gets the new URL. The Source0 URL has the tag in its
-          # filename portion too (DiscImageCreator_<tag>.tar.gz), but
-          # we don't try to assemble it from the tag — we use the URL
-          # exactly as sarami published it (the numeric file-id is
-          # opaque and only the release body knows it).
           sed -i "s|^%global dicver .*|%global dicver       ${UPSTREAM_TAG}|" "$SPEC"
-          sed -i "s|^Source0:.*|Source0:        ${URL}|" "$SPEC"
 
           git add "$SPEC" "$MARKER"
           if git diff --cached --quiet; then
@@ -77,5 +48,5 @@ jobs:
 
           git config user.name "rolling-watcher"
           git config user.email "actions@github.com"
-          git commit -m "chore: discimagecreator ${UPSTREAM_TAG} via ${URL##*/}"
+          git commit -m "chore: discimagecreator ${UPSTREAM_TAG}"
           git push
