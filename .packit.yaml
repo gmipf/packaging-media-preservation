@@ -82,18 +82,17 @@ jobs:
     dist_git_branches:
       - fedora-43
 
-  # Per-package commit jobs. The `paths:` filter (regex matched against
-  # changed file paths from repo root) means each job only fires when
-  # its tool's directory was touched — without it, every commit triggers
-  # all four jobs even though only one spec was edited.
-  # NOTE: edits to .packit.yaml itself (this file) live outside all four
-  # path filters and therefore trigger ALL jobs; that's only a problem
-  # at .packit.yaml-edit-time (rare).
+  # Per-package commit jobs. Packit uses each package's package-level
+  # paths: declaration (see packages: above) to determine which packages
+  # are "touched" by a commit and only fires the matching jobs.
+  # Redumper: spec-supplied b<n> version is monotonic, no auto-suffix.
+  # mpf: watcher writes Version (mpfver~mpfsnap) into the spec on every
+  # upstream rolling-tag change; tilde sorts before any other char so
+  # snapshot ordering is consistent without auto-suffix.
   - job: copr_build
     trigger: commit
     branch: main
     packages: [redumper]
-    paths: ["^fedora/redumper/"]
     update_release: false
     owner: gmipf
     project: media-preservation
@@ -104,38 +103,36 @@ jobs:
     trigger: commit
     branch: main
     packages: [mpf]
-    paths: ["^fedora/mpf/"]
     update_release: false
     owner: gmipf
     project: media-preservation
     targets:
       - fedora-all-x86_64
 
+  # discimagecreator: spec-supplied tag-version (YYYYMMDD) is monotonic,
+  # no auto-suffix needed.
   - job: copr_build
     trigger: commit
     branch: main
     packages: [discimagecreator]
-    paths: ["^fedora/discimagecreator/"]
     update_release: false
     owner: gmipf
     project: media-preservation
     targets:
       - fedora-all-x86_64
 
+  # aaru: spec-supplied (6.0.0-0.alpha.19.1) is monotonic; on next
+  # upstream alpha bump the Release segment goes up.
   - job: copr_build
     trigger: commit
     branch: main
     packages: [aaru]
-    paths: ["^fedora/aaru/"]
     update_release: false
     owner: gmipf
     project: media-preservation
     targets:
       - fedora-all-x86_64
 
-  # PR-trigger keeps no paths filter — PRs that touch multiple tools
-  # should validate all touched packages, which Packit handles via the
-  # per-package paths: declaration up in packages:.
   - job: copr_build
     trigger: pull_request
     packages: [redumper, mpf, discimagecreator, aaru]
