@@ -1,5 +1,5 @@
 %global mpfver         3.7.1
-%global mpfsnap        20260616175600.0ff3d008
+%global mpfsnap        20260618174800.71dafe3d
 %global rolltag        rolling
 
 %global debug_package      %{nil}
