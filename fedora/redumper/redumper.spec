@@ -1,7 +1,7 @@
 %global debug_package %{nil}
 
 Name:           redumper
-Version:        724
+Version:        725
 Release:        3%{?dist}
 Summary:        A low-level byte-perfect CD disc dumper
 
