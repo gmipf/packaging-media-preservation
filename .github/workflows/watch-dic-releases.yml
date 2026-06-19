@@ -40,6 +40,21 @@ jobs:
           echo "$UPSTREAM_TAG" > "$MARKER"
           sed -i "s|^%global dicver .*|%global dicver       ${UPSTREAM_TAG}|" "$SPEC"
 
+          # New upstream release = fresh identity, so reset the
+          # packaging-iteration counter and prepend a %changelog entry
+          # (LC_ALL=C for an English date; EVR without %{?dist} to match
+          # the existing hand-written entries).
+          sed -i "s/^Release:.*/Release:        1%{?dist}/" "$SPEC"
+          CL_ENTRY=$(mktemp)
+          {
+            printf '* %s gmipf <gmipf64@gmail.com> - %s-1\n' \
+              "$(LC_ALL=C date -u +'%a %b %d %Y')" "$UPSTREAM_TAG"
+            printf -- '- Automated sync to upstream DiscImageCreator release %s; Release reset to 1.\n' "$UPSTREAM_TAG"
+            printf '\n'
+          } > "$CL_ENTRY"
+          sed -i "/^%changelog/r $CL_ENTRY" "$SPEC"
+          rm -f "$CL_ENTRY"
+
           git add "$SPEC" "$MARKER"
           if git diff --cached --quiet; then
             echo "Spec and marker unchanged after rewrite — exiting clean"
