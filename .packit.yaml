@@ -77,8 +77,8 @@ packages:
 
 jobs:
   # Per-package commit jobs, each pinned to its OWN trigger branch
-  # (build-<tool>). Two independent guarantees keep `dnf` clients from
-  # ever hitting a checksum mismatch:
+  # (build-<tool>). Two mechanisms together keep `dnf` clients from ever
+  # hitting a checksum mismatch — WITHOUT polluting the NEVRA:
   #
   # 1. BRANCH-SCOPING — only the changed tool rebuilds.
   #    Packit has no working path-based job filter for trigger: commit
@@ -91,17 +91,20 @@ jobs:
   #    branch-specific landing README and force-pushes it (the README
   #    diff means build-<tool> is not a fast-forward of main; trigger
   #    refs are disposable so the force-push is harmless). That fires
-  #    ONLY that tool's job. Manual single-tool build:
-  #      git push origin main:build-<tool>
+  #    ONLY that tool's job.
   #
-  # 2. update_release: true — every build gets a UNIQUE Release.
-  #    Packit appends a monotonic snapshot suffix (timestamp + commit) to
-  #    the spec's Release at build time, so even a rebuild whose spec
-  #    NEVRA is otherwise unchanged (e.g. a manual packaging tweak with
-  #    no version bump) produces a distinct NEVRA. Without this a
-  #    same-NEVRA rebuild republishes a new checksum and breaks dnf.
-  #    Together with branch-scoping a same-NEVRA republish is impossible —
-  #    by isolation AND by construction.
+  # 2. update_release: false + a same-NEVRA guard — clean, unique NEVRA.
+  #    update_release stays false so the published NEVRA is EXACTLY what
+  #    the spec says (our convention: bare-N Release, no build suffix —
+  #    e.g. redumper-724-2, mpf-3.7.1~<snap>-5). Same-NEVRA republish
+  #    (which would hand dnf a new checksum for an unchanged NEVRA) is
+  #    prevented at the source instead: the watchers always bump Version /
+  #    reset Release on a real upstream change, and MANUAL builds go
+  #    through scripts/build-tool.sh, which compares the spec NEVRA
+  #    against the latest already in COPR and auto-bumps the bare-N
+  #    Release if it wouldn't be strictly newer. So every build that
+  #    reaches COPR has a clean, strictly-higher NEVRA. Do NOT hand-run
+  #    `git push origin main:build-<tool>`; use scripts/build-tool.sh.
   #
   # All four tools have GitHub-hosted watchers that rewrite the spec on
   # upstream releases and commit — Packit then auto-builds the COPR
@@ -111,7 +114,7 @@ jobs:
     trigger: commit
     branch: build-redumper
     packages: [redumper]
-    update_release: true
+    update_release: false
     owner: gmipf
     project: media-preservation
     targets:
@@ -121,7 +124,7 @@ jobs:
     trigger: commit
     branch: build-mpf
     packages: [mpf]
-    update_release: true
+    update_release: false
     owner: gmipf
     project: media-preservation
     targets:
@@ -133,7 +136,7 @@ jobs:
     trigger: commit
     branch: build-dic
     packages: [discimagecreator]
-    update_release: true
+    update_release: false
     owner: gmipf
     project: media-preservation
     targets:
@@ -145,7 +148,7 @@ jobs:
     trigger: commit
     branch: build-aaru
     packages: [aaru]
-    update_release: true
+    update_release: false
     owner: gmipf
     project: media-preservation
     targets:
@@ -154,7 +157,7 @@ jobs:
   - job: copr_build
     trigger: pull_request
     packages: [redumper, mpf, discimagecreator, aaru]
-    update_release: true
+    update_release: false
     owner: gmipf
     project: media-preservation
     targets:
