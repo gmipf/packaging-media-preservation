@@ -79,9 +79,17 @@ jobs:
           git config user.name "rolling-watcher"
           git config user.email "actions@github.com"
           git commit -m "chore: mpf ${UPSTREAM_VERSION} rolling ${UPSTREAM_SHA} @ ${UPSTREAM_TS}"
-          # Canonical commit to main builds nothing (no Packit job watches
-          # main); fast-forwarding this tool's trigger branch fires ONLY the
-          # mpf copr_build job, leaving the other tools' NEVRA untouched.
-          # See the jobs: comment in .packit.yaml. Manual single build:
-          #   git push origin main:build-mpf
-          git push origin HEAD:main HEAD:build-mpf
+          # Trigger branch = main's tree + a short, branch-specific landing
+          # README (purely cosmetic: a distinct view per branch when browsing
+          # GitHub). That one-file diff means build-mpf is no longer a
+          # fast-forward of main, so we recreate it and force-push — harmless,
+          # since trigger refs are disposable and nobody branches off them.
+          # Fires ONLY the mpf job; other tools keep their NEVRA; main stays
+          # canonical and builds nothing (no job watches main).
+          # Manual single build:  git push origin main:build-mpf
+          git push origin HEAD:main
+          git checkout -q -b trigger-tmp
+          printf '# build-mpf — MPF (Fedora/COPR trigger branch)\n\nAuto-managed **trigger branch** for the `mpf` package: a push here fires\nthe mpf COPR build via Packit, nothing else rebuilds. Canonical source is\n`main` (do not edit here). Packaging: `fedora/mpf/`.\n' > README.md
+          git add README.md
+          git commit -q -m "trigger: mpf build (branch landing README)"
+          git push -f origin trigger-tmp:build-mpf

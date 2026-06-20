@@ -106,8 +106,17 @@ jobs:
           git config user.name "rolling-watcher"
           git config user.email "actions@github.com"
           git commit -m "chore: aaru ${UPSTREAM_TAG}"
-          # Canonical commit to main builds nothing; fast-forwarding this
-          # tool's trigger branch fires ONLY the aaru copr_build job.
-          # Manual single build:
-          #   git push origin main:build-aaru
-          git push origin HEAD:main HEAD:build-aaru
+          # Trigger branch = main's tree + a short, branch-specific landing
+          # README (purely cosmetic: a distinct view per branch when browsing
+          # GitHub). That one-file diff means build-aaru is no longer a
+          # fast-forward of main, so we recreate it and force-push — harmless,
+          # since trigger refs are disposable and nobody branches off them.
+          # Fires ONLY the aaru job; other tools keep their NEVRA; main stays
+          # canonical and builds nothing.
+          # Manual single build:  git push origin main:build-aaru
+          git push origin HEAD:main
+          git checkout -q -b trigger-tmp
+          printf '# build-aaru — Aaru (Fedora/COPR trigger branch)\n\nAuto-managed **trigger branch** for the `aaru` package: a push here fires\nthe aaru COPR build via Packit, nothing else rebuilds. Canonical source is\n`main` (do not edit here). Packaging: `fedora/aaru/`.\n' > README.md
+          git add README.md
+          git commit -q -m "trigger: aaru build (branch landing README)"
+          git push -f origin trigger-tmp:build-aaru

@@ -82,8 +82,17 @@ jobs:
           git config user.name "rolling-watcher"
           git config user.email "actions@github.com"
           git commit -m "chore: redumper ${UPSTREAM_TAG}"
-          # Canonical commit to main builds nothing; fast-forwarding this
-          # tool's trigger branch fires ONLY the redumper copr_build job.
-          # See .packit.yaml. Manual single build:
-          #   git push origin main:build-redumper
-          git push origin HEAD:main HEAD:build-redumper
+          # Trigger branch = main's tree + a short, branch-specific landing
+          # README (purely cosmetic: a distinct view per branch when browsing
+          # GitHub). That one-file diff means build-redumper is no longer a
+          # fast-forward of main, so we recreate it and force-push — harmless,
+          # since trigger refs are disposable and nobody branches off them.
+          # Fires ONLY the redumper job; other tools keep their NEVRA; main
+          # stays canonical and builds nothing.
+          # Manual single build:  git push origin main:build-redumper
+          git push origin HEAD:main
+          git checkout -q -b trigger-tmp
+          printf '# build-redumper — redumper (Fedora/COPR trigger branch)\n\nAuto-managed **trigger branch** for the `redumper` package: a push here\nfires the redumper COPR build via Packit, nothing else rebuilds. Canonical\nsource is `main` (do not edit here). Packaging: `fedora/redumper/`.\n' > README.md
+          git add README.md
+          git commit -q -m "trigger: redumper build (branch landing README)"
+          git push -f origin trigger-tmp:build-redumper
