@@ -1,4 +1,4 @@
-.TH REDUMPER 1 "2026-06-15" "redumper" "User Commands"
+.TH REDUMPER 1 "@DATE@" "redumper @TAG@" "User Commands"
 .SH NAME
 redumper \- low-level byte-perfect optical disc dumper
 .SH SYNOPSIS
@@ -144,9 +144,12 @@ guide, dump-state details and the complete command reference.
 This manpage is handwritten as part of the Fedora packaging \(em
 upstream
 .B redumper
-ships no manpage. It was authored against upstream tag
-.BR b724 .
-If you observe commands or options here that no longer match the
+ships no manpage. The version tag in the header line is stamped at
+package build time from the shipped binary's release, so it always
+names the exact build it accompanies (currently
+.BR @TAG@ ).
+The prose itself is maintained by hand. If you observe commands or
+options here that no longer match the
 actual binary's
 .B --help
 output, the upstream README (which is shipped under

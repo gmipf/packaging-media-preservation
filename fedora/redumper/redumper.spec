@@ -2,7 +2,7 @@
 
 Name:           redumper
 Version:        726
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        A low-level byte-perfect CD disc dumper
 
 License:        GPL-3.0-only
@@ -19,8 +19,12 @@ Source0:        %{url}/releases/download/b%{version}/redumper-b%{version}-linux-
 Source1:        https://raw.githubusercontent.com/superg/redumper/b%{version}/LICENSE
 Source2:        https://raw.githubusercontent.com/superg/redumper/b%{version}/README.md
 
-# Handwritten manpage (upstream provides none); pinned to b%%{version},
-# see NOTES section inside the page for the drift caveat.
+# Handwritten manpage (upstream provides none). The version tag is stamped
+# into the .TH header at build time from %%{version} (see %%build), so it can
+# never drift from the shipped binary. We deliberately do NOT use help2man
+# here: redumper's --help is a bare option dump, while this page carries
+# curated Linux drive-access / device-node / examples guidance that help2man
+# would strip out.
 Source3:        redumper.1
 
 ExclusiveArch:  x86_64
@@ -42,6 +46,12 @@ unzip -q %{SOURCE0}
 %build
 # Self-contained statically linked binary; nothing to compile.
 
+# Stamp the upstream tag + build date into the handwritten manpage so its
+# header always matches the shipped binary (no manual version drift).
+sed -e 's/@TAG@/b%{version}/g' \
+    -e "s/@DATE@/$(date +%Y-%m-%d)/" \
+    %{SOURCE3} > redumper.1
+
 %install
 install -d %{buildroot}%{_bindir}
 install -m 0755 redumper-b%{version}-linux-x64/bin/redumper %{buildroot}%{_bindir}/redumper
@@ -50,7 +60,7 @@ install -p -m 0644 %{SOURCE1} LICENSE
 install -p -m 0644 %{SOURCE2} README.md
 
 install -d %{buildroot}%{_mandir}/man1
-install -m 0644 %{SOURCE3} %{buildroot}%{_mandir}/man1/redumper.1
+install -m 0644 redumper.1 %{buildroot}%{_mandir}/man1/redumper.1
 
 %files
 %license LICENSE
@@ -59,6 +69,13 @@ install -m 0644 %{SOURCE3} %{buildroot}%{_mandir}/man1/redumper.1
 %{_mandir}/man1/redumper.1*
 
 %changelog
+* Wed Jun 24 2026 gmipf <gmipf64@gmail.com> - 726-2
+- Stamp the upstream tag and build date into the handwritten redumper(1)
+  manpage at build time (%%build sed on %%{version}), so its header always
+  matches the shipped binary instead of carrying a hand-maintained tag that
+  drifts. Deliberately not help2man: the curated Linux drive-access and
+  examples content is richer than the binary's bare --help output.
+
 * Sun Jun 21 2026 gmipf <gmipf64@gmail.com> - 726-1
 - Automated sync to upstream redumper release b726; Release reset to 1.
 
