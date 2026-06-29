@@ -25,7 +25,7 @@ Name:           aaru
 # history was wiped (copr-cli delete-package) before this build, so
 # nothing previously published needs to be sort-overridden.
 Version:        %{aaruver}~%{aaruprerel}
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        Data preservation suite for optical, magnetic and solid-state media
 
 License:        GPL-3.0-or-later AND LGPL-2.1-or-later AND MIT
@@ -39,11 +39,23 @@ URL:            https://github.com/aaru-dps/Aaru
 # for external hosts like api.nuget.org — so we repackage instead.
 Source0:        %{url}/releases/download/%{aarutag}/aaru-%{aaruver}-%{aaruprerel}_linux_amd64.tar.xz
 Source1:        %{url}/releases/download/%{aarutag}/aaru-src-%{aaruver}-%{aaruprerel}.tar.xz
-Source2:        aaru.1
+# Curated manpage template (.TH/NAME/.../FILES/SEE ALSO) with a marker
+# where the build-time generator splices in the live --help reference.
+Source2:        aaru.1.in
+Source3:        aaru-manpage.sh
 
 ExclusiveArch:  x86_64
 BuildRequires:  tar
 BuildRequires:  xz
+# The aaru(1) manpage is generated at %build time by running the shipped
+# binary's `--help` (see %build), so the binary's native runtime deps
+# must be present in the build root as well, not just at install time.
+BuildRequires:  gawk
+BuildRequires:  libicu
+BuildRequires:  krb5-libs
+BuildRequires:  libunwind
+BuildRequires:  openssl-libs
+BuildRequires:  zlib
 
 # Native runtime deps that the bundled .NET runtime dynamically links
 # to. Mirrors the upstream pkg/rpm/aaru.spec dep set.
@@ -100,8 +112,15 @@ mkdir -p src
 tar -xJf %{SOURCE1} -C src
 
 %build
-# Nothing to build — Source0 is the upstream prebuilt self-contained
-# .NET single-file binary, repackaged unmodified.
+# Source0 is the upstream prebuilt self-contained .NET single-file
+# binary, repackaged unmodified — nothing to compile. We do generate the
+# manpage here: the generator runs the extracted ./aaru binary's `--help`
+# across its whole command tree and splices it into the curated aaru.1.in
+# template, so the command/option reference always matches the binary
+# that ships. Upstream provides no manpage and no native man generator;
+# this keeps the reference from drifting without asking upstream for
+# anything. Runs offline against bundled data (no network needed).
+sh %{SOURCE3} ./aaru %{SOURCE2} > aaru.1
 
 %install
 install -D -m 0755 aaru %{buildroot}%{aarudir}/aaru
@@ -129,8 +148,8 @@ install -D -m 0644 src/icons/128x128/aaru.png  %{buildroot}%{_datadir}/icons/hic
 install -D -m 0644 src/icons/256x256/aaru.png  %{buildroot}%{_datadir}/icons/hicolor/256x256/apps/aaru.png
 install -D -m 0644 src/icons/512x512/aaru.png  %{buildroot}%{_datadir}/icons/hicolor/512x512/apps/aaru.png
 
-# Manpage (handwritten — upstream provides none)
-install -D -m 0644 %{SOURCE2} %{buildroot}%{_mandir}/man1/aaru.1
+# Manpage (generated from the binary at %build time — see above)
+install -D -m 0644 aaru.1 %{buildroot}%{_mandir}/man1/aaru.1
 
 # PATH entry — symlink to the real binary; the kernel follows symlinks
 # for cap_sys_rawio inheritance on exec.
@@ -156,6 +175,21 @@ ln -sf %{aarudir}/aaru %{buildroot}%{_bindir}/aaru
 %{_mandir}/man1/aaru.1*
 
 %changelog
+* Mon Jun 29 2026 gmipf <gmipf64@gmail.com> - 6.0.0~alpha.19-2
+- Generate the aaru(1) manpage from the shipped binary at build time
+  instead of carrying a handwritten, hand-maintained command list. A new
+  generator (aaru-manpage.sh) walks `aaru --help` across the full command
+  tree and splices the verbatim reference into the curated aaru.1.in
+  template, so the command/option reference can no longer drift from the
+  installed version. Upstream ships no manpage and has no native man
+  generator, so this is done entirely on the packaging side.
+- Pin LC_ALL=C while harvesting help so the captured text is the English
+  invariant resources and width-stable (80 columns) regardless of the
+  build host locale; runs offline against bundled data.
+- Add BuildRequires for the .NET native runtime libraries (libicu,
+  krb5-libs, libunwind, openssl-libs, zlib) and gawk so the binary can
+  run during %build.
+
 * Mon Jun 15 2026 gmipf <gmipf64@gmail.com> - 6.0.0~alpha.19-1
 - Wipe COPR package history (copr-cli delete-package aaru) and
   rebuild fresh under the tilde-style convention without an Epoch

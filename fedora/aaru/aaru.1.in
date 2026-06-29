@@ -1,4 +1,4 @@
-.TH AARU 1 "2026-06-15" "Aaru" "User Commands"
+.TH AARU 1 "@DATE@" "Aaru @VERSION@" "User Commands"
 .SH NAME
 aaru \- data preservation suite for optical, magnetic and solid-state media
 .SH SYNOPSIS
@@ -20,36 +20,6 @@ The same
 binary serves both a command-line interface (default) and an
 Avalonia-based graphical interface, the latter launched as
 .BR "aaru gui" .
-.SH COMMANDS
-A subset of commonly used commands. Run
-.B aaru --help
-for the full reference.
-.TP
-.B media dump
-Dump the contents of a physical disc or drive to an image file
-together with sidecar metadata.
-.TP
-.B image info
-Print structural information about an existing image (sessions, tracks,
-filesystem layout, checksums).
-.TP
-.B image checksum
-Compute and compare checksums for an existing image.
-.TP
-.B filesystem ls / extract
-List or extract files from a recognised filesystem inside an image.
-.TP
-.B device list / info / report
-Enumerate attached devices, query device capabilities, generate the
-detailed device report used by the Aaru drive database.
-.TP
-.B database update
-Refresh the bundled Aaru drive / media database.
-.TP
-.B gui
-Launch the Avalonia desktop GUI. Requires an X11 or Wayland session
-and the X11 / GL / fontconfig runtime stack (installed as Recommends
-by this RPM).
 .SH DRIVE ACCESS
 .B aaru
 ships with the
@@ -75,6 +45,17 @@ sudo usermod -aG cdrom $USER
 newgrp cdrom
 .EE
 .RE
+.SH "COMMAND REFERENCE"
+The following is the complete command tree of the
+.B aaru
+binary shipped in this package, reproduced verbatim from its
+.B \-\-help
+output. It is regenerated from the binary at package build time, so it
+always matches the installed version; run
+.B aaru \fICOMMAND\fB \-\-help
+for the same text interactively.
+.PP
+@AARU_COMMAND_REFERENCE@
 .SH FILES
 .TP
 .I /usr/bin/aaru
@@ -90,17 +71,23 @@ Desktop launcher entry (
 .B Exec=aaru gui
 ) that picks up the Avalonia GUI.
 .TP
+.I ~/.config/Aaru.json
+Per-user settings written by
+.BR "aaru configure" .
+.TP
+.I ~/.local/share/Aaru/
+Per-user device/media database, statistics and device reports.
+.TP
 .I /usr/share/doc/aaru/
 Upstream README, Changelog and contributor guide.
 .SH NOTES
-This manpage is handwritten as part of the Fedora packaging \(em
-upstream provides none. It was authored against Aaru tag
-.BR v6.0.0-alpha.19 .
-If you observe commands or options here that no longer match the
-binary's actual
-.B --help
-output, the upstream repository is authoritative and this manpage may
-simply be stale.
+The command reference above is generated mechanically from the shipped
+binary's
+.B \-\-help
+output during packaging, so it cannot drift from the installed version.
+The surrounding sections (drive access, files, see also) are
+maintained by hand as part of the Fedora packaging \(em upstream
+provides no manpage.
 .SH SEE ALSO
 .BR redumper (1),
 .BR discimagecreator (1)
