@@ -8,12 +8,15 @@
 # template, so the COMMAND/OPTIONS reference can never drift from the
 # binary that actually ships, without asking upstream for anything.
 #
-#   Usage: aaru-manpage.sh <aaru-binary> <template.in>  > aaru.1
+#   Usage: aaru-manpage.sh <aaru-binary> <template.in> [fallback-version]  > aaru.1
 #
 set -eu
 
 AARU=$1
 TEMPLATE=$2
+# Optional fallback version (the spec's %{version}, with rpm's ~ turned back
+# into -) used to stamp .TH when the binary itself can't be queried here.
+FALLBACK_VERSION=$(printf '%s' "${3:-}" | tr '~' '-')
 MARKER='@AARU_COMMAND_REFERENCE@'
 
 # Private throwaway work dir (HOME + side files), auto-removed on exit.
@@ -92,12 +95,33 @@ walk() {
 
 # Generate the reference block to a side file so the assembly step can
 # inject it verbatim (awk -v would mangle the roff escapes).
+#
+# Probe first whether the prebuilt binary actually runs in this build
+# root: a newer distribution can ship runtime libraries (libicu, openssl,
+# ...) whose SONAMEs the prebuilt self-contained .NET binary was not
+# linked against, so it fails to start. When that happens we still emit
+# the curated page — with a short note in place of the auto-generated
+# per-command reference — instead of failing the whole build.
 REFFILE=$WORKDIR/cmdref.roff
-walk > "$REFFILE"
-
-# Stamp the real shipped version (drop the +commit build-metadata) and a
-# date into .TH, then splice the reference in at the marker line.
-VERSION=$(HOME=$GENHOME LC_ALL=C LANG=C TERM=dumb "$AARU" --version 2>/dev/null | sed -e 's/+.*//' -e 's/[[:space:]]*$//' || true)
+if HOME=$GENHOME LC_ALL=C LANG=C TERM=dumb "$AARU" --version >/dev/null 2>&1; then
+    # binary runs: walk the command tree and stamp its real version
+    walk > "$REFFILE"
+    VERSION=$(HOME=$GENHOME LC_ALL=C LANG=C TERM=dumb "$AARU" --version 2>/dev/null | sed -e 's/+.*//' -e 's/[[:space:]]*$//' || true)
+else
+    # binary will not run here: emit a static fallback reference and use
+    # the version passed in by the caller (the spec's %{version}).
+    cat > "$REFFILE" <<'ROFF'
+The per\-command reference is not embedded in this build of the manpage:
+the prebuilt
+.B aaru
+binary does not run in this build environment, so its
+.B \-\-help
+output could not be captured. Run
+.B aaru \fICOMMAND\fB \-\-help
+on the installed system for the complete command and option reference.
+ROFF
+    VERSION=$FALLBACK_VERSION
+fi
 [ -n "${VERSION:-}" ] || VERSION=unknown
 DATE=$(date -u -d "@${SOURCE_DATE_EPOCH:-$(date +%s)}" +%Y-%m-%d 2>/dev/null || date -u +%Y-%m-%d)
 

@@ -25,7 +25,7 @@ Name:           aaru
 # history was wiped (copr-cli delete-package) before this build, so
 # nothing previously published needs to be sort-overridden.
 Version:        %{aaruver}~%{aaruprerel}
-Release:        2%{?dist}
+Release:        3%{?dist}
 Summary:        Data preservation suite for optical, magnetic and solid-state media
 
 License:        GPL-3.0-or-later AND LGPL-2.1-or-later AND MIT
@@ -120,7 +120,14 @@ tar -xJf %{SOURCE1} -C src
 # that ships. Upstream provides no manpage and no native man generator;
 # this keeps the reference from drifting without asking upstream for
 # anything. Runs offline against bundled data (no network needed).
-sh %{SOURCE3} ./aaru %{SOURCE2} > aaru.1
+#
+# The generator is self-healing: on a build root where the prebuilt
+# binary can't start (e.g. a newer Fedora whose libicu/openssl SONAMEs
+# the self-contained .NET bundle was not linked against — currently
+# rawhide), it ships the curated page with a short note in place of the
+# generated reference instead of failing the build. %{version} is passed
+# as the .TH version fallback for that degraded case.
+sh %{SOURCE3} ./aaru %{SOURCE2} %{version} > aaru.1
 
 %install
 install -D -m 0755 aaru %{buildroot}%{aarudir}/aaru
@@ -175,6 +182,16 @@ ln -sf %{aarudir}/aaru %{buildroot}%{_bindir}/aaru
 %{_mandir}/man1/aaru.1*
 
 %changelog
+* Tue Jun 30 2026 gmipf <gmipf64@gmail.com> - 6.0.0~alpha.19-3
+- Make the manpage generator self-healing: when the prebuilt aaru binary
+  cannot start in the build root (newer-Fedora runtime-library SONAME
+  drift — observed on rawhide/f45, where libicu moved past what the
+  self-contained .NET bundle links), ship the curated page with a short
+  note in place of the auto-generated command reference instead of
+  failing the whole build. Stable Fedora (43/44) still gets the full
+  generated reference. %{version} is passed to the generator as the .TH
+  version fallback for that degraded case.
+
 * Mon Jun 29 2026 gmipf <gmipf64@gmail.com> - 6.0.0~alpha.19-2
 - Generate the aaru(1) manpage from the shipped binary at build time
   instead of carrying a handwritten, hand-maintained command list. A new
