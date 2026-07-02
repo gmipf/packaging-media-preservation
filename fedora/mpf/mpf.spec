@@ -94,7 +94,7 @@ Requires:       openssl-libs
 Requires:       zlib
 Requires:       jq
 Recommends:     redumper
-Recommends:     aaru
+Recommends:     aaru5
 Recommends:     discimagecreator
 
 %description cli
@@ -124,7 +124,7 @@ Requires:       jq
 Requires:       hicolor-icon-theme
 Requires:       desktop-file-utils
 Recommends:     redumper
-Recommends:     aaru
+Recommends:     aaru5
 Recommends:     discimagecreator
 # Avalonia 11.x ships only the X11 backend; on Wayland sessions the GUI
 # runs through Xwayland. Recommends are library-level so the same set
@@ -226,7 +226,7 @@ for pair in \
 #!/bin/sh
 config_dir="\${XDG_CONFIG_HOME:-\$HOME/.config}/mpf"
 config="\$config_dir/config.json"
-aaru_p=/usr/bin/aaru
+aaru_p=/usr/bin/aaru5
 dic_p=/usr/bin/DiscImageCreator.out
 red_p=/usr/bin/redumper
 mkdir -p "\$config_dir" 2>/dev/null
