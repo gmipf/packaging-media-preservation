@@ -25,7 +25,7 @@ Name:           aaru
 # history was wiped (copr-cli delete-package) before this build, so
 # nothing previously published needs to be sort-overridden.
 Version:        %{aaruver}~%{aaruprerel}
-Release:        3%{?dist}
+Release:        4%{?dist}
 Summary:        Data preservation suite for optical, magnetic and solid-state media
 
 License:        GPL-3.0-or-later AND LGPL-2.1-or-later AND MIT
@@ -43,10 +43,17 @@ Source1:        %{url}/releases/download/%{aarutag}/aaru-src-%{aaruver}-%{aarupr
 # where the build-time generator splices in the live --help reference.
 Source2:        aaru.1.in
 Source3:        aaru-manpage.sh
+# udev rule granting the `cdrom` group access to USB floppy block devices
+# so `aaru media dump` can read floppies without root. Package-unique
+# filename so it never collides with the same rule shipped by `aaru5`
+# (stable) or `discimagecreator`, keeping all three co-installable.
+Source4:        70-aaru-floppy.rules
 
 ExclusiveArch:  x86_64
 BuildRequires:  tar
 BuildRequires:  xz
+# Provides %%{_udevrulesdir}.
+BuildRequires:  systemd-rpm-macros
 # The aaru(1) manpage is generated at %build time by running the shipped
 # binary's `--help` (see %build), so the binary's native runtime deps
 # must be present in the build root as well, not just at install time.
@@ -99,7 +106,9 @@ The single `aaru` binary handles both modes:
   * `aaru gui` ........ launches the Avalonia desktop UI
 
 cap_sys_rawio is set on the launcher binary so vendor SCSI passthrough
-commands work without sudo.
+commands work without sudo. A udev rule grants the `cdrom` group access
+to USB floppy drives so floppy dumping works without root too; add
+yourself with `usermod -aG cdrom <user>` and re-login.
 
 %prep
 # Two tarballs, manually extracted side-by-side. The binary tarball
@@ -158,6 +167,12 @@ install -D -m 0644 src/icons/512x512/aaru.png  %{buildroot}%{_datadir}/icons/hic
 # Manpage (generated from the binary at %build time — see above)
 install -D -m 0644 aaru.1 %{buildroot}%{_mandir}/man1/aaru.1
 
+# udev rule for USB-floppy access (see Source4). No scriptlet needed:
+# the udev package ships a file trigger on %{_udevrulesdir} that reloads
+# rules automatically when this file lands.
+install -D -m 0644 %{SOURCE4} \
+    %{buildroot}%{_udevrulesdir}/70-aaru-floppy.rules
+
 # PATH entry — symlink to the real binary; the kernel follows symlinks
 # for cap_sys_rawio inheritance on exec.
 install -d %{buildroot}%{_bindir}
@@ -180,8 +195,19 @@ ln -sf %{aarudir}/aaru %{buildroot}%{_bindir}/aaru
 %{_datadir}/icons/hicolor/256x256/apps/aaru.png
 %{_datadir}/icons/hicolor/512x512/apps/aaru.png
 %{_mandir}/man1/aaru.1*
+%{_udevrulesdir}/70-aaru-floppy.rules
 
 %changelog
+* Thu Jul 02 2026 gmipf <gmipf64@gmail.com> - 6.0.0~alpha.19-4
+- Ship a udev rule (70-aaru-floppy.rules) that grants the cdrom group
+  read/write on USB floppy block devices (ENV{ID_DRIVE_FLOPPY}) and the
+  legacy /dev/fd* controller nodes, so `aaru media dump` can read
+  floppies without root. Package-unique filename so it does not collide
+  with the equivalent rule in `aaru5` (stable) or `discimagecreator` and
+  all three stay co-installable. Group cdrom is Fedora-native (no
+  sysusers.d needed); users still add themselves with
+  `usermod -aG cdrom <user>`.
+
 * Tue Jun 30 2026 gmipf <gmipf64@gmail.com> - 6.0.0~alpha.19-3
 - Make the manpage generator self-healing: when the prebuilt aaru binary
   cannot start in the build root (newer-Fedora runtime-library SONAME

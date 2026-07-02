@@ -17,7 +17,7 @@
 
 Name:           aaru5
 Version:        5.4.2
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        Aaru 5.x stable data-preservation CLI (MPF-compatible)
 
 License:        GPL-3.0-or-later AND LGPL-2.1-or-later AND MIT
@@ -35,10 +35,17 @@ Source0:        %{url}/releases/download/%{aarutag}/aaru-%{aaruver}_linux_amd64.
 # stamped from %%{version} and the build date at %%build, so the .TH line
 # always matches the shipped version without running the binary.
 Source1:        aaru5.1
+# udev rule granting the `cdrom` group access to USB floppy block devices
+# so `aaru5 media dump` can read floppies without root. Package-unique
+# filename so it never collides with the same rule shipped by `aaru`
+# (v6) or `discimagecreator`, keeping all three co-installable.
+Source2:        70-aaru5-floppy.rules
 
 ExclusiveArch:  x86_64
 BuildRequires:  tar
 BuildRequires:  xz
+# Provides %%{_udevrulesdir}.
+BuildRequires:  systemd-rpm-macros
 
 # Aaru 5.4.x is a NativeAOT executable dynamically linked only against the
 # standard C/C++ runtime (libc, libstdc++, libz, ...), so rpm's automatic
@@ -60,7 +67,9 @@ conflict: separate binary name, library directory and manpage. Point
 MPF's Aaru path at /usr/bin/aaru5.
 
 cap_sys_rawio is set on the launcher so vendor SCSI passthrough commands
-(optical dumping) work without sudo.
+(optical dumping) work without sudo. A udev rule grants the `cdrom`
+group access to USB floppy drives so floppy dumping works without root
+too; add yourself with `usermod -aG cdrom <user>` and re-login.
 
 %prep
 # The binary tarball is rootless and drops its files directly into cwd.
@@ -88,6 +97,12 @@ install -D -m 0644 CONTRIBUTING.md %{buildroot}%{aarudir}/CONTRIBUTING.md
 # Manpage (static, stamped at %build).
 install -D -m 0644 aaru5.1 %{buildroot}%{_mandir}/man1/aaru5.1
 
+# udev rule for USB-floppy access (see Source2). No scriptlet needed:
+# the udev package ships a file trigger on %{_udevrulesdir} that reloads
+# rules automatically when this file lands.
+install -D -m 0644 %{SOURCE2} \
+    %{buildroot}%{_udevrulesdir}/70-aaru5-floppy.rules
+
 # PATH entry — symlink (NOT a wrapper script) so the kernel propagates the
 # cap_sys_rawio file capability across exec.
 install -d %{buildroot}%{_bindir}
@@ -103,8 +118,18 @@ ln -sf %{aarudir}/aaru %{buildroot}%{_bindir}/aaru5
 %license %{aarudir}/LICENSE.MIT
 %{_bindir}/aaru5
 %{_mandir}/man1/aaru5.1*
+%{_udevrulesdir}/70-aaru5-floppy.rules
 
 %changelog
+* Thu Jul 02 2026 gmipf <gmipf64@gmail.com> - 5.4.2-2
+- Ship a udev rule (70-aaru5-floppy.rules) that grants the cdrom group
+  read/write on USB floppy block devices (ENV{ID_DRIVE_FLOPPY}) and the
+  legacy /dev/fd* controller nodes, so `aaru5 media dump` can read
+  floppies without root. Package-unique filename so it does not collide
+  with the equivalent rule in `aaru` (v6) or `discimagecreator` and all
+  three stay co-installable. Group cdrom is Fedora-native (no sysusers.d
+  needed); users still add themselves with `usermod -aG cdrom <user>`.
+
 * Thu Jul 02 2026 gmipf <gmipf64@gmail.com> - 5.4.2-1
 - Initial COPR build of Aaru 5.4.2 stable as a separate `aaru5` package.
   The Media Preservation Frontend (MPF) supports only the latest stable

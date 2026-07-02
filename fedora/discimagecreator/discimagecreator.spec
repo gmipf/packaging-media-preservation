@@ -11,7 +11,7 @@
 
 Name:           discimagecreator
 Version:        %{dicver}
-Release:        5%{?dist}
+Release:        6%{?dist}
 Summary:        Low-level disc dumper plus EccEdc / DVDAuth / unscrambler helpers
 License:        Apache-2.0 AND GPL-3.0-or-later AND GPL-2.0-or-later
 URL:            https://github.com/saramibreak/DiscImageCreator
@@ -20,10 +20,17 @@ Source1:        https://github.com/saramibreak/EccEdc/archive/refs/tags/%{eccedc
 Source2:        https://github.com/saramibreak/DVDAuth/archive/refs/tags/v%{dvdauthver}.tar.gz#/DVDAuth-%{dvdauthver}.tar.gz
 Source3:        https://github.com/saramibreak/unscrambler/archive/refs/tags/%{unscramblver}.tar.gz#/unscrambler-%{unscramblver}.tar.gz
 Source4:        discimagecreator.1
+# udev rule granting the `cdrom` group access to USB floppy block devices
+# so DIC's `fd` (floppy dump) command can read floppies without root.
+# Package-unique filename so it never collides with the same rule shipped
+# by `aaru` (v6) or `aaru5` (stable), keeping all three co-installable.
+Source5:        70-discimagecreator-floppy.rules
 ExclusiveArch:  x86_64
 
 BuildRequires:  gcc-c++
 BuildRequires:  make
+# Provides %%{_udevrulesdir}.
+BuildRequires:  systemd-rpm-macros
 BuildRequires:  meson
 BuildRequires:  ninja-build
 BuildRequires:  pkgconfig(libarchive)
@@ -47,8 +54,11 @@ This RPM bundles four binaries from the same upstream author:
   * unscrambler:      brute-force unscramble for non-standard DVD IVs
 
 cap_sys_rawio is set on the main DIC binary and dvdauth so vendor SCSI
-passthrough commands work without sudo. See discimagecreator(1) for
-details on drive access and runtime data file locations.
+passthrough commands work without sudo. A udev rule grants the `cdrom`
+group access to USB floppy drives so the `fd` (floppy dump) command works
+without root too; add yourself with `usermod -aG cdrom <user>` and
+re-login. See discimagecreator(1) for details on drive access and
+runtime data file locations.
 
 %prep
 %setup -q -n DiscImageCreator-%{dicver}
@@ -149,6 +159,12 @@ ln -s %{name}.1 %{buildroot}%{_mandir}/man1/eccedc.1
 ln -s %{name}.1 %{buildroot}%{_mandir}/man1/dvdauth.1
 ln -s %{name}.1 %{buildroot}%{_mandir}/man1/unscrambler.1
 
+# udev rule for USB-floppy access (see Source5). No scriptlet needed: the
+# udev package ships a file trigger on %{_udevrulesdir} that reloads rules
+# automatically when this file lands.
+install -D -m 0644 %{SOURCE5} \
+    %{buildroot}%{_udevrulesdir}/70-discimagecreator-floppy.rules
+
 %files
 %license LICENSE
 %doc README.md
@@ -175,8 +191,19 @@ ln -s %{name}.1 %{buildroot}%{_mandir}/man1/unscrambler.1
 %{_mandir}/man1/eccedc.1*
 %{_mandir}/man1/dvdauth.1*
 %{_mandir}/man1/unscrambler.1*
+%{_udevrulesdir}/70-discimagecreator-floppy.rules
 
 %changelog
+* Thu Jul 02 2026 gmipf <gmipf64@gmail.com> - 20260101-6
+- Ship a udev rule (70-discimagecreator-floppy.rules) that grants the
+  cdrom group read/write on USB floppy block devices
+  (ENV{ID_DRIVE_FLOPPY}) and the legacy /dev/fd* controller nodes, so
+  DIC's `fd` floppy-dump command can read floppies without root.
+  Package-unique filename so it does not collide with the equivalent rule
+  in `aaru` (v6) or `aaru5` (stable) and all three stay co-installable.
+  Group cdrom is Fedora-native (no sysusers.d needed); users still add
+  themselves with `usermod -aG cdrom <user>`.
+
 * Sat Jun 27 2026 gmipf <gmipf64@gmail.com> - 20260101-5
 - Manpage: reword NOTES to state plainly that the page is handwritten and
   intentionally static (not generated or build-time stamped), based on
