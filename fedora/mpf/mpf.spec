@@ -64,10 +64,17 @@ if you only need part of the suite.
 %package check
 Summary:        Validator that generates Redump !submissionInfo.txt from disc-dump logs
 Requires:       libicu
+%if 0%{?suse_version}
+Requires:       krb5
+Requires:       libopenssl3
+Requires:       libz1
+Requires:       libunwind.so.8()(64bit)
+%else
 Requires:       krb5-libs
 Requires:       libunwind
 Requires:       openssl-libs
 Requires:       zlib
+%endif
 Requires:       jq
 
 %description check
@@ -88,10 +95,17 @@ rolling release.
 %package cli
 Summary:        Headless dump orchestrator (drives redumper, aaru, discimagecreator)
 Requires:       libicu
+%if 0%{?suse_version}
+Requires:       krb5
+Requires:       libopenssl3
+Requires:       libz1
+Requires:       libunwind.so.8()(64bit)
+%else
 Requires:       krb5-libs
 Requires:       libunwind
 Requires:       openssl-libs
 Requires:       zlib
+%endif
 Requires:       jq
 Recommends:     redumper
 Recommends:     aaru5
@@ -116,10 +130,17 @@ release.
 %package gui
 Summary:        Avalonia desktop frontend for the MPF disc-dumping workflow
 Requires:       libicu
+%if 0%{?suse_version}
+Requires:       krb5
+Requires:       libopenssl3
+Requires:       libz1
+Requires:       libunwind.so.8()(64bit)
+%else
 Requires:       krb5-libs
 Requires:       libunwind
 Requires:       openssl-libs
 Requires:       zlib
+%endif
 Requires:       jq
 Requires:       hicolor-icon-theme
 Requires:       desktop-file-utils
@@ -336,6 +357,12 @@ install -m 0644 %{SOURCE6} %{buildroot}%{_mandir}/man1/mpf-gui.1
 * Fri Jul 03 2026 gmipf <gmipf64@gmail.com> - 3.8.2~20260703023433.eb239b60-1
 - Automated rolling-snapshot sync to upstream MPF commit eb239b60
   (rolling tag, published 20260703023433 UTC); Release reset to 1.
+- Portability for openSUSE (Leap 15.6 + Tumbleweed) on check/cli/gui: the
+  .NET runtime Requires are renamed under a %if 0%{?suse_version} guard
+  (krb5-libs->krb5, openssl-libs->libopenssl3, zlib->libz1, libunwind by its
+  stable soname since Leap ships `libunwind` and Tumbleweed `libunwind8`);
+  `libicu` and `jq` stay portable. Fedora/EL names unchanged. All four
+  subpackages install cleanly on both openSUSE chroots (verified via mock).
 
 * Fri Jul 03 2026 gmipf <gmipf64@gmail.com> - 3.8.2~20260702213611.ce6113d1-1
 - Automated rolling-snapshot sync to upstream MPF commit ce6113d1

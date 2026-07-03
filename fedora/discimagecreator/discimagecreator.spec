@@ -47,7 +47,12 @@ BuildRequires:  make
 # Provides %%{_udevrulesdir}.
 BuildRequires:  systemd-rpm-macros
 BuildRequires:  meson
+# Fedora/EL call the Ninja build tool 'ninja-build'; openSUSE calls it 'ninja'.
+%if 0%{?suse_version}
+BuildRequires:  ninja
+%else
 BuildRequires:  ninja-build
+%endif
 BuildRequires:  pkgconfig(libarchive)
 BuildRequires:  pkgconfig(openssl)
 BuildRequires:  pkgconfig(zlib)
@@ -91,6 +96,14 @@ sed -i \
     -e 's|/usr/share/DiscImageCreator/|/usr/share/discimagecreator/|g' \
     DiscImageCreator/get.cpp \
     DiscImageCreator/xml.cpp
+
+# GCC 15 (openSUSE Tumbleweed and, in time, Fedora) no longer pulls
+# <limits.h> in transitively, so _external/ps3auth/crypto_backend_openssl.c
+# uses UINT_MAX without an explicit include and fails to compile. Prepend
+# the header (a no-op everywhere it was already reachable). mv/sed fail
+# loudly under set -e if upstream ever drops the file.
+sed -i '1i #include <limits.h>' \
+    DiscImageCreator/_external/ps3auth/crypto_backend_openssl.c
 
 # Upstream meson.build stages the Release_ANSI data files into the build
 # dir "for easier testing" via fs.copyfile(), which needs meson >= 0.64.
@@ -240,6 +253,12 @@ install -D -m 0644 %{SOURCE5} \
   data files are byte-identical on every distro; on EL8 meson links the
   vendor-maintained system openssl 1.1.1k (DIC uses openssl only for dump
   hashing, not TLS).
+- Portability for openSUSE (Leap 15.6 + Tumbleweed): BuildRequire the Ninja
+  build tool under its openSUSE name `ninja` (Fedora/EL call it ninja-build),
+  and prepend <limits.h> to _external/ps3auth/crypto_backend_openssl.c so it
+  compiles under GCC 15 (Tumbleweed), which no longer pulls that header in
+  transitively. Both are no-ops on Fedora/EL. Verified with mock on both
+  openSUSE chroots.
 
 * Fri Jul 03 2026 gmipf <gmipf64@gmail.com> - 20260703012003.df4abb11-1
 - Drop the redundant `20260101^` release-tag anchor from the version. DIC has

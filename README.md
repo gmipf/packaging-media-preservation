@@ -10,12 +10,12 @@ respective project URLs (see below).
 
 ## Tools
 
-| Tool | Update mode | Fedora | EPEL | Debian | Arch | Alpine |
-|---|---|---|---|---|---|---|
-| [redumper](https://github.com/superg/redumper) | auto-tracked hourly on new `b<N>` tags (binary repackage) | ✅ | ✅ | — | — | — |
-| [MPF suite](https://github.com/SabreTools/MPF) | rolling, auto-tracked hourly (binary repackage); meta-package `mpf` pulls in `mpf-check` (validator), `mpf-cli` (headless orchestrator) and `mpf-gui` (Avalonia desktop UI) | ✅ | ✅ | — | — | — |
-| [DiscImageCreator suite](https://github.com/saramibreak/DiscImageCreator) | auto-tracked hourly on new master commits (built from source — upstream binary links against EOL OpenSSL 1.1); bundles DIC + EccEdc + DVDAuth + unscrambler in one RPM | ✅ | ✅ | — | — | — |
-| [Aaru](https://github.com/aaru-dps/Aaru) | auto-tracked hourly on new `v6.0.0-alpha.<N>` tags (binary repackage); CLI + Avalonia GUI ship as one binary, launch the GUI via `aaru gui` | ✅ | ✅ | — | — | — |
+| Tool | Update mode | Fedora | EPEL | openSUSE | Debian | Arch | Alpine |
+|---|---|---|---|---|---|---|---|
+| [redumper](https://github.com/superg/redumper) | auto-tracked hourly on new `b<N>` tags (binary repackage) | ✅ | ✅ | ✅ | — | — | — |
+| [MPF suite](https://github.com/SabreTools/MPF) | rolling, auto-tracked hourly (binary repackage); meta-package `mpf` pulls in `mpf-check` (validator), `mpf-cli` (headless orchestrator) and `mpf-gui` (Avalonia desktop UI) | ✅ | ✅ | ✅ | — | — | — |
+| [DiscImageCreator suite](https://github.com/saramibreak/DiscImageCreator) | auto-tracked hourly on new master commits (built from source — upstream binary links against EOL OpenSSL 1.1); bundles DIC + EccEdc + DVDAuth + unscrambler in one RPM | ✅ | ✅ | ✅ | — | — | — |
+| [Aaru](https://github.com/aaru-dps/Aaru) | auto-tracked hourly on new `v6.0.0-alpha.<N>` tags (binary repackage); CLI + Avalonia GUI ship as one binary, launch the GUI via `aaru gui` | ✅ | ✅ | ✅ | — | — | — |
 
 For the currently shipping versions and full install instructions,
 see the [COPR project page](https://copr.fedorainfracloud.org/coprs/gmipf/media-preservation/).
@@ -72,15 +72,25 @@ touches a tool's `fedora/<tool>/` path triggers Packit to fetch sources, build
 the SRPM, and ship a build to COPR project `gmipf/media-preservation`. No
 manual `copr-cli build` needed.
 
-Each package is built for `fedora-all-x86_64` **and** `epel-all-x86_64`
-(x86_64 only — every spec is `ExclusiveArch: x86_64`, since the repackaged
-tools have no non-x86_64 upstream binaries). `epel-all` auto-tracks every
-active EPEL major (8/9/10 today, 11+ automatically), and the EPEL builds run on
-the CentOS Stream N + EPEL buildroot, so one `.elN` package covers RHEL,
-CentOS Stream, AlmaLinux, Rocky and Oracle Linux N. `discimagecreator` carries
-two small spec patches (dropping upstream meson's `fs.copyfile`, renaming a
-doc file with an `&` in its name) so its source build also works on EL8/EL9's
-older toolchain; on EL8 it links the vendor-maintained system openssl 1.1.1k.
+Each package is built for `fedora-all-x86_64`, `epel-all-x86_64` and openSUSE
+(`opensuse-leap-15.6-x86_64` + `opensuse-tumbleweed-x86_64`) — x86_64 only,
+since every spec is `ExclusiveArch: x86_64` and the repackaged tools have no
+non-x86_64 upstream binaries. `epel-all` auto-tracks every active EPEL major
+(8/9/10 today, 11+ automatically), and the EPEL builds run on the CentOS
+Stream N + EPEL buildroot, so one `.elN` package covers RHEL, CentOS Stream,
+AlmaLinux, Rocky and Oracle Linux N. openSUSE is a separate RPM family with its
+own macros and package names (and no `-all` alias in Packit), so its versions
+are pinned explicitly.
+
+`discimagecreator` (the only source build) carries small spec patches so it
+compiles everywhere: dropping upstream meson's `fs.copyfile` and renaming a
+doc file with an `&` in its name for EL8/EL9's older toolchain (on EL8 it links
+the vendor-maintained system openssl 1.1.1k), plus BuildRequiring Ninja under
+its openSUSE name (`ninja` vs `ninja-build`) and adding a `<limits.h>` include
+for GCC 15 (Tumbleweed). The self-contained .NET tools (`aaru`, `mpf`) map
+their runtime dependency names on openSUSE under a `%if 0%{?suse_version}`
+guard (`krb5-libs`→`krb5`, `openssl-libs`→`libopenssl3`, `zlib`→`libz1`,
+`libunwind` by soname); `libicu` and `jq` are portable as-is.
 
 All four packages have GitHub-hosted watchers that rewrite their spec on
 upstream releases and let Packit handle the rebuild:
@@ -120,7 +130,9 @@ upstream releases and let Packit handle the rebuild:
 
 See `.packit.yaml` for the per-tool trigger configuration.
 
-## Install (Fedora 43+ and RHEL / CentOS Stream / AlmaLinux / Rocky / Oracle 8–10)
+## Install
+
+### Fedora 43+ and RHEL / CentOS Stream / AlmaLinux / Rocky / Oracle 8–10
 
 ```sh
 sudo dnf copr enable gmipf/media-preservation
@@ -131,6 +143,18 @@ On enterprise-Linux clones the COPR `dnf` plugin lives in `dnf-plugins-core`
 (shipped in the base repos), and these packages' runtime dependencies are all
 in the base/AppStream repos — so EPEL does **not** need to be enabled to
 install them.
+
+### openSUSE Leap 15.6 / Tumbleweed
+
+openSUSE has no `dnf copr` plugin; add the COPR repo with `zypper` instead
+(swap `opensuse-tumbleweed` for `opensuse-leap-15.6` on Leap):
+
+```sh
+sudo zypper addrepo \
+  https://copr.fedorainfracloud.org/coprs/gmipf/media-preservation/repo/opensuse-tumbleweed/gmipf-media-preservation-opensuse-tumbleweed.repo
+sudo zypper --gpg-auto-import-keys refresh
+sudo zypper install redumper discimagecreator aaru mpf
+```
 
 `mpf` is a meta-package; it pulls in `mpf-check` (log validator),
 `mpf-cli` (headless dump orchestrator) and `mpf-gui` (Avalonia desktop

@@ -59,18 +59,41 @@ BuildRequires:  systemd-rpm-macros
 # must be present in the build root as well, not just at install time.
 BuildRequires:  gawk
 BuildRequires:  libicu
+# Native runtime libs the prebuilt .NET binary links to (same set as the
+# runtime Requires below). openSUSE names them differently: krb5-libs ->
+# krb5, openssl-libs -> libopenssl3, zlib -> libz1, and libunwind is
+# 'libunwind' on Leap but 'libunwind8' on Tumbleweed, so require it by its
+# stable soname. If any are missing the manpage generator self-heals to a
+# curated page, but with them the build captures the full --help reference.
+%if 0%{?suse_version}
+BuildRequires:  krb5
+BuildRequires:  libopenssl3
+BuildRequires:  libz1
+BuildRequires:  libunwind.so.8()(64bit)
+%else
 BuildRequires:  krb5-libs
 BuildRequires:  libunwind
 BuildRequires:  openssl-libs
 BuildRequires:  zlib
+%endif
 
 # Native runtime deps that the bundled .NET runtime dynamically links
-# to. Mirrors the upstream pkg/rpm/aaru.spec dep set.
+# to. Mirrors the upstream pkg/rpm/aaru.spec dep set. `libicu` is portable
+# (Fedora ships a package named libicu; every openSUSE ICU runtime package
+# provides the virtual `libicu`) -- .NET fatally aborts without it. The
+# rest are renamed on openSUSE (see BuildRequires above).
 Requires:       libicu
+%if 0%{?suse_version}
+Requires:       krb5
+Requires:       libopenssl3
+Requires:       libz1
+Requires:       libunwind.so.8()(64bit)
+%else
 Requires:       krb5-libs
 Requires:       libunwind
 Requires:       openssl-libs
 Requires:       zlib
+%endif
 
 # Desktop integration — the three packages also provide Fedora file
 # triggers that auto-refresh the MIME, desktop and icon-cache databases
@@ -207,6 +230,14 @@ ln -sf %{aarudir}/aaru %{buildroot}%{_bindir}/aaru
   all three stay co-installable. Group cdrom is Fedora-native (no
   sysusers.d needed); users still add themselves with
   `usermod -aG cdrom <user>`.
+- Portability for openSUSE (Leap 15.6 + Tumbleweed): the .NET runtime libs
+  are renamed under a %if 0%{?suse_version} guard (krb5-libs->krb5,
+  openssl-libs->libopenssl3, zlib->libz1, libunwind required by its stable
+  soname since Leap ships `libunwind` and Tumbleweed `libunwind8`); `libicu`
+  stays portable (openSUSE's ICU packages all provide the virtual `libicu`,
+  and .NET fatally aborts without ICU). Fedora/EL names are unchanged. The
+  prebuilt binary runs at %build on both openSUSE chroots, so the full
+  generated manpage reference is captured there too; verified via mock.
 
 * Tue Jun 30 2026 gmipf <gmipf64@gmail.com> - 6.0.0~alpha.19-3
 - Make the manpage generator self-healing: when the prebuilt aaru binary
