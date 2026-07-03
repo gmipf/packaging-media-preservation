@@ -1,4 +1,16 @@
-%global dicver       20260101
+# Rolling master snapshot (mpf-style: base + snapshot with the upstream
+# commit SHA). watch-dic-releases.yml rewrites diccommit / dicsnap on every
+# new master commit and refreshes dicbasever from the latest release tag.
+# We track master rather than the 20260101 release tag because master carries
+# the Linux fixes -- notably the fd (floppy) SIGSEGV fix (#328) -- that the
+# tag lacks. Version = %%{dicbasever}^%%{dicsnap}: the caret (post-release)
+# sorts the snapshot AFTER the base release but before the next tag, and --
+# unlike mpf's tilde -- stays strictly newer than the already-shipped bare
+# 20260101-N (a tilde would sort BELOW it = a downgrade). dicsnap is
+# <UTC-commit-TS>.<short-SHA>; diccommit is the full SHA used for the archive.
+%global dicbasever   20260101
+%global dicsnap      20260703012003.df4abb11
+%global diccommit    df4abb118876fa8cc9410f1f1432cf43237c53aa
 %global eccedcver    20240901
 %global dvdauthver   1.4
 %global unscramblver 0.5.5
@@ -10,12 +22,12 @@
 %global debug_package %{nil}
 
 Name:           discimagecreator
-Version:        %{dicver}
-Release:        6%{?dist}
+Version:        %{dicbasever}^%{dicsnap}
+Release:        1%{?dist}
 Summary:        Low-level disc dumper plus EccEdc / DVDAuth / unscrambler helpers
 License:        Apache-2.0 AND GPL-3.0-or-later AND GPL-2.0-or-later
 URL:            https://github.com/saramibreak/DiscImageCreator
-Source0:        https://github.com/saramibreak/DiscImageCreator/archive/refs/tags/%{dicver}.tar.gz#/DiscImageCreator-%{dicver}.tar.gz
+Source0:        %{url}/archive/%{diccommit}.tar.gz#/DiscImageCreator-%{diccommit}.tar.gz
 Source1:        https://github.com/saramibreak/EccEdc/archive/refs/tags/%{eccedcver}.tar.gz#/EccEdc-%{eccedcver}.tar.gz
 Source2:        https://github.com/saramibreak/DVDAuth/archive/refs/tags/v%{dvdauthver}.tar.gz#/DVDAuth-%{dvdauthver}.tar.gz
 Source3:        https://github.com/saramibreak/unscrambler/archive/refs/tags/%{unscramblver}.tar.gz#/unscrambler-%{unscramblver}.tar.gz
@@ -61,10 +73,10 @@ re-login. See discimagecreator(1) for details on drive access and
 runtime data file locations.
 
 %prep
-%setup -q -n DiscImageCreator-%{dicver}
-%setup -q -T -D -a 1 -n DiscImageCreator-%{dicver}
-%setup -q -T -D -a 2 -n DiscImageCreator-%{dicver}
-%setup -q -T -D -a 3 -n DiscImageCreator-%{dicver}
+%setup -q -n DiscImageCreator-%{diccommit}
+%setup -q -T -D -a 1 -n DiscImageCreator-%{diccommit}
+%setup -q -T -D -a 2 -n DiscImageCreator-%{diccommit}
+%setup -q -T -D -a 3 -n DiscImageCreator-%{diccommit}
 
 # Patch hardcoded data-directory probe paths from upstream's CamelCase
 # convention (/usr/share/DiscImageCreator/) to lowercase, so the binary
@@ -194,6 +206,18 @@ install -D -m 0644 %{SOURCE5} \
 %{_udevrulesdir}/70-discimagecreator-floppy.rules
 
 %changelog
+* Fri Jul 03 2026 gmipf <gmipf64@gmail.com> - 20260101^20260703012003.df4abb11-1
+- Switch Source0 from the 20260101 release tarball to a pinned master commit
+  (df4abb11, committed 2026-07-03), 19 commits ahead of the last release. This
+  brings the accumulated Linux fixes (#310-#324) and, above all, the fd
+  (floppy) SIGSEGV fix plus the write-protected-media read-only fallback
+  (#328): DIC's `fd` floppy-dump command no longer crashes on Linux.
+- Version scheme is now an mpf-style rolling snapshot pinned to the upstream
+  commit SHA: %{dicbasever}^<UTC-commit-TS>.<short-SHA>. The caret (post-
+  release) sorts the snapshot after the 20260101 release -- and above the
+  shipped 20260101-6 -- but below the next release tag; Release reset to 1.
+  watch-dic-releases.yml now tracks master HEAD instead of releases/latest.
+
 * Thu Jul 02 2026 gmipf <gmipf64@gmail.com> - 20260101-6
 - Ship a udev rule (70-discimagecreator-floppy.rules) that grants the
   cdrom group read/write on USB floppy block devices

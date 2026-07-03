@@ -1,10 +1,13 @@
 name: watch-dic-releases
 
-# DIC bumps quarterly (4× per year). Daily polling is overkill but cheap,
-# and ensures we never miss a release. With source-build (no body-parse
-# needed since reverting binary-repackage in commit dXXXXXXX), we only
-# need to rewrite the %global dicver line — Source0 is a deterministic
-# archive URL derived from the tag, so it doesn't change separately.
+# DIC is packaged from a pinned master COMMIT, not the release tag. master
+# carries the accumulated Linux fixes -- notably the fd (floppy) SIGSEGV fix
+# (#328) -- that the last release tag (20260101) lacks. This watcher polls
+# master HEAD and, on a new commit, re-pins the spec to that exact SHA and
+# rebuilds (mpf-style rolling snapshot). Every build stays pinned to a full
+# 40-char commit SHA recorded in Version, the marker and git history, so it
+# is reproducible despite tracking a moving branch. dicbasever is refreshed
+# from the latest release tag so the post-release caret base stays current.
 
 on:
   schedule:
@@ -20,7 +23,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Sync discimagecreator spec with upstream release
+      - name: Sync discimagecreator spec with upstream master commit
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -28,28 +31,43 @@ jobs:
           SPEC=fedora/discimagecreator/discimagecreator.spec
           MARKER=fedora/discimagecreator/.upstream-tag
 
-          UPSTREAM_TAG=$(gh api repos/saramibreak/DiscImageCreator/releases/latest --jq '.tag_name')
-          LOCAL_TAG=$(cat "$MARKER" 2>/dev/null || echo none)
+          UPSTREAM_SHA_FULL=$(gh api repos/saramibreak/DiscImageCreator/branches/master --jq '.commit.sha')
+          LOCAL_SHA=$(cat "$MARKER" 2>/dev/null || echo none)
 
-          if [ "$UPSTREAM_TAG" = "$LOCAL_TAG" ]; then
-            echo "Tag unchanged ($LOCAL_TAG) — no rebuild needed"
+          if [ "$UPSTREAM_SHA_FULL" = "$LOCAL_SHA" ]; then
+            echo "Master SHA unchanged ($LOCAL_SHA) — no rebuild needed"
             exit 0
           fi
 
-          echo "Upstream tag changed: $LOCAL_TAG -> $UPSTREAM_TAG"
-          echo "$UPSTREAM_TAG" > "$MARKER"
-          sed -i "s|^%global dicver .*|%global dicver       ${UPSTREAM_TAG}|" "$SPEC"
+          UPSTREAM_SHA=${UPSTREAM_SHA_FULL:0:8}
+          # Compact UTC commit timestamp (YYYYMMDDHHMMSS) of that commit.
+          UPSTREAM_DATE=$(gh api repos/saramibreak/DiscImageCreator/branches/master --jq '.commit.commit.committer.date')
+          UPSTREAM_TS=$(printf '%s' "$UPSTREAM_DATE" | tr -d -- '-:TZ' | head -c 14)
+          # Base = latest release tag (the version DIC's own AppVersion is cut
+          # from); master snapshots sort AFTER it via the caret in the spec.
+          BASEVER=$(gh api repos/saramibreak/DiscImageCreator/releases/latest --jq '.tag_name')
 
-          # New upstream release = fresh identity, so reset the
-          # packaging-iteration counter and prepend a %changelog entry
-          # (LC_ALL=C for an English date; EVR without %{?dist} to match
-          # the existing hand-written entries).
-          sed -i "s/^Release:.*/Release:        1%{?dist}/" "$SPEC"
+          echo "Upstream master: base=$BASEVER sha=$UPSTREAM_SHA ts=$UPSTREAM_TS"
+          echo "$UPSTREAM_SHA_FULL" > "$MARKER"
+
+          # Rolling snapshot lives in three %global lines. Rewrite base,
+          # snapshot (<UTC-TS>.<short-SHA>) and the full-SHA archive pin, then
+          # reset Release to 1: a new snapshot is a fresh identity, so the
+          # packaging-iteration counter starts over. RPM sorts on Version
+          # first, so -1 still supersedes the previous snapshot's -N.
+          sed -i "s/^%global dicbasever .*/%global dicbasever   ${BASEVER}/"                  "$SPEC"
+          sed -i "s/^%global dicsnap .*/%global dicsnap      ${UPSTREAM_TS}.${UPSTREAM_SHA}/"  "$SPEC"
+          sed -i "s/^%global diccommit .*/%global diccommit    ${UPSTREAM_SHA_FULL}/"          "$SPEC"
+          sed -i "s/^Release:.*/Release:        1%{?dist}/"                                     "$SPEC"
+
+          # Prepend a %changelog entry for the new snapshot. EVR is written
+          # without %{?dist} to match the existing hand-written entries.
           CL_ENTRY=$(mktemp)
           {
-            printf '* %s gmipf <gmipf64@gmail.com> - %s-1\n' \
-              "$(LC_ALL=C date -u +'%a %b %d %Y')" "$UPSTREAM_TAG"
-            printf -- '- Automated sync to upstream DiscImageCreator release %s; Release reset to 1.\n' "$UPSTREAM_TAG"
+            printf '* %s gmipf <gmipf64@gmail.com> - %s^%s.%s-1\n' \
+              "$(LC_ALL=C date -u +'%a %b %d %Y')" "$BASEVER" "$UPSTREAM_TS" "$UPSTREAM_SHA"
+            printf -- '- Automated master-snapshot sync to upstream DiscImageCreator commit\n'
+            printf '  %s (committed %s UTC); Release reset to 1.\n' "$UPSTREAM_SHA" "$UPSTREAM_TS"
             printf '\n'
           } > "$CL_ENTRY"
           sed -i "/^%changelog/r $CL_ENTRY" "$SPEC"
@@ -63,7 +81,7 @@ jobs:
 
           git config user.name "rolling-watcher"
           git config user.email "actions@github.com"
-          git commit -m "chore: discimagecreator ${UPSTREAM_TAG}"
+          git commit -m "chore: discimagecreator master ${UPSTREAM_SHA} @ ${UPSTREAM_TS}"
           # Trigger branch = main's tree + a short, branch-specific landing
           # README (purely cosmetic: a distinct view per branch when browsing
           # GitHub). That one-file diff means build-dic is no longer a

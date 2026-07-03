@@ -53,9 +53,10 @@ packages:
     # upstream Linux binary links against EOL OpenSSL 1.1 — see
     # saramibreak/DiscImageCreator#321). spectool -g fetches all four
     # upstream source tarballs (DIC + EccEdc + DVDAuth + unscrambler);
-    # SRPM packs them all. watch-dic-releases.yml polls daily and
-    # rewrites %global dicver on tag bumps — Source0 URL is
-    # deterministic from the tag, no body-parsing needed.
+    # SRPM packs them all. DIC is pinned to a master COMMIT (not a release
+    # tag): Source0 is a deterministic archive URL from %global diccommit,
+    # and watch-dic-releases.yml re-pins it on every new master commit.
+    # The DiscImageCreator-*.tar.gz glob still matches the SHA-named archive.
     actions:
       create-archive:
         - bash -c "spectool -g discimagecreator.spec 1>&2"
@@ -153,8 +154,9 @@ jobs:
     targets:
       - fedora-all-x86_64
 
-  # discimagecreator: spec-supplied tag-version (YYYYMMDD) is monotonic,
-  # no auto-suffix needed.
+  # discimagecreator: master-commit snapshot version
+  # (YYYYMMDD^<UTC-TS>.<short-SHA>) is monotonic by the commit timestamp;
+  # the caret sorts it above the old bare-tag builds. No auto-suffix needed.
   - job: copr_build
     trigger: commit
     branch: build-dic

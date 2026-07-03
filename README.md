@@ -87,8 +87,13 @@ upstream releases and let Packit handle the rebuild:
   upstream SHA when something has changed. All three subpackages
   (mpf-check, mpf-cli, mpf-gui) ship synchronously since they share one
   upstream `<VersionPrefix>`.
-- **discimagecreator** bumps quarterly. `watch-dic-releases.yml` polls
-  `releases/latest` daily and rewrites `%global dicver` on a tag bump.
+- **discimagecreator** is packaged from a pinned master commit rather
+  than the release tag: master carries the accumulated Linux fixes --
+  notably the fd (floppy) SIGSEGV fix (#328) -- that the last release tag
+  (20260101) lacks. `watch-dic-releases.yml` polls master HEAD daily and,
+  on a new commit, re-pins `%global diccommit` / `%global dicsnap` to that
+  SHA (version `20260101^<UTC-commit-TS>.<short-SHA>`, an mpf-style rolling
+  snapshot; the caret keeps it strictly above the shipped `20260101` tag).
   Built from source: the upstream Linux release binary links against
   EOL OpenSSL 1.1 (no longer in default Fedora/Ubuntu/Debian/Arch
   repos), so we recompile against OpenSSL 3 ourselves until upstream
