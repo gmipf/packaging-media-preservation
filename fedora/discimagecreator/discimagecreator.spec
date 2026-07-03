@@ -12,8 +12,8 @@
 # SIGSEGV fix (#328) -- that the tag lacks. watch-dic-releases.yml rewrites
 # dicsnap / diccommit on every new master commit; diccommit is the full SHA
 # used for the source archive.
-%global dicsnap      20260703012003.df4abb11
-%global diccommit    df4abb118876fa8cc9410f1f1432cf43237c53aa
+%global dicsnap      20260703121302.efa7d482
+%global diccommit    efa7d4826f7e48b50d84cdd2a3d03cfb0321cf6b
 %global eccedcver    20240901
 %global dvdauthver   1.4
 %global unscramblver 0.5.5
@@ -209,6 +209,10 @@ install -D -m 0644 %{SOURCE5} \
 %{_udevrulesdir}/70-discimagecreator-floppy.rules
 
 %changelog
+* Fri Jul 03 2026 gmipf <gmipf64@gmail.com> - 20260703121302.efa7d482-1
+- Automated master-snapshot sync to upstream DiscImageCreator commit
+  efa7d482 (committed 20260703121302 UTC); Release reset to 1.
+
 * Fri Jul 03 2026 gmipf <gmipf64@gmail.com> - 20260703012003.df4abb11-1
 - Drop the redundant `20260101^` release-tag anchor from the version. DIC has
   no semantic source version -- its AppVersion is a build-time timestamp
