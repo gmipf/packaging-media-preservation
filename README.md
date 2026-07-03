@@ -12,10 +12,10 @@ respective project URLs (see below).
 
 | Tool | Update mode | Fedora | Debian | Arch | Alpine |
 |---|---|---|---|---|---|
-| [redumper](https://github.com/superg/redumper) | auto-tracked daily on new `b<N>` tags (binary repackage) | ✅ | — | — | — |
-| [MPF suite](https://github.com/SabreTools/MPF) | rolling, auto-tracked every 6 h (binary repackage); meta-package `mpf` pulls in `mpf-check` (validator), `mpf-cli` (headless orchestrator) and `mpf-gui` (Avalonia desktop UI) | ✅ | — | — | — |
-| [DiscImageCreator suite](https://github.com/saramibreak/DiscImageCreator) | auto-tracked daily on quarterly upstream tags (built from source — upstream binary links against EOL OpenSSL 1.1); bundles DIC + EccEdc + DVDAuth + unscrambler in one RPM | ✅ | — | — | — |
-| [Aaru](https://github.com/aaru-dps/Aaru) | auto-tracked daily on new `v6.0.0-alpha.<N>` tags (binary repackage); CLI + Avalonia GUI ship as one binary, launch the GUI via `aaru gui` | ✅ | — | — | — |
+| [redumper](https://github.com/superg/redumper) | auto-tracked hourly on new `b<N>` tags (binary repackage) | ✅ | — | — | — |
+| [MPF suite](https://github.com/SabreTools/MPF) | rolling, auto-tracked hourly (binary repackage); meta-package `mpf` pulls in `mpf-check` (validator), `mpf-cli` (headless orchestrator) and `mpf-gui` (Avalonia desktop UI) | ✅ | — | — | — |
+| [DiscImageCreator suite](https://github.com/saramibreak/DiscImageCreator) | auto-tracked hourly on new master commits (built from source — upstream binary links against EOL OpenSSL 1.1); bundles DIC + EccEdc + DVDAuth + unscrambler in one RPM | ✅ | — | — | — |
+| [Aaru](https://github.com/aaru-dps/Aaru) | auto-tracked hourly on new `v6.0.0-alpha.<N>` tags (binary repackage); CLI + Avalonia GUI ship as one binary, launch the GUI via `aaru gui` | ✅ | — | — | — |
 
 For the currently shipping versions and full install instructions,
 see the [COPR project page](https://copr.fedorainfracloud.org/coprs/gmipf/media-preservation/).
@@ -26,10 +26,10 @@ see the [COPR project page](https://copr.fedorainfracloud.org/coprs/gmipf/media-
 .
 ├── .packit.yaml                            # Packit-as-a-Service config (drives Fedora COPR builds)
 ├── .github/workflows/
-│   ├── watch-redumper-releases.yml         # daily watcher for redumper's b<N> tags
-│   ├── watch-mpf-rolling.yml               # 6h watcher for MPF's rolling tag
-│   ├── watch-dic-releases.yml              # daily watcher for DiscImageCreator's quarterly releases
-│   └── watch-aaru-releases.yml             # daily watcher for Aaru's v6.0.0-alpha.<N> tags
+│   ├── watch-redumper-releases.yml         # hourly watcher for redumper's b<N> tags
+│   ├── watch-mpf-rolling.yml               # hourly watcher for MPF's rolling tag
+│   ├── watch-dic-releases.yml              # hourly watcher for DiscImageCreator master commits
+│   └── watch-aaru-releases.yml             # hourly watcher for Aaru's v6.0.0-alpha.<N> tags
 ├── LICENSE                                 # MIT (recipes only; tools keep their own licenses)
 ├── README.md
 └── fedora/
@@ -77,12 +77,12 @@ upstream releases and let Packit handle the rebuild:
 
 - **redumper** publishes new `b<N>` release tags frequently (multiple
   per day during active bursts; quieter weeks otherwise).
-  `watch-redumper-releases.yml` polls daily, picks the highest `b<N>`
+  `watch-redumper-releases.yml` polls hourly, picks the highest `b<N>`
   tag from the 20 most recent releases and rewrites the spec's
   `Version:` line. Older `build_<N>` tags from the pre-convention era
   are ignored by the filter.
 - **mpf** rolls — upstream force-pushes its `rolling` tag on every
-  release. `watch-mpf-rolling.yml` polls every six hours, rewrites the
+  release. `watch-mpf-rolling.yml` polls hourly, rewrites the
   spec's `%global mpfver` + `%global mpfsnap` lines and stores the new
   upstream SHA when something has changed. All three subpackages
   (mpf-check, mpf-cli, mpf-gui) ship synchronously since they share one
@@ -90,7 +90,7 @@ upstream releases and let Packit handle the rebuild:
 - **discimagecreator** is packaged from a pinned master commit rather
   than the release tag: master carries the accumulated Linux fixes --
   notably the fd (floppy) SIGSEGV fix (#328) -- that the last release tag
-  (20260101) lacks. `watch-dic-releases.yml` polls master HEAD daily and,
+  (20260101) lacks. `watch-dic-releases.yml` polls master HEAD hourly and,
   on a new commit, re-pins `%global diccommit` / `%global dicsnap` to that
   SHA. DIC has no semantic source version -- its AppVersion is a build-time
   timestamp and the release tags are bare `YYYYMMDD` date labels -- so the
@@ -103,7 +103,7 @@ upstream releases and let Packit handle the rebuild:
   migrates or static-links.
 - **aaru** is on the v6.0.0 alpha track; upstream publishes a new
   `v6.0.0-alpha.<N>` tag every two to six weeks. `watch-aaru-releases.yml`
-  polls daily, picks the highest numeric `alpha.<N>[.<M>]` tag and
+  polls hourly, picks the highest numeric `alpha.<N>[.<M>]` tag and
   rewrites `%global aaruprerel` on a bump. The workflow loud-fails if
   upstream transitions to stable v6.0.0, a beta/rc, or a v7+ major —
   the spec's tilde-versioning would need manual revision.

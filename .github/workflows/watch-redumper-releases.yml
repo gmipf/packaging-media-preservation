@@ -2,7 +2,7 @@ name: watch-redumper-releases
 
 # redumper publishes new b<N> release tags very frequently (multiple per
 # day during active development bursts; quieter weeks otherwise). We poll
-# daily, pick the highest `b<N>` tag and rewrite the `Version:` line in
+# hourly, pick the highest `b<N>` tag and rewrite the `Version:` line in
 # the spec. Older `build_<N>` tags (pre-convention) are ignored by the
 # filter. Source0 URL is deterministic from the tag, no body-parse.
 #
@@ -11,7 +11,7 @@ name: watch-redumper-releases
 
 on:
   schedule:
-    - cron: '0 8 * * *'
+    - cron: '37 * * * *'
   workflow_dispatch:
 
 permissions:

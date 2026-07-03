@@ -1,7 +1,7 @@
 name: watch-aaru-releases
 
 # Aaru is on the v6.0.0 alpha track — upstream publishes a new alpha
-# tag every 2–6 weeks. We poll daily, pick the highest `alpha.<N>` tag
+# tag every 2–6 weeks. We poll hourly, pick the highest `alpha.<N>` tag
 # (including sub-revisions like `alpha.15.1`), and rewrite the
 # `%global aaruprerel` line in the spec. Source0/Source1 URLs are
 # deterministic from the tag, so no body-parse or asset lookup needed.
@@ -16,7 +16,7 @@ name: watch-aaru-releases
 
 on:
   schedule:
-    - cron: '0 7 * * *'
+    - cron: '22 * * * *'
   workflow_dispatch:
 
 permissions:
