@@ -10,7 +10,7 @@ respective project URLs (see below).
 
 ## Tools
 
-| Tool | Update mode | Fedora | EL 8–10 | Debian | Arch | Alpine |
+| Tool | Update mode | Fedora | EPEL | Debian | Arch | Alpine |
 |---|---|---|---|---|---|---|
 | [redumper](https://github.com/superg/redumper) | auto-tracked hourly on new `b<N>` tags (binary repackage) | ✅ | ✅ | — | — | — |
 | [MPF suite](https://github.com/SabreTools/MPF) | rolling, auto-tracked hourly (binary repackage); meta-package `mpf` pulls in `mpf-check` (validator), `mpf-cli` (headless orchestrator) and `mpf-gui` (Avalonia desktop UI) | ✅ | ✅ | — | — | — |
