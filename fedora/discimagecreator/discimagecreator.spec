@@ -92,6 +92,24 @@ sed -i \
     DiscImageCreator/get.cpp \
     DiscImageCreator/xml.cpp
 
+# Upstream meson.build stages the Release_ANSI data files into the build
+# dir "for easier testing" via fs.copyfile(), which needs meson >= 0.64.
+# EL9's EPEL ships meson 0.63.x, so those calls abort configure there.
+# They are pure build-tree convenience -- redundant with the install_data()
+# right below them and with our own install-step copies of the same files --
+# so drop them. The installed package is byte-identical on every distro
+# (Fedora's newer meson doesn't need them either). grep-guard first so the
+# build fails loudly if upstream ever restructures this block.
+grep -q 'fs\.copyfile(' meson.build
+sed -i '/fs\.copyfile(/d' meson.build
+
+# rpm's %doc copy helper on EL9 (rpm 4.16) doesn't quote filenames, so the
+# '&' in upstream's "Firmware&Tool.md" backgrounds the cp and the file never
+# reaches the doc dir (works on Fedora / EL10 rpm 4.19+, fails on EL9). Rename
+# it to a shell-safe name -- it's pure documentation, nothing references the
+# filename. mv fails loudly under set -e if upstream ever renames it.
+mv 'Release_ANSI/Doc/Firmware&Tool.md' 'Release_ANSI/Doc/Firmware_and_Tool.md'
+
 # EccEdc upstream 20240901 predates GCC 14's stricter transitive header
 # rules — _external/ecm.cpp uses uint32_t without including <cstdint>.
 # Prepend the include so Fedora 43+ (GCC 14) builds.
@@ -188,7 +206,7 @@ install -D -m 0644 %{SOURCE5} \
 %doc Release_ANSI/Doc/KnownIssue.txt
 %doc Release_ANSI/Doc/ChangeLog.txt
 %doc Release_ANSI/Doc/Todo.txt
-%doc Release_ANSI/Doc/Firmware&Tool.md
+%doc Release_ANSI/Doc/Firmware_and_Tool.md
 %dir %{dicdir}
 %caps(cap_sys_rawio=ep) %attr(0755,root,root) %{dicdir}/DiscImageCreator.out
 %caps(cap_sys_rawio=ep) %attr(0755,root,root) %{dicdir}/DVDAuth.out
@@ -212,6 +230,16 @@ install -D -m 0644 %{SOURCE5} \
 * Fri Jul 03 2026 gmipf <gmipf64@gmail.com> - 20260703121302.efa7d482-1
 - Automated master-snapshot sync to upstream DiscImageCreator commit
   efa7d482 (committed 20260703121302 UTC); Release reset to 1.
+- Portability for RHEL/EPEL (el8/el9/el10) and CentOS Stream. Drop upstream
+  meson.build's fs.copyfile() asset-staging lines (they need meson >= 0.64;
+  EL8/EL9 ship 0.58/0.63): those only copy Release_ANSI data into the build
+  tree for local testing and are redundant with install_data and the spec's
+  own install step. Rename the bundled doc that upstream ships with an
+  ampersand in its filename to a shell-safe name, so the older rpm doc-copy
+  helper on EL8/EL9 (unquoted) does not choke on it. The installed binary and
+  data files are byte-identical on every distro; on EL8 meson links the
+  vendor-maintained system openssl 1.1.1k (DIC uses openssl only for dump
+  hashing, not TLS).
 
 * Fri Jul 03 2026 gmipf <gmipf64@gmail.com> - 20260703012003.df4abb11-1
 - Drop the redundant `20260101^` release-tag anchor from the version. DIC has
