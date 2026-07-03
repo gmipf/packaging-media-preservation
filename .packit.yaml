@@ -155,8 +155,9 @@ jobs:
       - fedora-all-x86_64
 
   # discimagecreator: master-commit snapshot version
-  # (YYYYMMDD^<UTC-TS>.<short-SHA>) is monotonic by the commit timestamp;
-  # the caret sorts it above the old bare-tag builds. No auto-suffix needed.
+  # (<YYYYMMDDHHMMSS>.<short-SHA>, the UTC commit timestamp) is monotonic by
+  # the commit timestamp and already sorts above the old bare-tag builds.
+  # No auto-suffix needed.
   - job: copr_build
     trigger: commit
     branch: build-dic

@@ -92,8 +92,10 @@ upstream releases and let Packit handle the rebuild:
   notably the fd (floppy) SIGSEGV fix (#328) -- that the last release tag
   (20260101) lacks. `watch-dic-releases.yml` polls master HEAD daily and,
   on a new commit, re-pins `%global diccommit` / `%global dicsnap` to that
-  SHA (version `20260101^<UTC-commit-TS>.<short-SHA>`, an mpf-style rolling
-  snapshot; the caret keeps it strictly above the shipped `20260101` tag).
+  SHA. DIC has no semantic source version -- its AppVersion is a build-time
+  timestamp and the release tags are bare `YYYYMMDD` date labels -- so the
+  package version is simply the commit's UTC timestamp plus short SHA
+  (`<YYYYMMDDHHMMSS>.<short-SHA>`): monotonic, pinned, no release-tag anchor.
   Built from source: the upstream Linux release binary links against
   EOL OpenSSL 1.1 (no longer in default Fedora/Ubuntu/Debian/Arch
   repos), so we recompile against OpenSSL 3 ourselves until upstream

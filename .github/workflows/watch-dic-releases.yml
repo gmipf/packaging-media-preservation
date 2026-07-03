@@ -6,8 +6,9 @@ name: watch-dic-releases
 # master HEAD and, on a new commit, re-pins the spec to that exact SHA and
 # rebuilds (mpf-style rolling snapshot). Every build stays pinned to a full
 # 40-char commit SHA recorded in Version, the marker and git history, so it
-# is reproducible despite tracking a moving branch. dicbasever is refreshed
-# from the latest release tag so the post-release caret base stays current.
+# is reproducible despite tracking a moving branch. The version is just the
+# commit's UTC timestamp plus short SHA (<YYYYMMDDHHMMSS>.<short-SHA>) -- DIC
+# has no semantic source version, so no release-tag anchor is used.
 
 on:
   schedule:
@@ -43,19 +44,16 @@ jobs:
           # Compact UTC commit timestamp (YYYYMMDDHHMMSS) of that commit.
           UPSTREAM_DATE=$(gh api repos/saramibreak/DiscImageCreator/branches/master --jq '.commit.commit.committer.date')
           UPSTREAM_TS=$(printf '%s' "$UPSTREAM_DATE" | tr -d -- '-:TZ' | head -c 14)
-          # Base = latest release tag (the version DIC's own AppVersion is cut
-          # from); master snapshots sort AFTER it via the caret in the spec.
-          BASEVER=$(gh api repos/saramibreak/DiscImageCreator/releases/latest --jq '.tag_name')
 
-          echo "Upstream master: base=$BASEVER sha=$UPSTREAM_SHA ts=$UPSTREAM_TS"
+          echo "Upstream master: sha=$UPSTREAM_SHA ts=$UPSTREAM_TS"
           echo "$UPSTREAM_SHA_FULL" > "$MARKER"
 
-          # Rolling snapshot lives in three %global lines. Rewrite base,
-          # snapshot (<UTC-TS>.<short-SHA>) and the full-SHA archive pin, then
-          # reset Release to 1: a new snapshot is a fresh identity, so the
-          # packaging-iteration counter starts over. RPM sorts on Version
-          # first, so -1 still supersedes the previous snapshot's -N.
-          sed -i "s/^%global dicbasever .*/%global dicbasever   ${BASEVER}/"                  "$SPEC"
+          # Rolling snapshot lives in two %global lines: the snapshot
+          # (<UTC-TS>.<short-SHA>, which IS the whole Version) and the full-SHA
+          # archive pin. Rewrite both and reset Release to 1: a new snapshot is
+          # a fresh identity, so the packaging-iteration counter starts over.
+          # RPM sorts on Version first, so -1 still supersedes the previous
+          # snapshot's -N.
           sed -i "s/^%global dicsnap .*/%global dicsnap      ${UPSTREAM_TS}.${UPSTREAM_SHA}/"  "$SPEC"
           sed -i "s/^%global diccommit .*/%global diccommit    ${UPSTREAM_SHA_FULL}/"          "$SPEC"
           sed -i "s/^Release:.*/Release:        1%{?dist}/"                                     "$SPEC"
@@ -64,8 +62,8 @@ jobs:
           # without %{?dist} to match the existing hand-written entries.
           CL_ENTRY=$(mktemp)
           {
-            printf '* %s gmipf <gmipf64@gmail.com> - %s^%s.%s-1\n' \
-              "$(LC_ALL=C date -u +'%a %b %d %Y')" "$BASEVER" "$UPSTREAM_TS" "$UPSTREAM_SHA"
+            printf '* %s gmipf <gmipf64@gmail.com> - %s.%s-1\n' \
+              "$(LC_ALL=C date -u +'%a %b %d %Y')" "$UPSTREAM_TS" "$UPSTREAM_SHA"
             printf -- '- Automated master-snapshot sync to upstream DiscImageCreator commit\n'
             printf '  %s (committed %s UTC); Release reset to 1.\n' "$UPSTREAM_SHA" "$UPSTREAM_TS"
             printf '\n'

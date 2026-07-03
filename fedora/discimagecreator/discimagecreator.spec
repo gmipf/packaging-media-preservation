@@ -1,14 +1,17 @@
-# Rolling master snapshot (mpf-style: base + snapshot with the upstream
-# commit SHA). watch-dic-releases.yml rewrites diccommit / dicsnap on every
-# new master commit and refreshes dicbasever from the latest release tag.
-# We track master rather than the 20260101 release tag because master carries
-# the Linux fixes -- notably the fd (floppy) SIGSEGV fix (#328) -- that the
-# tag lacks. Version = %%{dicbasever}^%%{dicsnap}: the caret (post-release)
-# sorts the snapshot AFTER the base release but before the next tag, and --
-# unlike mpf's tilde -- stays strictly newer than the already-shipped bare
-# 20260101-N (a tilde would sort BELOW it = a downgrade). dicsnap is
-# <UTC-commit-TS>.<short-SHA>; diccommit is the full SHA used for the archive.
-%global dicbasever   20260101
+# Rolling master snapshot. DIC has no semantic source version: its printed
+# AppVersion is a build-TIME timestamp (appveyor.yml stamps buildDateTime.h
+# from BUILD_DATE/BUILD_TIME) and the GitHub "release" tags (20260101) are
+# just YYYYMMDD date labels -- so anchoring to a release tag conveys nothing.
+# The package version is therefore simply the pinned commit's UTC timestamp
+# plus short SHA: dicsnap = <YYYYMMDDHHMMSS>.<short-SHA>. That is monotonic
+# (a later commit has a higher timestamp) and self-sufficient -- it already
+# sorts above every prior build, including the old 20260101-N tag builds and
+# the short-lived 20260101^<snap> (whose caret release-tag anchor was
+# redundant and has been removed). We track master rather than the 20260101
+# tag because master carries the Linux fixes -- notably the fd (floppy)
+# SIGSEGV fix (#328) -- that the tag lacks. watch-dic-releases.yml rewrites
+# dicsnap / diccommit on every new master commit; diccommit is the full SHA
+# used for the source archive.
 %global dicsnap      20260703012003.df4abb11
 %global diccommit    df4abb118876fa8cc9410f1f1432cf43237c53aa
 %global eccedcver    20240901
@@ -22,7 +25,7 @@
 %global debug_package %{nil}
 
 Name:           discimagecreator
-Version:        %{dicbasever}^%{dicsnap}
+Version:        %{dicsnap}
 Release:        1%{?dist}
 Summary:        Low-level disc dumper plus EccEdc / DVDAuth / unscrambler helpers
 License:        Apache-2.0 AND GPL-3.0-or-later AND GPL-2.0-or-later
@@ -206,6 +209,16 @@ install -D -m 0644 %{SOURCE5} \
 %{_udevrulesdir}/70-discimagecreator-floppy.rules
 
 %changelog
+* Fri Jul 03 2026 gmipf <gmipf64@gmail.com> - 20260703012003.df4abb11-1
+- Drop the redundant `20260101^` release-tag anchor from the version. DIC has
+  no semantic source version -- its AppVersion is a build-time timestamp
+  (appveyor.yml stamps buildDateTime.h) and the GitHub "release" tags are
+  bare YYYYMMDD date labels -- so pinning a master snapshot to a stale release
+  tag was meaningless. The version is now just the commit's UTC timestamp plus
+  short SHA (<YYYYMMDDHHMMSS>.<short-SHA>), matching DIC's own date/time
+  identity while staying pinned and reproducible. Sorts above the previous
+  20260101^... build, so it is a normal dnf upgrade; Release stays 1.
+
 * Fri Jul 03 2026 gmipf <gmipf64@gmail.com> - 20260101^20260703012003.df4abb11-1
 - Switch Source0 from the 20260101 release tarball to a pinned master commit
   (df4abb11, committed 2026-07-03), 19 commits ahead of the last release. This
@@ -213,7 +226,7 @@ install -D -m 0644 %{SOURCE5} \
   (floppy) SIGSEGV fix plus the write-protected-media read-only fallback
   (#328): DIC's `fd` floppy-dump command no longer crashes on Linux.
 - Version scheme is now an mpf-style rolling snapshot pinned to the upstream
-  commit SHA: %{dicbasever}^<UTC-commit-TS>.<short-SHA>. The caret (post-
+  commit SHA: 20260101^<UTC-commit-TS>.<short-SHA>. The caret (post-
   release) sorts the snapshot after the 20260101 release -- and above the
   shipped 20260101-6 -- but below the next release tag; Release reset to 1.
   watch-dic-releases.yml now tracks master HEAD instead of releases/latest.
