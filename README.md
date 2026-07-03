@@ -73,14 +73,16 @@ the SRPM, and ship a build to COPR project `gmipf/media-preservation`. No
 manual `copr-cli build` needed.
 
 Each package is built for `fedora-all-x86_64`, `epel-all-x86_64` and openSUSE
-(`opensuse-leap-15.6-x86_64` + `opensuse-tumbleweed-x86_64`) — x86_64 only,
-since every spec is `ExclusiveArch: x86_64` and the repackaged tools have no
-non-x86_64 upstream binaries. `epel-all` auto-tracks every active EPEL major
-(8/9/10 today, 11+ automatically), and the EPEL builds run on the CentOS
-Stream N + EPEL buildroot, so one `.elN` package covers RHEL, CentOS Stream,
-AlmaLinux, Rocky and Oracle Linux N. openSUSE is a separate RPM family with its
-own macros and package names (and no `-all` alias in Packit), so its versions
-are pinned explicitly.
+Leap 15.6 (`opensuse-leap-15.6-x86_64`) — x86_64 only, since every spec is
+`ExclusiveArch: x86_64` and the repackaged tools have no non-x86_64 upstream
+binaries. `epel-all` auto-tracks every active EPEL major (8/9/10 today, 11+
+automatically), and the EPEL builds run on the CentOS Stream N + EPEL
+buildroot, so one `.elN` package covers RHEL, CentOS Stream, AlmaLinux, Rocky
+and Oracle Linux N. openSUSE is a separate RPM family with its own macros and
+package names (and no `-all` alias in Packit), so its versions are pinned
+explicitly. openSUSE Tumbleweed is packaged and verified too, but temporarily
+not built while COPR's Tumbleweed builders work through a distribution GPG-key
+issue on their side.
 
 `discimagecreator` (the only source build) carries small spec patches so it
 compiles everywhere: dropping upstream meson's `fs.copyfile` and renaming a
@@ -144,17 +146,19 @@ On enterprise-Linux clones the COPR `dnf` plugin lives in `dnf-plugins-core`
 in the base/AppStream repos — so EPEL does **not** need to be enabled to
 install them.
 
-### openSUSE Leap 15.6 / Tumbleweed
+### openSUSE Leap 15.6
 
-openSUSE has no `dnf copr` plugin; add the COPR repo with `zypper` instead
-(swap `opensuse-tumbleweed` for `opensuse-leap-15.6` on Leap):
+openSUSE has no `dnf copr` plugin; add the COPR repo with `zypper` instead:
 
 ```sh
 sudo zypper addrepo \
-  https://copr.fedorainfracloud.org/coprs/gmipf/media-preservation/repo/opensuse-tumbleweed/gmipf-media-preservation-opensuse-tumbleweed.repo
+  https://copr.fedorainfracloud.org/coprs/gmipf/media-preservation/repo/opensuse-leap-15.6/gmipf-media-preservation-opensuse-leap-15.6.repo
 sudo zypper --gpg-auto-import-keys refresh
 sudo zypper install redumper discimagecreator aaru mpf
 ```
+
+Tumbleweed packages are prepared and will be published once COPR's Tumbleweed
+builders resolve a distribution GPG-key issue on their side.
 
 `mpf` is a meta-package; it pulls in `mpf-check` (log validator),
 `mpf-cli` (headless dump orchestrator) and `mpf-gui` (Avalonia desktop

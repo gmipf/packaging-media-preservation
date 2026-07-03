@@ -136,9 +136,11 @@ jobs:
   # ({namespace}-{repo}-{pr_id}), never production.
   #
   # TARGETS: every job builds fedora-all-x86_64 + epel-all-x86_64 +
-  # opensuse-leap-15.6 + opensuse-tumbleweed (x86_64 only -- all specs are
-  # ExclusiveArch: x86_64, since redumper/aaru/aaru5/mpf repackage x86_64-only
-  # upstream binaries and there are no arm64/ppc64le assets to repackage).
+  # opensuse-leap-15.6 (x86_64 only -- all specs are ExclusiveArch: x86_64,
+  # since redumper/aaru/aaru5/mpf repackage x86_64-only upstream binaries and
+  # there are no arm64/ppc64le assets to repackage). opensuse-tumbleweed is
+  # packaged and mock-verified but temporarily NOT targeted -- see the per-job
+  # note -- because of a transient COPR-side Tumbleweed GPG-key breakage.
   # epel-all auto-tracks every active EPEL major (8/9/10 today, 11+
   # automatically) so nothing is version-pinned. The epel builds run on the
   # CentOS Stream N + EPEL buildroot, so a single .elN package covers RHEL,
@@ -163,7 +165,10 @@ jobs:
       - fedora-all-x86_64
       - epel-all-x86_64
       - opensuse-leap-15.6-x86_64
-      - opensuse-tumbleweed-x86_64
+      # opensuse-tumbleweed-x86_64 is packaged & mock-verified but temporarily
+      # OFF: COPR's Tumbleweed builders currently reject the openSUSE OSS repo
+      # with "Bad GPG signature" (a COPR-wide distribution-gpg-keys vs rolling-
+      # key lag, not our spec). Re-add this line once COPR's TW key is healthy.
 
   - job: copr_build
     trigger: commit
@@ -176,7 +181,10 @@ jobs:
       - fedora-all-x86_64
       - epel-all-x86_64
       - opensuse-leap-15.6-x86_64
-      - opensuse-tumbleweed-x86_64
+      # opensuse-tumbleweed-x86_64 is packaged & mock-verified but temporarily
+      # OFF: COPR's Tumbleweed builders currently reject the openSUSE OSS repo
+      # with "Bad GPG signature" (a COPR-wide distribution-gpg-keys vs rolling-
+      # key lag, not our spec). Re-add this line once COPR's TW key is healthy.
 
   # discimagecreator: master-commit snapshot version
   # (<YYYYMMDDHHMMSS>.<short-SHA>, the UTC commit timestamp) is monotonic by
@@ -193,7 +201,10 @@ jobs:
       - fedora-all-x86_64
       - epel-all-x86_64
       - opensuse-leap-15.6-x86_64
-      - opensuse-tumbleweed-x86_64
+      # opensuse-tumbleweed-x86_64 is packaged & mock-verified but temporarily
+      # OFF: COPR's Tumbleweed builders currently reject the openSUSE OSS repo
+      # with "Bad GPG signature" (a COPR-wide distribution-gpg-keys vs rolling-
+      # key lag, not our spec). Re-add this line once COPR's TW key is healthy.
 
   # aaru: spec-supplied (6.0.0-0.alpha.19.1) is monotonic; on next
   # upstream alpha bump the Release segment goes up.
@@ -208,7 +219,10 @@ jobs:
       - fedora-all-x86_64
       - epel-all-x86_64
       - opensuse-leap-15.6-x86_64
-      - opensuse-tumbleweed-x86_64
+      # opensuse-tumbleweed-x86_64 is packaged & mock-verified but temporarily
+      # OFF: COPR's Tumbleweed builders currently reject the openSUSE OSS repo
+      # with "Bad GPG signature" (a COPR-wide distribution-gpg-keys vs rolling-
+      # key lag, not our spec). Re-add this line once COPR's TW key is healthy.
 
   # aaru5: stable 5.x, own trigger branch. Manually pinned; bump Release
   # via scripts/build-tool.sh on a manual rebuild.
@@ -223,4 +237,7 @@ jobs:
       - fedora-all-x86_64
       - epel-all-x86_64
       - opensuse-leap-15.6-x86_64
-      - opensuse-tumbleweed-x86_64
+      # opensuse-tumbleweed-x86_64 is packaged & mock-verified but temporarily
+      # OFF: COPR's Tumbleweed builders currently reject the openSUSE OSS repo
+      # with "Bad GPG signature" (a COPR-wide distribution-gpg-keys vs rolling-
+      # key lag, not our spec). Re-add this line once COPR's TW key is healthy.
