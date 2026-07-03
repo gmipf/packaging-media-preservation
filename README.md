@@ -73,16 +73,18 @@ the SRPM, and ship a build to COPR project `gmipf/media-preservation`. No
 manual `copr-cli build` needed.
 
 Each package is built for `fedora-all-x86_64`, `epel-all-x86_64` and openSUSE
-Leap 15.6 (`opensuse-leap-15.6-x86_64`) — x86_64 only, since every spec is
-`ExclusiveArch: x86_64` and the repackaged tools have no non-x86_64 upstream
-binaries. `epel-all` auto-tracks every active EPEL major (8/9/10 today, 11+
-automatically), and the EPEL builds run on the CentOS Stream N + EPEL
-buildroot, so one `.elN` package covers RHEL, CentOS Stream, AlmaLinux, Rocky
-and Oracle Linux N. openSUSE is a separate RPM family with its own macros and
-package names (and no `-all` alias in Packit), so its versions are pinned
-explicitly. openSUSE Tumbleweed is packaged and verified too, but temporarily
-not built while COPR's Tumbleweed builders work through a distribution GPG-key
-issue on their side.
+(`opensuse-leap-15.6-x86_64` + `opensuse-tumbleweed-x86_64`) — x86_64 only,
+since every spec is `ExclusiveArch: x86_64` and the repackaged tools have no
+non-x86_64 upstream binaries. `epel-all` auto-tracks every active EPEL major
+(8/9/10 today, 11+ automatically), and the EPEL builds run on the CentOS
+Stream N + EPEL buildroot, so one `.elN` package covers RHEL, CentOS Stream,
+AlmaLinux, Rocky and Oracle Linux N. openSUSE is a separate RPM family with its
+own macros and package names (and no `-all` alias in Packit), so its versions
+are pinned explicitly. openSUSE Tumbleweed builds currently fail on COPR's side
+(a transient distribution GPG-key lag against rolling Tumbleweed, not a
+packaging problem — the specs build under mock); it is left targeted so it
+starts publishing automatically once COPR recovers, while the Leap 15.6, Fedora
+and EPEL chroots keep publishing in the meantime.
 
 `discimagecreator` (the only source build) carries small spec patches so it
 compiles everywhere: dropping upstream meson's `fs.copyfile` and renaming a
