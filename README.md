@@ -12,10 +12,10 @@ respective project URLs (see below).
 
 | Tool | Update mode | Fedora | EPEL | openSUSE | Debian | Arch | Alpine |
 |---|---|---|---|---|---|---|---|
-| [redumper](https://github.com/superg/redumper) | auto-tracked hourly on new `b<N>` tags (binary repackage) | ✅ | ✅ | ✅ | — | — | — |
-| [MPF suite](https://github.com/SabreTools/MPF) | rolling, auto-tracked hourly (binary repackage); meta-package `mpf` pulls in `mpf-check` (validator), `mpf-cli` (headless orchestrator) and `mpf-gui` (Avalonia desktop UI) | ✅ | ✅ | ✅ | — | — | — |
-| [DiscImageCreator suite](https://github.com/saramibreak/DiscImageCreator) | auto-tracked hourly on new master commits (built from source — upstream binary links against EOL OpenSSL 1.1); bundles DIC + EccEdc + DVDAuth + unscrambler in one RPM | ✅ | ✅ | ✅ | — | — | — |
-| [Aaru](https://github.com/aaru-dps/Aaru) | auto-tracked hourly on new `v6.0.0-alpha.<N>` tags (binary repackage); CLI + Avalonia GUI ship as one binary, launch the GUI via `aaru gui` | ✅ | ✅ | ✅ | — | — | — |
+| [redumper](https://github.com/superg/redumper) | auto-tracked hourly on new `b<N>` tags (binary repackage) | ✅ | ✅ | — | — | — | — |
+| [MPF suite](https://github.com/SabreTools/MPF) | rolling, auto-tracked hourly (binary repackage); meta-package `mpf` pulls in `mpf-check` (validator), `mpf-cli` (headless orchestrator) and `mpf-gui` (Avalonia desktop UI) | ✅ | ✅ | — | — | — | — |
+| [DiscImageCreator suite](https://github.com/saramibreak/DiscImageCreator) | auto-tracked hourly on new master commits (built from source — upstream binary links against EOL OpenSSL 1.1); bundles DIC + EccEdc + DVDAuth + unscrambler in one RPM | ✅ | ✅ | — | — | — | — |
+| [Aaru](https://github.com/aaru-dps/Aaru) | auto-tracked hourly on new `v6.0.0-alpha.<N>` tags (binary repackage); CLI + Avalonia GUI ship as one binary, launch the GUI via `aaru gui` | ✅ | ✅ | — | — | — | — |
 
 For the currently shipping versions and full install instructions,
 see the [COPR project page](https://copr.fedorainfracloud.org/coprs/gmipf/media-preservation/).
@@ -72,31 +72,30 @@ touches a tool's `fedora/<tool>/` path triggers Packit to fetch sources, build
 the SRPM, and ship a build to COPR project `gmipf/media-preservation`. No
 manual `copr-cli build` needed.
 
-Each package is built for `fedora-all-x86_64`, `epel-all-x86_64` and openSUSE
-(`opensuse-leap-15.6-x86_64` + `opensuse-tumbleweed-x86_64`) — x86_64 only,
-since every spec is `ExclusiveArch: x86_64` and the repackaged tools have no
-non-x86_64 upstream binaries. `epel-all` auto-tracks every active EPEL major
+Each package is built for `fedora-all-x86_64` and `epel-all-x86_64` — x86_64
+only, since every spec is `ExclusiveArch: x86_64` and the repackaged tools have
+no non-x86_64 upstream binaries. `epel-all` auto-tracks every active EPEL major
 (8/9/10 today, 11+ automatically), and the EPEL builds run on the CentOS
 Stream N + EPEL buildroot, so one `.elN` package covers RHEL, CentOS Stream,
-AlmaLinux, Rocky and Oracle Linux N. openSUSE is a separate RPM family with its
-own macros and package names (and no `-all` alias in Packit), so its versions
-are pinned explicitly. openSUSE Tumbleweed builds currently fail on COPR's side:
-the Tumbleweed buildroot's dnf5 enforces repository-metadata GPG verification
-(`repo_gpgcheck`) on COPR's own project repo, for which COPR publishes no
-signature, so buildroot setup aborts before the package is built — a COPR-side
-issue (the specs build cleanly under mock), not a packaging problem. It is left
-targeted so it starts publishing automatically once COPR resolves this, while
-the Leap 15.6, Fedora and EPEL chroots keep publishing in the meantime.
+AlmaLinux, Rocky and Oracle Linux N.
+
+openSUSE is **not** built on COPR: COPR only offers an EOL Leap 15.6 and a
+currently-broken Tumbleweed and has no Leap 16.0 chroot, so openSUSE will be
+published natively on the [openSUSE Build Service](https://build.opensuse.org/)
+(OBS) instead. The specs keep their `%if 0%{?suse_version}` portability for that
+future port.
 
 `discimagecreator` (the only source build) carries small spec patches so it
-compiles everywhere: dropping upstream meson's `fs.copyfile` and renaming a
-doc file with an `&` in its name for EL8/EL9's older toolchain (on EL8 it links
-the vendor-maintained system openssl 1.1.1k), plus BuildRequiring Ninja under
-its openSUSE name (`ninja` vs `ninja-build`) and adding a `<limits.h>` include
-for GCC 15 (Tumbleweed). The self-contained .NET tools (`aaru`, `mpf`) map
-their runtime dependency names on openSUSE under a `%if 0%{?suse_version}`
-guard (`krb5-libs`→`krb5`, `openssl-libs`→`libopenssl3`, `zlib`→`libz1`,
-`libunwind` by soname); `libicu` and `jq` are portable as-is.
+compiles everywhere: for the EL8/EL9 EPEL builds it drops upstream meson's
+`fs.copyfile` and renames a doc file with an `&` in its name for the older
+toolchain (on EL8 it links the vendor-maintained system openssl 1.1.1k). It also
+keeps `%if 0%{?suse_version}` portability for the planned openSUSE (OBS) port —
+BuildRequiring Ninja under its openSUSE name (`ninja` vs `ninja-build`) and a
+`<limits.h>` include for GCC 15 — and the self-contained .NET tools (`aaru`,
+`mpf`) map their runtime dependency names under the same guard
+(`krb5-libs`→`krb5`, `openssl-libs`→`libopenssl3`, `zlib`→`libz1`, `libunwind`
+by soname; `libicu` and `jq` are portable as-is). These openSUSE branches are a
+verified no-op on Fedora/EL.
 
 All four packages have GitHub-hosted watchers that rewrite their spec on
 upstream releases and let Packit handle the rebuild:
@@ -150,19 +149,13 @@ On enterprise-Linux clones the COPR `dnf` plugin lives in `dnf-plugins-core`
 in the base/AppStream repos — so EPEL does **not** need to be enabled to
 install them.
 
-### openSUSE Leap 15.6
+### openSUSE and Ubuntu (planned, not yet available)
 
-openSUSE has no `dnf copr` plugin; add the COPR repo with `zypper` instead:
-
-```sh
-sudo zypper addrepo \
-  https://copr.fedorainfracloud.org/coprs/gmipf/media-preservation/repo/opensuse-leap-15.6/gmipf-media-preservation-opensuse-leap-15.6.repo
-sudo zypper --gpg-auto-import-keys refresh
-sudo zypper install redumper discimagecreator aaru mpf
-```
-
-Tumbleweed packages are prepared and will be published once COPR's Tumbleweed
-builders resolve a repository-metadata signature-verification issue on their side.
+openSUSE packages are not built here: COPR's openSUSE support is limited to an
+EOL Leap 15.6 and a currently-broken Tumbleweed, with no Leap 16.0 chroot, so
+openSUSE will be published natively on the
+[openSUSE Build Service](https://build.opensuse.org/) (OBS) instead.
+Ubuntu/Debian packages will come via a Launchpad PPA. Neither is available yet.
 
 `mpf` is a meta-package; it pulls in `mpf-check` (log validator),
 `mpf-cli` (headless dump orchestrator) and `mpf-gui` (Avalonia desktop
