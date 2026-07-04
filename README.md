@@ -80,11 +80,13 @@ non-x86_64 upstream binaries. `epel-all` auto-tracks every active EPEL major
 Stream N + EPEL buildroot, so one `.elN` package covers RHEL, CentOS Stream,
 AlmaLinux, Rocky and Oracle Linux N. openSUSE is a separate RPM family with its
 own macros and package names (and no `-all` alias in Packit), so its versions
-are pinned explicitly. openSUSE Tumbleweed builds currently fail on COPR's side
-(a transient distribution GPG-key lag against rolling Tumbleweed, not a
-packaging problem — the specs build under mock); it is left targeted so it
-starts publishing automatically once COPR recovers, while the Leap 15.6, Fedora
-and EPEL chroots keep publishing in the meantime.
+are pinned explicitly. openSUSE Tumbleweed builds currently fail on COPR's side:
+the Tumbleweed buildroot's dnf5 enforces repository-metadata GPG verification
+(`repo_gpgcheck`) on COPR's own project repo, for which COPR publishes no
+signature, so buildroot setup aborts before the package is built — a COPR-side
+issue (the specs build cleanly under mock), not a packaging problem. It is left
+targeted so it starts publishing automatically once COPR resolves this, while
+the Leap 15.6, Fedora and EPEL chroots keep publishing in the meantime.
 
 `discimagecreator` (the only source build) carries small spec patches so it
 compiles everywhere: dropping upstream meson's `fs.copyfile` and renaming a
@@ -160,7 +162,7 @@ sudo zypper install redumper discimagecreator aaru mpf
 ```
 
 Tumbleweed packages are prepared and will be published once COPR's Tumbleweed
-builders resolve a distribution GPG-key issue on their side.
+builders resolve a repository-metadata signature-verification issue on their side.
 
 `mpf` is a meta-package; it pulls in `mpf-check` (log validator),
 `mpf-cli` (headless dump orchestrator) and `mpf-gui` (Avalonia desktop
