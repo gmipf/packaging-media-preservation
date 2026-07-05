@@ -1,0 +1,24 @@
+<services>
+  <!--
+    OBS builds are hermetic (no network in the build root), so the upstream
+    release assets must be fetched at *service* time and committed as package
+    sources - the OBS analogue of what copr/Packit fetch for the Fedora lane.
+
+    download_files parses the spec's Source: URLs (Source0 release zip, Source1
+    LICENSE, Source2 README) and downloads each by basename. Because it reads
+    the URLs straight from the spec, a version bump only has to touch the spec's
+    Version: field - this _service never changes. Source3 (redumper.1) is a
+    local file, not a URL, so it is left untouched.
+
+    mode="manual": build.opensuse.org does not run download_files server-side
+    (network policy), so run it locally and commit the results:
+
+        osc service manualrun        # downloads the 3 assets into the package
+        osc addremove                # stage the freshly downloaded files
+        osc commit                   # spec + _service + assets in one revision
+
+    On a redumper release bump: edit Version: in redumper.spec, then repeat the
+    three commands above.
+  -->
+  <service name="download_files" mode="manual"/>
+</services>
