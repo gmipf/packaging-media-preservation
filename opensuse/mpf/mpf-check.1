@@ -1,0 +1,83 @@
+.TH MPF-CHECK 1 "June 2026" "MPF" "User Commands"
+.SH NAME
+mpf-check \- generate Redump !submissionInfo.txt from finished optical-media dumps
+.SH SYNOPSIS
+.B mpf-check
+.RI [ OPTIONS ]
+.IR DUMP-DIRECTORY
+.SH DESCRIPTION
+.B mpf-check
+(upstream \fBMPF.Check\fR) reads the log files left next to a finished
+optical-media dump and writes a \fI!submissionInfo.txt\fR alongside in
+the Redump submission format. It is the validator/finalize step of the
+Media Preservation Frontend (MPF) suite.
+
+Supported dump sources include
+.BR redumper (1),
+.BR aaru (1),
+.BR discimagecreator (1),
+Cleanrip and UmdImageCreator. The tool autodetects which dumper was
+used by looking at the surrounding log filenames and structure.
+
+When run with no arguments
+.B mpf-check
+prints its full help text.
+
+A secondary mode performs live copy-protection scans on a drive via
+\fB--path\fR / \fB--scan\fR; this path uses vendor SCSI commands and
+therefore requires
+.B CAP_SYS_RAWIO
+(already set on the shipped binary, so no sudo).
+.SH DRIVE ACCESS
+File capabilities replace
+.B sudo
+for SCSI passthrough. Read access on
+.I /dev/sr*
+is granted automatically via
+.B uaccess
+when logged in at a local desktop seat; for headless or SSH use add the
+user to the
+.B cdrom
+group:
+.PP
+.RS
+.B sudo usermod -aG cdrom $USER
+.RE
+.SH EXAMPLES
+.PP
+Generate submission info next to a finished redumper dump:
+.RS
+.B mpf-check ~/dumps/disc01/
+.RE
+.PP
+Scan a drive for copy protection:
+.RS
+.B mpf-check --path /dev/sr0 --scan
+.RE
+.SH FILES
+.TP
+.I /usr/lib64/mpf-check/MPF.Check
+The actual self-contained .NET binary (cap_sys_rawio=ep).
+.TP
+.I /usr/bin/mpf-check
+Shell wrapper that exec\(aqs the binary above.
+.SH NOTES
+This manpage is handwritten and tracks upstream MPF
+.BR 3.7.1 .
+If the upstream tool grows new flags or changes its syntax in a future
+release, this page may lag behind the binary; consult
+\fImpf-check --help\fR for the authoritative current option set.
+.SH SEE ALSO
+.BR redumper (1),
+.BR aaru (1),
+.BR discimagecreator (1),
+.BR mpf-cli (1),
+.BR mpf-gui (1)
+.PP
+Upstream project:
+.UR https://github.com/SabreTools/MPF
+.UE
+.SH AUTHOR
+SabreTools (Matt Nadareski) and contributors.
+.SH LICENSE
+MIT.

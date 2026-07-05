@@ -5,10 +5,14 @@ RPM packaging for the media-preservation tools, published on the
 openSUSE counterpart to the Fedora/EPEL `fedora/` lane (COPR) and the Ubuntu
 `ubuntu/` lane (Launchpad PPA).
 
-> **Status: scaffold.** `redumper` is staged here but has **not** been built on
-> OBS yet - the OBS account / home project still has to be created (see
-> *Account setup* below). Everything marked *verify on first `osc build`* is a
-> best-effort port from the Fedora spec that a first real build must confirm.
+> **Status: scaffold.** All five tools (`redumper`, `aaru5`, `aaru`, `mpf`,
+> `discimagecreator`) are staged here but have **not** been built on OBS yet -
+> the OBS account / home project still has to be created (see *Account setup*
+> below). Everything marked *verify on first `osc build`* is a best-effort port
+> from the Fedora spec that a first real build must confirm - above all the
+> permissions-framework capability handling (macro names, permissions.d path,
+> `+capabilities` continuation format), which is the one mechanism that differs
+> from both the Fedora and Ubuntu lanes and is not yet build-verified anywhere.
 
 ## How an OBS build works
 
@@ -109,11 +113,29 @@ now.
 
 ## Packaged tools
 
-| Tool     | Kind          | Notes |
-|----------|---------------|-------|
-| redumper | static binary | no shlib deps; stamped manpage; cap via permissions framework |
+| Tool             | Kind                              | `_service`      | Notes |
+|------------------|-----------------------------------|-----------------|-------|
+| redumper         | static binary                     | download_files  | no shlib deps; stamped manpage |
+| aaru5            | NativeAOT binary + sidecar `.so`  | download_files  | auto ELF deps; static manpage; udev |
+| aaru             | self-contained .NET (single-file) | download_files  | two tarballs; manpage from `--help`; udev; icons/MIME/desktop |
+| mpf              | self-contained .NET × 3           | download_files  | `mpf` meta + `mpf-check`/`mpf-cli`/`mpf-gui`; caps per subpackage |
+| discimagecreator | **source build** (meson)          | download_url ×4 | four archives; helper makefiles; two caps binaries; udev |
 
-`aaru5`, `aaru`, `mpf` and `discimagecreator` follow (the portability of their
-specs to openSUSE was already proven under `mock` with Leap/Tumbleweed configs;
-`discimagecreator` is the hermetic-build gate - it needs its source tarballs
-committed via the `_service`, like `fedora/discimagecreator`).
+Every tool grants its `cap_sys_rawio` capability through the **permissions
+framework** (see above) instead of `%caps`. `aaru`, `mpf` (all three
+subpackages) and `discimagecreator` map their .NET / Ninja names to openSUSE
+under the `%if 0%{?suse_version}` branches already present in the Fedora specs
+(verified no-op on Fedora, proven under `mock` on Leap/Tumbleweed for the
+non-caps parts).
+
+`discimagecreator` is the only **source build** and the hermetic-build gate:
+its `debian`-free meson compile plus three helper makefiles must complete with
+no network in the OBS build root. Its four upstream archives use rpm's
+`#/rename` Source convention, which `download_files` may not reproduce, so it
+uses explicit `download_url` services with a matching `filename` per source
+(the tag is hard-coded in `_service` and bumped per release alongside the spec).
+
+The GUI weak `Recommends` (`aaru`, `mpf-gui`) still carry the Fedora library
+names; they never enter the build root so they don't affect the build, but they
+should be ported to openSUSE runtime names (`libX11-6`, `Mesa-libGL1`, ...) so a
+GUI install actually pulls them. Tracked as a post-first-build polish.

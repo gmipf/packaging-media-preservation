@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=MPF
+GenericName=Media Preservation Frontend
+Exec=mpf-gui
+Terminal=false
+Type=Application
+Icon=mpf
+Comment=Drive Redumper, Aaru and DiscImageCreator from a single desktop UI
+Categories=Utility;FileTools;Filesystem;
+Keywords=mpf;disc;dump;preservation;cd;dvd;blu-ray;submission;redump;

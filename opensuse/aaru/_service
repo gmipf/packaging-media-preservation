@@ -1,0 +1,19 @@
+<services>
+  <!--
+    OBS builds are hermetic (no network in the build root), so both upstream
+    tarballs must be fetched at *service* time and committed as package
+    sources. download_files reads the spec's Source0 (binary tarball) and
+    Source1 (source tarball) URLs and downloads each by basename;
+    Source2/3/4 (aaru.1.in, aaru-manpage.sh, udev rule) are local files and
+    are left untouched.
+
+    A version bump only touches the spec's %{aaruver}/%{aaruprerel}; this
+    _service never changes. mode="manual" (build.opensuse.org does not run
+    download_files server-side):
+
+        osc service manualrun        # downloads the two aaru-*.tar.xz
+        osc addremove                # stage the freshly downloaded files
+        osc commit                   # spec + _service + tarballs in one revision
+  -->
+  <service name="download_files" mode="manual"/>
+</services>

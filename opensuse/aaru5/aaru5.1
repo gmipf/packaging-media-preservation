@@ -1,0 +1,195 @@
+.TH AARU5 1 "@DATE@" "Aaru @VERSION@" "User Commands"
+.SH NAME
+aaru5 \- Aaru 5.x stable data-preservation CLI (MPF-compatible)
+.SH SYNOPSIS
+.B aaru5
+.RI [ options ...]
+.RI [ command ]
+.RI [ command-options ...]
+.SH DESCRIPTION
+.B Aaru
+is a cross-platform data preservation suite. It dumps optical and
+removable media (CD, DVD, HD-DVD, Blu-ray, UMD, GameCube/Wii optical,
+floppy disks, magneto-optical) to byte-perfect images, decodes their
+filesystems, validates checksums, and produces metadata in the CICM
+format used by preservation projects.
+.PP
+.B aaru5
+is the stable
+.B 5.4.x
+release, installed under its own name so it can sit next to the rolling
+.BR aaru (1)
+(v6 alpha) package. It is the Aaru series that
+.B MPF
+(the Media Preservation Frontend) drives for floppy and optical dumping;
+the v6 alpha has an incompatible command interface and does not work in
+MPF. In MPF, set the Aaru executable path to
+.IR /usr/bin/aaru5 .
+.SH OPTIONS
+These global options precede the command name.
+.TP
+.BR \-v ", " \-\-verbose
+Show verbose output.
+.TP
+.BR \-d ", " \-\-debug
+Show debug output from plugins.
+.TP
+.B \-\-pause
+Pause before exiting.
+.TP
+.B \-\-version
+Show version information and exit.
+.TP
+.BR \-? ", " \-h ", " \-\-help
+Show help and usage information. Append it to any command
+.RB ( "aaru5 \fICOMMAND\fB \-\-help" )
+for that command's own options and sub-commands.
+.SH COMMANDS
+.TP
+.BR database ", " db
+Manage the device and statistics database.
+.TP
+.BR dev ", " device
+Talk to devices (dump, scan, report, list).
+.TP
+.BR fi ", " filesystem ", " fs
+Manage filesystems (info, list, extract, options).
+.TP
+.BR i ", " image
+Manage images (info, verify, checksum, convert, entropy, decode, print).
+.TP
+.BR m ", " media
+Manage media inserted in devices (dump, info, scan).
+.TP
+.B configure
+Configure user settings and statistics (interactive).
+.TP
+.B formats
+List all supported disc images, partition schemes and filesystems.
+.TP
+.B list\-encodings
+List all supported text encodings and code pages.
+.TP
+.B list\-namespaces
+List all namespaces supported by read-only filesystems.
+.TP
+.B remote
+Test the connection to an Aaru Remote Server
+.RI ( host
+argument).
+.PP
+Each command has its own sub-commands and options; run
+.B aaru5 \fICOMMAND\fB \-\-help
+for the full, version-exact reference from the installed binary.
+.SH DRIVE ACCESS
+.B aaru5
+ships with the
+.B cap_sys_rawio
+file capability set, so vendor SCSI passthrough commands (optical
+dumping) work without sudo.
+.PP
+The invoking user still needs read/write access to the device node
+.RB ( /dev/sr* ,
+.BR /dev/sg* ,
+removable USB or floppy nodes). On a desktop session at the local seat
+this is granted automatically via systemd-logind's
+.B uaccess
+ACL. For headless use (SSH, cron, systemd
+.BR \-\-user ,
+NFS-mounted device nodes) add the user to the
+.B cdrom
+group:
+.PP
+.RS
+.EX
+sudo usermod -aG cdrom $USER
+newgrp cdrom
+.EE
+.RE
+.PP
+USB floppy drives enumerate as
+.B root:disk
+SCSI block devices
+.RB ( /dev/sd* )
+and logind does not apply a
+.B uaccess
+ACL to block devices; dumping one without root needs a udev rule that
+grants the node to a group the user is in (shipped by the MPF packages,
+not by Aaru itself).
+.SH FILES
+.TP
+.I /usr/bin/aaru5
+Symlink to the real binary; the kernel follows it for
+.B cap_sys_rawio
+inheritance on exec.
+.TP
+.I /usr/lib64/aaru5/
+Real NativeAOT binary
+.RI ( aaru )
+and its bundled native SQLite provider
+.RI ( libe_sqlite3.so ).
+.TP
+.I ~/.config/Aaru.xml
+Per-user settings written by
+.BR "aaru5 configure" .
+.TP
+.I ~/.local/share/Aaru/
+Per-user device/media database, statistics and device reports.
+.SH NOTES
+On first launch Aaru builds its local database and, until
+.B aaru5 configure
+has been answered once, prints an EU GDPR data-sharing notice and asks
+whether to enable copy-protected-media decryption. Run
+.B aaru5 configure
+once interactively (or opt out) to silence it.
+.PP
+Aaru derives its config and data paths from the application name, not the
+launcher name, so
+.B aaru5
+reads
+.I ~/.config/Aaru.xml
+and
+.I ~/.local/share/Aaru/
+\(em the same locations a standalone
+.BR aaru (1)
+(v6) install uses. The settings files differ by extension (v6 uses
+.IR Aaru.json ),
+but the database directory is shared; if you run both as the same user
+and hit a schema mismatch, point one of them at a private
+.B HOME
+or
+.B XDG_DATA_HOME .
+.PP
+This manpage is maintained by hand as part of the Fedora packaging;
+upstream provides none. The command overview above is a summary \(em the
+authoritative, version-exact reference is the binary's own
+.B \-\-help
+output.
+.SH SEE ALSO
+.BR aaru (1),
+.BR redumper (1),
+.BR discimagecreator (1)
+.PP
+Upstream documentation, bug tracker and release notes:
+.UR https://github.com/aaru-dps/Aaru
+.UE .
+.SH AUTHOR
+Upstream lead: Natalia Portillo
+.RB ( https://github.com/claunia ).
+.PP
+Fedora packaging maintained as part of the COPR repository
+.I gmipf/media-preservation .
+.SH LICENSE
+The
+.B aaru
+binary aggregates code under multiple licenses:
+.IP \(bu 2
+GPL-3.0-or-later (main application and most subprojects)
+.IP \(bu 2
+LGPL-2.1-or-later (selected library components)
+.IP \(bu 2
+MIT (third-party vendored components)
+.PP
+Each component retains its individual license; the license texts shipped
+with the binary are under
+.IR /usr/share/licenses/aaru5/ .

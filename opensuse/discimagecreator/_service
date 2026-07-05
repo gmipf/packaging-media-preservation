@@ -1,0 +1,45 @@
+<services>
+  <!--
+    OBS builds are hermetic (no network in the build root), so all four
+    upstream source archives must be fetched at *service* time and committed
+    as package sources. DIC's spec Source URLs use the `#/rename` convention
+    (rpm renames the download to the part after "#/"); download_files may not
+    reproduce that rename, so we use explicit download_url services with a
+    matching `filename` param instead. Each filename MUST equal the basename
+    of the corresponding spec Source line.
+
+    On a DIC master-commit bump: edit %{diccommit}/%{dicsnap} in the spec AND
+    the DiscImageCreator path/filename below (the helper tags rarely move).
+    Then:
+
+        osc service manualrun        # downloads the four archives
+        osc addremove                # stage the freshly downloaded files
+        osc commit                   # spec + _service + archives in one revision
+
+    (Source4 discimagecreator.1 and Source5 the udev rule are local files.)
+  -->
+  <service name="download_url" mode="manual">
+    <param name="protocol">https</param>
+    <param name="host">github.com</param>
+    <param name="path">/saramibreak/DiscImageCreator/archive/efa7d4826f7e48b50d84cdd2a3d03cfb0321cf6b.tar.gz</param>
+    <param name="filename">DiscImageCreator-efa7d4826f7e48b50d84cdd2a3d03cfb0321cf6b.tar.gz</param>
+  </service>
+  <service name="download_url" mode="manual">
+    <param name="protocol">https</param>
+    <param name="host">github.com</param>
+    <param name="path">/saramibreak/EccEdc/archive/refs/tags/20240901.tar.gz</param>
+    <param name="filename">EccEdc-20240901.tar.gz</param>
+  </service>
+  <service name="download_url" mode="manual">
+    <param name="protocol">https</param>
+    <param name="host">github.com</param>
+    <param name="path">/saramibreak/DVDAuth/archive/refs/tags/v1.4.tar.gz</param>
+    <param name="filename">DVDAuth-1.4.tar.gz</param>
+  </service>
+  <service name="download_url" mode="manual">
+    <param name="protocol">https</param>
+    <param name="host">github.com</param>
+    <param name="path">/saramibreak/unscrambler/archive/refs/tags/0.5.5.tar.gz</param>
+    <param name="filename">unscrambler-0.5.5.tar.gz</param>
+  </service>
+</services>

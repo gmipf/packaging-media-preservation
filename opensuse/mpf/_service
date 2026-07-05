@@ -1,0 +1,22 @@
+<services>
+  <!--
+    OBS builds are hermetic (no network in the build root), so the three
+    upstream release ZIPs must be fetched at *service* time and committed as
+    package sources. download_files reads the spec's Source0/1/2 URLs (all on
+    the constant `rolling` tag) and downloads each by basename; the local
+    sources (desktop, manpages, icons) are left untouched.
+
+    Because the upstream tag is the constant `rolling`, this _service never
+    changes even across snapshots (only the spec's %{mpfsnap} moves).
+    mode="manual" (build.opensuse.org does not run download_files server-side):
+
+        osc service manualrun        # downloads MPF.Check/CLI/Avalonia zips
+        osc addremove                # stage the freshly downloaded files
+        osc commit                   # spec + _service + zips in one revision
+
+    NOTE: `rolling` is a moving tag; each manualrun re-pulls whatever it
+    currently points at, so bump %{mpfsnap}/%{mpfver} in the spec to match
+    the assets you just fetched before committing.
+  -->
+  <service name="download_files" mode="manual"/>
+</services>

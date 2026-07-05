@@ -1,0 +1,108 @@
+.TH MPF-CLI 1 "June 2026" "MPF" "User Commands"
+.SH NAME
+mpf-cli \- headless orchestrator for redumper, aaru and discimagecreator disc dumps
+.SH SYNOPSIS
+.B mpf-cli
+.RI [ OPTIONS ]
+.IR DRIVE
+.IR OUTPUT-DIRECTORY
+.SH DESCRIPTION
+.B mpf-cli
+(upstream \fBMPF.CLI\fR) is the headless command-line driver of the
+Media Preservation Frontend (MPF) suite. It runs a complete dump
+session end-to-end: select a backend dumper, capture all relevant
+logs/metadata, post-process the output and write the submission info.
+
+Supported backend dumpers, selected via configuration:
+.RS
+.IP \(bu 2
+.BR redumper (1)
+.IP \(bu 2
+.BR aaru (1)
+.IP \(bu 2
+.BR discimagecreator (1)
+.RE
+.PP
+The companion validator
+.BR mpf-check (1)
+is run automatically at the end of the session to produce
+\fI!submissionInfo.txt\fR.
+
+When run with no arguments
+.B mpf-cli
+prints its full help text.
+.SH CONFIGURATION
+.B mpf-cli
+loads its configuration from
+.IR config.json .
+Two locations are checked, in order:
+.RS
+.IP 1. 3
+.I ./config.json
+(next to the binary or in the current working directory)
+.IP 2. 3
+.I ~/.config/mpf/config.json
+.RE
+.PP
+On Fedora the installed binary lives in a system path that is not
+user-writable, so the second location is the canonical place to put
+your config. If neither path is readable, defaults are used.
+.SH SYSTEM-INSTALLED DUMPERS
+Unlike the upstream zip the Fedora package does
+.B not
+ship a bundled \fIPrograms/Creator/\fR folder; the system-installed
+.BR redumper (1),
+.BR aaru (1)
+and
+.BR discimagecreator (1)
+are resolved via
+.BR PATH .
+Make sure at least one of them is installed:
+.PP
+.RS
+.B sudo dnf install redumper aaru discimagecreator
+.RE
+.SH DRIVE ACCESS
+.B CAP_SYS_RAWIO
+is preset on the shipped binary so vendor SCSI commands work without
+sudo. Drive-node access on
+.I /dev/sr*
+is granted automatically via
+.B uaccess
+at a local desktop seat; for headless/SSH add yourself to the
+.B cdrom
+group:
+.PP
+.RS
+.B sudo usermod -aG cdrom $USER
+.RE
+.SH FILES
+.TP
+.I /usr/lib64/mpf-cli/MPF.CLI
+The actual self-contained .NET binary (cap_sys_rawio=ep).
+.TP
+.I /usr/bin/mpf-cli
+Shell wrapper that exec\(aqs the binary above.
+.TP
+.I ~/.config/mpf/config.json
+User configuration.
+.SH NOTES
+This manpage is handwritten and tracks upstream MPF
+.BR 3.7.1 .
+If the upstream tool grows new flags or changes its syntax in a future
+release, this page may lag behind the binary; consult
+\fImpf-cli --help\fR for the authoritative current option set.
+.SH SEE ALSO
+.BR mpf-check (1),
+.BR mpf-gui (1),
+.BR redumper (1),
+.BR aaru (1),
+.BR discimagecreator (1)
+.PP
+Upstream project:
+.UR https://github.com/SabreTools/MPF
+.UE
+.SH AUTHOR
+SabreTools (Matt Nadareski) and contributors.
+.SH LICENSE
+MIT.

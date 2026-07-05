@@ -1,0 +1,14 @@
+# Floppy-drive access for disc-preservation dumping.
+#
+# USB floppy drives expose their media as a SCSI/USB block device
+# (/dev/sdX); udev's default leaves that node root:disk 0660, so dumping
+# a floppy would otherwise need root. Re-group the node to `cdrom` -- the
+# Fedora-native group already used for optical drive access -- and grant
+# group read/write, so a member of the `cdrom` group can dump floppies
+# without sudo. Grant yourself access once:
+#
+#   sudo usermod -aG cdrom "$USER"     # then log out and back in
+#
+SUBSYSTEM=="block", ENV{ID_DRIVE_FLOPPY}=="1", GROUP="cdrom", MODE="0660"
+# Legacy internal floppy-controller nodes (/dev/fd0 ...): same grant.
+KERNEL=="fd[0-9]*", GROUP="cdrom", MODE="0660"

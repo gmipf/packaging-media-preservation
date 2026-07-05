@@ -1,0 +1,170 @@
+.TH DISCIMAGECREATOR 1 "2026-06-15" "DiscImageCreator suite" "User Commands"
+.SH NAME
+discimagecreator \- low-level optical disc dumper
+.br
+eccedc, dvdauth, unscrambler \- DiscImageCreator suite helper tools
+.SH SYNOPSIS
+.B discimagecreator
+.I command
+.RI [ options ...]
+.PP
+.B eccedc
+.I command
+.RI [ options ...]
+.PP
+.B dvdauth
+.I command
+.RI [ options ...]
+.PP
+.B unscrambler
+.I command
+.RI [ options ...]
+.SH DESCRIPTION
+.B discimagecreator
+is a command-line tool for byte-perfect dumping of optical discs (CD,
+GD, DVD, HD-DVD, BD, GameCube, Wii, XBOX, XBOX 360) and various disk
+types (Floppy, MO, USB). It is one of the dumpers supported by the
+Redump preservation project for production-grade media submissions.
+.PP
+This package bundles four binaries from the same upstream author:
+.TP
+.B discimagecreator
+The main dumper. Real binary
+.B DiscImageCreator.out
+in libexec (upstream-original filename). Aliases in PATH:
+.B discimagecreator
+(canonical lowercase),
+.B dic
+(short form), and
+.B DiscImageCreator.out
+itself (kept in PATH for MPF default-config compatibility).
+.TP
+.B eccedc
+Validates or repairs sector ECC/EDC on the 2048-byte user-data area of
+CDs. Used post-dump to confirm sector integrity. The real binary
+.B EccEdc.out
+sits in the package's libexec directory and is spawned automatically
+by
+.B discimagecreator
+when needed; the
+.B eccedc
+alias exists for direct user invocation.
+.TP
+.B dvdauth
+Performs CSS, CPPM, or CPRM authentication for DVD reading on supported
+drives. Real binary
+.B DVDAuth.out
+in libexec.
+.TP
+.B unscrambler
+Brute-forces unscrambling for non-standard scrambled DVDs (typically
+GameCube/Wii optical disks). Real binary
+.B unscrambler.out
+in libexec.
+.SH DRIVE ACCESS
+.B discimagecreator
+and
+.B dvdauth
+ship with the
+.B cap_sys_rawio
+file capability set, so they can issue SCSI vendor commands (e.g.\&
+Plextor read method D8, Kreon XGD passthrough) without root.
+.PP
+The invoking user must additionally have access to
+.IR /dev/sr* :
+membership in the
+.B cdrom
+group, or an active uaccess seat assignment, is sufficient on Fedora.
+.SH DATA FILES
+Drive-offset tables and protection databases ship in
+.IR /usr/share/discimagecreator/ :
+.IP \(bu 2
+.I default.dat
+\(em main database.
+.IP \(bu 2
+.I driveOffset.txt
+\(em drive read offset table.
+.IP \(bu 2
+.I C2ErrorProtect.txt
+\(em C2-error-based protection signatures.
+.IP \(bu 2
+.I ReadErrorProtect.txt
+\(em read-error-based protection signatures.
+.IP \(bu 2
+"DVDRawBruteforce - Drive Sheet - Sheet1.tsv"
+\(em raw-DVD brute-force drive sheet.
+.PP
+The binary's data-directory probe path is patched at build time from
+upstream's
+.I /usr/share/DiscImageCreator/
+to lowercase
+.IR /usr/share/discimagecreator/ ;
+no environment variable, working-directory tweak, or configuration file
+is needed.
+.SH FILES
+.TP
+.I /usr/libexec/discimagecreator/
+Real binaries (main + three helpers). Not intended for direct PATH
+invocation; use the
+.IR /usr/bin/
+aliases instead.
+.TP
+.I /usr/share/discimagecreator/
+Bundled data files (see DATA FILES above).
+.TP
+.I /usr/share/doc/discimagecreator/
+Upstream changelog, tested-drive list, firmware notes, known issues,
+specs and protocol references (full
+.I Release_ANSI/Doc/
+tree).
+.SH NOTES
+This manual page is handwritten as part of the Fedora packaging \(em
+upstream provides none \(em and is intentionally static: it is neither
+generated nor version-stamped at build time. It describes
+.B DiscImageCreator
+as of upstream tag
+.BR 20260101 .
+The bundled helpers (eccedc, dvdauth, unscrambler) have effectively
+frozen syntax and are not separately pinned.
+.PP
+The page content itself is maintained by hand.
+.B DiscImageCreator
+has no
+.B \-\-help
+option; running the binary with no arguments prints its usage, and that
+output is the authoritative command reference. If the command summaries
+here ever fall behind it, treat the binary's own usage output and the
+upstream repository as authoritative; this page may simply be stale.
+.SH SEE ALSO
+.BR redumper (1)
+.PP
+Upstream documentation and bug tracker:
+.UR https://github.com/saramibreak/DiscImageCreator
+.UE
+.PP
+Helper-tool upstream repositories:
+.UR https://github.com/saramibreak/EccEdc
+.UE ,
+.UR https://github.com/saramibreak/DVDAuth
+.UE ,
+.UR https://github.com/saramibreak/unscrambler
+.UE .
+.SH AUTHOR
+Upstream author: sarami
+.RB ( https://github.com/saramibreak ).
+.PP
+Fedora packaging maintained as part of the COPR repository
+.I gmipf/media-preservation .
+.SH LICENSE
+.TP
+DiscImageCreator
+Apache-2.0
+.TP
+EccEdc
+GPL-3.0-or-later
+.TP
+DVDAuth, unscrambler
+GPL-2.0-or-later
+.PP
+Each component retains its individual license; this RPM aggregates them
+for ergonomic install but does not relicense them.
