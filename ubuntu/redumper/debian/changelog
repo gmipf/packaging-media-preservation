@@ -1,0 +1,13 @@
+redumper (726-1) UNRELEASED; urgency=medium
+
+  * Initial Ubuntu PPA packaging of redumper: a repackage of the upstream
+    statically-linked linux-x64 release binary (no recompilation — the
+    upstream build already targets a static clang + libc++ toolchain, so the
+    packaged binary is effectively bit-identical to the GitHub release).
+  * Ship the handwritten redumper(1) manpage; its .TH header is stamped with
+    the upstream tag and the changelog date at build time so it can never
+    drift from the shipped binary.
+  * Grant cap_sys_rawio on the binary via postinst so vendor SCSI passthrough
+    commands (Plextor read method D8, Kreon XGD) work without sudo.
+
+ -- gmipf <gmipf64@gmail.com>  Sun, 05 Jul 2026 12:33:46 +0200

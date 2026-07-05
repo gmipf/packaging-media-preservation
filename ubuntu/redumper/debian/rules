@@ -1,0 +1,32 @@
+#!/usr/bin/make -f
+#
+# redumper — repackage of the upstream statically-linked linux-x64 binary.
+# Nothing is compiled here; the only "build" step is stamping the manpage.
+
+# Upstream release number (the b<N> tag), derived from the Debian version by
+# dropping the ~series suffix and the -revision.  e.g. 726-1~noble1 -> 726
+UPSTREAM_VERSION := $(shell dpkg-parsechangelog -SVersion | sed -e 's/~.*//' -e 's/-[^-]*$$//')
+
+# Reproducible manpage date: the changelog timestamp (via SOURCE_DATE_EPOCH),
+# never the build wall-clock, so rebuilds stay byte-identical.
+MAN_DATE := $(shell LC_ALL=C date -u -d "@$(or $(SOURCE_DATE_EPOCH),$(shell date +%s))" +%F)
+
+%:
+	dh $@
+
+# The upstream binary is prebuilt and statically linked — there is nothing to
+# configure, compile or test. Replace the build step with manpage stamping so
+# the .TH header always matches the shipped binary's release tag.
+override_dh_auto_build:
+	sed -e 's/@TAG@/b$(UPSTREAM_VERSION)/g' \
+	    -e 's/@DATE@/$(MAN_DATE)/g' \
+	    debian/redumper.1.in > debian/redumper.1
+
+override_dh_auto_test:
+
+# Do not touch the upstream release binary: it is statically linked and
+# shipped as-is by upstream. Stripping / dwz would only risk corrupting it and
+# would make the packaged binary differ from the published release.
+override_dh_strip:
+
+override_dh_dwz:

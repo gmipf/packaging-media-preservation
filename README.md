@@ -54,12 +54,13 @@ see the [COPR project page](https://copr.fedorainfracloud.org/coprs/gmipf/media-
         └── .upstream-tag                   # last seen upstream tag (written by watcher)
 ```
 
-Future distro additions follow the same `<distro>/<tool>/` pattern:
+Further distro lanes follow the same `<distro>/<tool>/` pattern. The Ubuntu
+lane (Launchpad PPA) is scaffolded — see [`ubuntu/README.md`](ubuntu/README.md):
 
 ```
-debian/<tool>/debian/         # debian/control, debian/rules, debian/changelog
-arch/<tool>/PKGBUILD          # AUR
-alpine/<tool>/APKBUILD        # Alpine
+ubuntu/<tool>/debian/         # debian/control, debian/rules, debian/changelog (Launchpad PPA)
+arch/<tool>/PKGBUILD          # AUR (planned)
+alpine/<tool>/APKBUILD        # Alpine (planned)
 ```
 
 One repo, all distros. Each distro folder uses that distro's native tooling

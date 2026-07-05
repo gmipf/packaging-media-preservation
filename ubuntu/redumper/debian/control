@@ -1,0 +1,28 @@
+Source: redumper
+Section: utils
+Priority: optional
+Maintainer: gmipf <gmipf64@gmail.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.2
+Homepage: https://github.com/superg/redumper
+Rules-Requires-Root: no
+Vcs-Git: https://github.com/gmipf/packaging-media-preservation.git
+Vcs-Browser: https://github.com/gmipf/packaging-media-preservation
+
+Package: redumper
+Architecture: amd64
+# No ${shlibs:Depends}: the upstream linux-x64 binary is fully statically
+# linked (dh_shlibdeps finds no shared-library dependencies at all).
+Depends: ${misc:Depends}, libcap2-bin
+Description: low-level byte-perfect optical disc dumper
+ redumper is a low-level byte-perfect disc dumper for CD, DVD, HD-DVD and
+ Blu-ray. It supports advanced PLEXTOR features (negative lead-in, read
+ method D8) and Xbox / Xbox 360 (XGD) dumping via Kreon custom-firmware
+ drives. It is one of the dumpers used by the Redump and No-Intro disc
+ preservation projects.
+ .
+ This package repackages the upstream statically-linked linux-x64 release
+ binary unchanged. On install the binary is given the cap_sys_rawio file
+ capability so vendor SCSI passthrough commands work without sudo; drive
+ node access still requires a local desktop seat (uaccess) or membership of
+ the cdrom group.

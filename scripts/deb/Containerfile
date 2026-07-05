@@ -1,0 +1,20 @@
+# Builder image for the Ubuntu/Debian packaging lane. One image per target
+# series (the FROM base is injected by scripts/deb-build.sh):
+#   noble -> ubuntu:24.04   jammy -> ubuntu:22.04
+#
+# This is the Debian analogue of `mock` on the RPM side: a clean, series-exact
+# environment in which we assemble the source package and run a local test
+# build BEFORE anything is uploaded to Launchpad. The actual published .debs
+# are built by Launchpad's own build farm from the signed *source* package.
+ARG BASE=docker.io/library/ubuntu:24.04
+FROM ${BASE}
+
+ENV DEBIAN_FRONTEND=noninteractive
+# build-essential is an implicit build dependency of every Debian source
+# package (dpkg-checkbuilddeps requires it) — real build chroots (sbuild /
+# pbuilder) always have it, even for a repackage that compiles nothing.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+        build-essential debhelper devscripts dput lintian fakeroot \
+        curl ca-certificates unzip xz-utils libcap2-bin \
+ && rm -rf /var/lib/apt/lists/*
