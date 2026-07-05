@@ -73,17 +73,45 @@ The `~` sorts *before* the plain version, and `jammy` < `noble` alphabetically,
 so the per-series uploads never collide and always order sensibly — the same
 tilde discipline the RPM lane uses.
 
-## Signed upload to Launchpad (needs account + GPG)
-
-Not automated yet. Once the Launchpad account exists and a signing key is
-registered there:
+## Signed upload to Launchpad
 
 ```sh
-# in the mp-deb-builder container, on the assembled source tree:
-debuild -S -sa -kE2E956CC4B250741   # signed *source* package (dedicated packaging key)
-dput ppa:dreunion61/media-preservation ../<tool>_<ver>_source.changes
+scripts/deb-upload.sh redumper noble             # build, sign, dput
+scripts/deb-upload.sh redumper jammy --dry-run   # build + sign only, verify
 ```
+
+This runs the same assembly as the test build, then `dpkg-buildpackage -S -sa`
+(signed **source** package) and `dput` to `ppa:dreunion61/media-preservation`.
+The dedicated passphrase-less packaging key is exported from the host
+`~/.gnupg` to a private 0600 temp file, bind-mounted read-only into the
+builder container and shredded on exit — the key never lives in the image or
+the repo. Needs network + `~/.gnupg`, so run it outside the command sandbox.
+Launchpad then builds the `.deb` for each series on its own farm.
 
 A GitHub-Actions watcher (mirroring the `fedora/` watchers) will later rebuild
 the `.orig` + bump the changelog on new upstream releases and push the signed
-source upload, using a dedicated signing subkey stored as an Actions secret.
+source upload, using the signing key stored as an Actions secret.
+
+## Packaged tools
+
+| Tool     | Kind                              | Notes |
+|----------|-----------------------------------|-------|
+| redumper | static binary                     | no shlib deps; stamped manpage |
+| aaru5    | NativeAOT binary + sidecar `.so`  | `${shlibs:Depends}` from the ELF; static manpage; udev |
+| aaru     | self-contained .NET (single-file) | two tarballs merged; manpage generated from `--help`; udev; icons/MIME/desktop |
+| mpf      | self-contained .NET × 3           | `mpf` meta + `mpf-check`/`mpf-cli`/`mpf-gui`; generated `/usr/bin` wrappers |
+
+`discimagecreator` is the remaining tool; like `fedora/discimagecreator` it is
+a **source build** (meson/OpenSSL), not a repackage, so it gets its own recipe.
+
+### Self-contained .NET runtime dependencies
+
+The self-contained .NET tools (`aaru`, `mpf`) load their runtime libraries by
+`dlopen` at run time, so `dh_shlibdeps` cannot see them — they are declared by
+hand (parity with the RPM `Requires`). The ICU runtime package carries its
+soname in its *name* (`libicu74` on noble, `libicu70` on jammy), so it is
+resolved per-series at build via a `${dep:icu}` substvar in
+`override_dh_gencontrol` (from what `libicu-dev` pulled in); the others
+(`libkrb5-3`, `libssl3`, `zlib1g`, `libunwind8`) have stable names. The shared
+builder image carries the matching `-dev` packages so the prebuilt binary can
+run at build time (for `aaru`'s `--help` manpage generation).
