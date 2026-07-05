@@ -1,0 +1,50 @@
+Source: discimagecreator
+Section: utils
+Priority: optional
+Maintainer: gmipf <gmipf64@gmail.com>
+# Unlike the other tools in this PPA, discimagecreator is a real source build
+# (meson for the main dumper, three bundled makefiles for the helper tools),
+# not a repackage — so it carries a genuine compile toolchain here.
+Build-Depends: debhelper-compat (= 13),
+               meson,
+               ninja-build,
+               pkg-config,
+               libarchive-dev,
+               libssl-dev,
+               zlib1g-dev
+Standards-Version: 4.6.2
+Homepage: https://github.com/saramibreak/DiscImageCreator
+Rules-Requires-Root: no
+Vcs-Git: https://github.com/gmipf/packaging-media-preservation.git
+Vcs-Browser: https://github.com/gmipf/packaging-media-preservation
+
+Package: discimagecreator
+Architecture: amd64
+# Compiled from source and dynamically linked, so ${shlibs:Depends} resolves the
+# libarchive / openssl / zlib runtime from the ELF automatically (no hand-declared
+# runtime deps as the self-contained .NET tools need). libcap2-bin is for the
+# postinst setcap.
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+         libcap2-bin
+Description: low-level disc dumper plus EccEdc / DVDAuth / unscrambler helpers
+ DiscImageCreator (DIC) is a command-line tool for byte-perfect dumping of
+ optical discs (CD, GD, DVD, HD-DVD, BD, GameCube, Wii, XBOX, XBOX 360) and
+ various disks (floppy, MO, USB). It is one of the dumpers supported by the
+ Redump preservation project for production-grade media submissions.
+ .
+ This package bundles four binaries from the same upstream author, built from
+ source:
+ .
+   * discimagecreator: main dumper (real binary in /usr/lib/discimagecreator/;
+     PATH aliases 'dic' and 'DiscImageCreator.out' are also provided for
+     compatibility with MPF and tooling that calls the upstream filename)
+   * eccedc:           sector ECC/EDC validator/fixer
+   * dvdauth:          CSS/CPPM/CPRM DVD authentication tool
+   * unscrambler:      brute-force unscramble for non-standard DVD IVs
+ .
+ On install, cap_sys_rawio is set on the main DIC binary and dvdauth so vendor
+ SCSI passthrough commands work without sudo. A shipped udev rule grants the
+ cdrom group access to USB floppy drives so the `fd` (floppy dump) command
+ works without root too; add yourself with `usermod -aG cdrom <user>` and
+ re-login. See discimagecreator(1) for drive access and data-file details.

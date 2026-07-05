@@ -1,0 +1,25 @@
+#!/bin/sh
+# postinst — grant cap_sys_rawio to the real DIC and DVDAuth binaries so vendor
+# SCSI passthrough commands (Plextor D8, Kreon XGD, CSS/CPPM auth) work without
+# sudo (parity with the RPM's %caps). The capability is set on the real binaries
+# under /usr/lib/discimagecreator/, not the /usr/bin symlinks; the kernel follows
+# the symlink on exec. Best-effort: on filesystems that do not support file
+# capabilities this is skipped without failing the install.
+set -e
+
+case "$1" in
+    configure)
+        if command -v setcap >/dev/null 2>&1; then
+            for b in DiscImageCreator.out DVDAuth.out; do
+                setcap cap_sys_rawio+ep "/usr/lib/discimagecreator/$b" 2>/dev/null || \
+                    echo "discimagecreator: could not set cap_sys_rawio on $b" \
+                         "(filesystem may not support file capabilities); run" \
+                         "with sudo if needed." >&2
+            done
+        fi
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0

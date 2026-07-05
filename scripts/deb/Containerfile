@@ -18,11 +18,14 @@ RUN apt-get update \
         build-essential debhelper devscripts dput lintian fakeroot \
         curl ca-certificates unzip xz-utils libcap2-bin \
         gawk libicu-dev libkrb5-dev libssl-dev zlib1g-dev libunwind-dev \
+        meson ninja-build pkg-config libarchive-dev \
  && rm -rf /var/lib/apt/lists/*
-# The trailing block (gawk + the -dev packages) is only needed by the
-# self-contained .NET tools (aaru v6, mpf): their prebuilt binary is run at
-# build time to generate its manpage from --help, so its runtime libraries
-# (ICU, krb5, OpenSSL, zlib, libunwind) must be present, and the same -dev
-# packages are the series-agnostic Build-Depends that pull the right runtime
-# SONAME on each series (libicu-dev -> libicu74 on noble / libicu70 on jammy).
-# redumper / aaru5 do not use them; a shared image is simpler than per-tool ones.
+# The gawk + .NET-runtime -dev block is only needed by the self-contained .NET
+# tools (aaru v6, mpf): their prebuilt binary is run at build time to generate
+# its manpage from --help, so its runtime libraries (ICU, krb5, OpenSSL, zlib,
+# libunwind) must be present, and the same -dev packages are the series-agnostic
+# Build-Depends that pull the right runtime SONAME on each series (libicu-dev ->
+# libicu74 on noble / libicu70 on jammy). The meson/ninja-build/pkg-config +
+# libarchive-dev block is the discimagecreator source-build toolchain (its only
+# actual-compile tool; libssl-dev/zlib1g-dev above are shared with it). redumper
+# / aaru5 use none of these; a shared image is simpler than per-tool ones.

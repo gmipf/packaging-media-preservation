@@ -1,0 +1,10 @@
+usr/lib/discimagecreator/DiscImageCreator.out usr/bin/discimagecreator
+usr/lib/discimagecreator/DiscImageCreator.out usr/bin/dic
+usr/lib/discimagecreator/DiscImageCreator.out usr/bin/DiscImageCreator.out
+usr/lib/discimagecreator/EccEdc.out usr/bin/eccedc
+usr/lib/discimagecreator/DVDAuth.out usr/bin/dvdauth
+usr/lib/discimagecreator/unscrambler.out usr/bin/unscrambler
+usr/share/man/man1/discimagecreator.1 usr/share/man/man1/dic.1
+usr/share/man/man1/discimagecreator.1 usr/share/man/man1/eccedc.1
+usr/share/man/man1/discimagecreator.1 usr/share/man/man1/dvdauth.1
+usr/share/man/man1/discimagecreator.1 usr/share/man/man1/unscrambler.1

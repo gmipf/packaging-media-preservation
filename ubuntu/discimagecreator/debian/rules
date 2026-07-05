@@ -1,0 +1,100 @@
+#!/usr/bin/make -f
+#
+# discimagecreator — the one tool in this PPA that is a real SOURCE build, not a
+# repackage. The main dumper builds via meson; the three helper tools (EccEdc,
+# DVDAuth, unscrambler) build via their own bundled makefiles. This mirrors
+# fedora/discimagecreator's spec (%build / %install), with the spec's %prep
+# source fix-ups applied here at build time (see override_dh_auto_configure).
+#
+# Because it is a genuine compile, we do NOT skip dh_strip/dh_dwz (unlike the
+# repackaged prebuilt binaries) — the binaries are stripped normally and a
+# -dbgsym package is produced.
+
+# Helper-tool versions — the extracted <name>-<ver>/ dirs the makefiles live in.
+# Kept in lockstep with the same three constants in scripts/deb/assemble.sh.
+ECCEDCVER    := 20240901
+DVDAUTHVER   := 1.4
+UNSCRAMBLVER := 0.5.5
+
+DESTDIR := debian/discimagecreator
+
+%:
+	dh $@ --buildsystem=meson
+
+# Port fedora's %prep source fix-ups. These edit files outside debian/, so they
+# run at BINARY-build time (dpkg-source has already captured the pristine tree
+# for the source package by now); the source package therefore stays clean and
+# carries no quilt patches.
+override_dh_auto_configure:
+	# Data-directory probe path: upstream's CamelCase /usr/share/DiscImageCreator/
+	# -> lowercase /usr/share/discimagecreator/ (matches where we install it).
+	sed -i \
+	    -e 's|/usr/local/share/DiscImageCreator/|/usr/local/share/discimagecreator/|g' \
+	    -e 's|/usr/share/DiscImageCreator/|/usr/share/discimagecreator/|g' \
+	    DiscImageCreator/get.cpp DiscImageCreator/xml.cpp
+	# GCC 15 no longer pulls <limits.h> in transitively; ps3auth uses UINT_MAX
+	# without an explicit include. No-op on the GCC where it was already reachable.
+	sed -i '1i #include <limits.h>' \
+	    DiscImageCreator/_external/ps3auth/crypto_backend_openssl.c
+	# EccEdc 20240901 predates GCC 14's stricter transitive-header rules; ecm.cpp
+	# uses uint32_t without <cstdint>.
+	sed -i '1i #include <cstdint>' \
+	    EccEdc-$(ECCEDCVER)/EccEdc/_external/ecm.cpp
+	# Upstream meson.build stages Release_ANSI data into the build tree via
+	# fs.copyfile() (needs meson >= 0.64). jammy ships meson 0.61, which aborts
+	# configure there. The calls are pure build-tree convenience — redundant with
+	# install_data and our own install step — so drop them. grep-guard first so a
+	# future upstream restructure fails loudly rather than silently no-op'ing.
+	# No-op on noble (meson >= 1.3 keeps them; the installed tree is identical).
+	grep -q 'fs\.copyfile(' meson.build
+	sed -i '/fs\.copyfile(/d' meson.build
+	# All three helper makefiles omit -fPIE; Ubuntu's default-PIE linker then
+	# rejects non-PIC relocations. Append it to the first CXXFLAGS/CFLAGS
+	# assignment so the implicit rules pick it up (LDFLAGS=-pie is passed in
+	# override_dh_auto_build).
+	sed -i -e '0,/^CFLAGS\s*:=/{/^CFLAGS\s*:=/s/$$/ -fPIE/}' \
+	       -e '0,/^CXXFLAGS\s*:=/{/^CXXFLAGS\s*:=/s/$$/ -fPIE/}' \
+	    EccEdc-$(ECCEDCVER)/EccEdc/makefile \
+	    DVDAuth-$(DVDAUTHVER)/DVDAuth/makefile \
+	    unscrambler-$(UNSCRAMBLVER)/makefile
+	dh_auto_configure
+
+# meson builds only the main DiscImageCreator; the helpers build via their own
+# makefiles. CXX=g++ forces the compiler (their makefiles default to $(CXX),
+# which may be unset); LDFLAGS=-pie pairs with the -fPIE injection above.
+override_dh_auto_build:
+	dh_auto_build
+	$(MAKE) -C EccEdc-$(ECCEDCVER)/EccEdc    CXX=g++ LDFLAGS=-pie
+	$(MAKE) -C DVDAuth-$(DVDAUTHVER)/DVDAuth CXX=g++ LDFLAGS=-pie
+	$(MAKE) -C unscrambler-$(UNSCRAMBLVER)   CXX=g++ LDFLAGS=-pie
+
+# No meson tests we want to run.
+override_dh_auto_test:
+
+# meson installs the dumper to /usr/bin/DiscImageCreator and its data to
+# /usr/share/DiscImageCreator/. Reorganize into the libexec + lowercase-data
+# layout (parity with fedora): real binaries under /usr/lib/discimagecreator/,
+# /usr/bin holds only aliases (created via debian/discimagecreator.links).
+execute_after_dh_auto_install:
+	install -d $(DESTDIR)/usr/lib/discimagecreator
+	# main binary -> libexec under its upstream-original filename; DIC uses
+	# readlink(/proc/self/exe) to find ./EccEdc.out etc. next to itself.
+	mv $(DESTDIR)/usr/bin/DiscImageCreator \
+	   $(DESTDIR)/usr/lib/discimagecreator/DiscImageCreator.out
+	install -m0755 EccEdc-$(ECCEDCVER)/EccEdc/EccEdc.out \
+	   $(DESTDIR)/usr/lib/discimagecreator/EccEdc.out
+	install -m0755 DVDAuth-$(DVDAUTHVER)/DVDAuth/DVDAuth.out \
+	   $(DESTDIR)/usr/lib/discimagecreator/DVDAuth.out
+	install -m0755 unscrambler-$(UNSCRAMBLVER)/unscrambler.out \
+	   $(DESTDIR)/usr/lib/discimagecreator/unscrambler.out
+	# data dir CamelCase -> lowercase, plus the extra Release_ANSI runtime files
+	# the binary reads (default.dat / driveOffset.txt are meson-installed).
+	mv $(DESTDIR)/usr/share/DiscImageCreator \
+	   $(DESTDIR)/usr/share/discimagecreator
+	install -m0644 Release_ANSI/C2ErrorProtect.txt   $(DESTDIR)/usr/share/discimagecreator/
+	install -m0644 Release_ANSI/ReadErrorProtect.txt $(DESTDIR)/usr/share/discimagecreator/
+	install -m0644 "Release_ANSI/DVDRawBruteforce - Drive Sheet - Sheet1.tsv" \
+	   $(DESTDIR)/usr/share/discimagecreator/
+	# udev rule for USB-floppy access (packaging artifact, not in the tarball).
+	install -D -m0644 debian/70-discimagecreator-floppy.rules \
+	   $(DESTDIR)/usr/lib/udev/rules.d/70-discimagecreator-floppy.rules

@@ -84,6 +84,32 @@ case "$TOOL" in
     mv "$SRC/gui/MPF" "$SRC/gui/MPF.Avalonia"
     chmod 0755 "$SRC/MPF.Check" "$SRC/cli/MPF.CLI" "$SRC/gui/MPF.Avalonia"
     ;;
+  discimagecreator)
+    # Source build (NOT a repackage — the one tool we compile): four GitHub
+    # archive tarballs merged into one tree, exactly as fedora's %setup -a 1/2/3.
+    #   .upstream-tag = the pinned DiscImageCreator commit SHA (Source0)
+    #   the three helper tools ride along at their own frozen tags (Source1/2/3).
+    # These helper versions are hardcoded here (they change ~never) and mirrored
+    # in debian/rules, which references the extracted <name>-<ver>/ dirs by path.
+    ECCEDCVER=20240901
+    DVDAUTHVER=1.4
+    UNSCRAMBLVER=0.5.5
+    curl -fsSL -o "$WORK/dic.tar.gz" \
+      "https://github.com/saramibreak/DiscImageCreator/archive/${TAG}.tar.gz"
+    curl -fsSL -o "$WORK/eccedc.tar.gz" \
+      "https://github.com/saramibreak/EccEdc/archive/refs/tags/${ECCEDCVER}.tar.gz"
+    curl -fsSL -o "$WORK/dvdauth.tar.gz" \
+      "https://github.com/saramibreak/DVDAuth/archive/refs/tags/v${DVDAUTHVER}.tar.gz"
+    curl -fsSL -o "$WORK/unscrambler.tar.gz" \
+      "https://github.com/saramibreak/unscrambler/archive/refs/tags/${UNSCRAMBLVER}.tar.gz"
+    # main source: strip the DiscImageCreator-<sha>/ wrapper straight into $SRC
+    tar -xzf "$WORK/dic.tar.gz" -C "$SRC" --strip-components=1
+    # helpers: keep their <name>-<ver>/ wrapper dir — debian/rules builds each
+    # via `make -C <name>-<ver>/...`, matching the RPM's paths.
+    tar -xzf "$WORK/eccedc.tar.gz"      -C "$SRC"
+    tar -xzf "$WORK/dvdauth.tar.gz"     -C "$SRC"
+    tar -xzf "$WORK/unscrambler.tar.gz" -C "$SRC"
+    ;;
   *)
     echo "no fetch recipe for tool '$TOOL' yet" >&2; exit 1 ;;
 esac
