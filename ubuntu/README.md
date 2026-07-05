@@ -89,9 +89,28 @@ builder container and shredded on exit — the key never lives in the image or
 the repo. Needs network + `~/.gnupg`, so run it outside the command sandbox.
 Launchpad then builds the `.deb` for each series on its own farm.
 
-A GitHub-Actions watcher (mirroring the `fedora/` watchers) will later rebuild
-the `.orig` + bump the changelog on new upstream releases and push the signed
-source upload, using the signing key stored as an Actions secret.
+## Automated uploads (watchers)
+
+The same per-tool watchers that drive the Fedora/COPR lane
+(`.github/workflows/watch-<tool>.yml`) also drive the PPA. On a new upstream
+revision a watcher bumps both lanes in one commit (the fedora spec **and**
+`ubuntu/<tool>/debian/changelog` + `.upstream-tag`), then a gated `ppa` job
+calls the reusable `ppa-upload.yml` workflow, which builds the signed source
+package for noble + jammy and `dput`s them — no `build-<tool>` trigger branch
+needed (Launchpad rejects duplicate versions, so there is nothing to isolate).
+
+`ppa-upload.yml` signs with the dedicated passphrase-less packaging key, stored
+as the `PPA_SIGNING_KEY` Actions secret (an ASCII-armored secret key). If the
+secret is unset the `ppa` job skips gracefully. Set it once (run it yourself so
+the key only ever goes to GitHub, never through a third party):
+
+```sh
+gpg --export-secret-keys --armor F95E3A17D02ED2D53C54DA78E2E956CC4B250741 \
+  | gh secret set PPA_SIGNING_KEY --repo gmipf/packaging-media-preservation
+```
+
+`aaru5` is stable/manually pinned (no watcher), so its PPA uploads stay manual
+via `deb-upload.sh`.
 
 ## Packaged tools
 

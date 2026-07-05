@@ -11,10 +11,13 @@ permissions:
 jobs:
   watch:
     runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.sync.outputs.changed }}
     steps:
       - uses: actions/checkout@v5
 
       - name: Sync mpf spec with upstream rolling release
+        id: sync
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -70,11 +73,21 @@ jobs:
           sed -i "/^%changelog/r $CL_ENTRY" "$SPEC"
           rm -f "$CL_ENTRY"
 
-          git add "$SPEC" "$MARKER"
+          # --- Ubuntu PPA lane: advance the ubuntu recipe in lockstep. The
+          # ubuntu marker stays 'rolling' (assemble.sh's download anchor); only
+          # the changelog version bumps, mirroring the RPM tilde snapshot. ---
+          UB=ubuntu/mpf
+          bash scripts/deb/ppa-bump-changelog.sh "$UB" "${UPSTREAM_VERSION}~${UPSTREAM_TS}.${UPSTREAM_SHA}" \
+            "Automated rolling-snapshot sync to upstream MPF commit ${UPSTREAM_SHA} (published ${UPSTREAM_TS} UTC)."
+
+          git add "$SPEC" "$MARKER" "$UB/debian/changelog"
           if git diff --cached --quiet; then
             echo "Spec and marker unchanged after rewrite — exiting clean"
             exit 0
           fi
+
+          # Signal the ppa job (below) that there is a new revision to upload.
+          echo "changed=true" >> "$GITHUB_OUTPUT"
 
           git config user.name "rolling-watcher"
           git config user.email "actions@github.com"
@@ -94,3 +107,14 @@ jobs:
           git add README.md
           git commit -q -m "trigger: mpf build (branch landing README)"
           git push -f origin trigger-tmp:build-mpf
+
+  # Upload the same revision to the Launchpad PPA (noble + jammy). Runs only
+  # when the sync above committed a change; skips gracefully if the signing
+  # secret is unset. See .github/workflows/ppa-upload.yml.
+  ppa:
+    needs: watch
+    if: needs.watch.outputs.changed == 'true'
+    uses: ./.github/workflows/ppa-upload.yml
+    with:
+      tool: mpf
+    secrets: inherit

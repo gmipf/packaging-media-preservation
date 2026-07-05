@@ -25,10 +25,13 @@ permissions:
 jobs:
   watch:
     runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.sync.outputs.changed }}
     steps:
       - uses: actions/checkout@v5
 
       - name: Sync aaru spec with upstream alpha release
+        id: sync
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -97,11 +100,22 @@ jobs:
           sed -i "/^%changelog/r $CL_ENTRY" "$SPEC"
           rm -f "$CL_ENTRY"
 
-          git add "$SPEC" "$MARKER"
+          # --- Ubuntu PPA lane: advance the ubuntu recipe in lockstep. Debian
+          # tilde version mirrors the RPM's Version = %{aaruver}~%{aaruprerel}
+          # (e.g. 6.0.0~alpha.19); the marker keeps the full upstream tag. ---
+          UB=ubuntu/aaru
+          echo "$UPSTREAM_TAG" > "$UB/.upstream-tag"
+          bash scripts/deb/ppa-bump-changelog.sh "$UB" "${AARUVER}~${PRERELEASE}" \
+            "Automated sync to upstream Aaru ${UPSTREAM_TAG}."
+
+          git add "$SPEC" "$MARKER" "$UB/.upstream-tag" "$UB/debian/changelog"
           if git diff --cached --quiet; then
             echo "Spec and marker unchanged after rewrite — exiting clean"
             exit 0
           fi
+
+          # Signal the ppa job (below) that there is a new revision to upload.
+          echo "changed=true" >> "$GITHUB_OUTPUT"
 
           git config user.name "rolling-watcher"
           git config user.email "actions@github.com"
@@ -121,3 +135,14 @@ jobs:
           git add README.md
           git commit -q -m "trigger: aaru build (branch landing README)"
           git push -f origin trigger-tmp:build-aaru
+
+  # Upload the same revision to the Launchpad PPA (noble + jammy). Runs only
+  # when the sync above committed a change; skips gracefully if the signing
+  # secret is unset. See .github/workflows/ppa-upload.yml.
+  ppa:
+    needs: watch
+    if: needs.watch.outputs.changed == 'true'
+    uses: ./.github/workflows/ppa-upload.yml
+    with:
+      tool: aaru
+    secrets: inherit

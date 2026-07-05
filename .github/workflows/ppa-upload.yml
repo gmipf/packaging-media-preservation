@@ -1,0 +1,90 @@
+name: ppa-upload
+
+# Reusable workflow: build a SIGNED Debian *source* package for <tool> (both
+# series) and dput it to the Launchpad PPA. Called by each watch-<tool> workflow
+# after it has committed the bumped ubuntu/<tool>/debian/changelog + marker to
+# main. Launchpad then compiles the .debs on its own build farm — the PPA
+# counterpart to the fedora/ lane's Packit->COPR trigger.
+#
+# Signing uses the dedicated, passphrase-less, SIGN-ONLY packaging key
+# (fingerprint below) stored as the PPA_SIGNING_KEY Actions secret (an
+# ASCII-armored secret key). This is the PUBLIC media-preservation project, not
+# Safetyfy, so a signing key in a GitHub secret is in scope. If the secret is
+# unset the job skips gracefully (so scheduled runs are not red before setup).
+#
+# Set the secret once (run it yourself so the key never leaves your machine
+# except to GitHub):
+#   gpg --export-secret-keys --armor F95E3A17D02ED2D53C54DA78E2E956CC4B250741 \
+#     | gh secret set PPA_SIGNING_KEY --repo gmipf/packaging-media-preservation
+
+on:
+  workflow_call:
+    inputs:
+      tool:
+        description: 'ubuntu/<tool> recipe directory (= Debian source package name)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main (with the just-committed changelog bump)
+        # ref: main (not the triggering SHA) so we pick up the commit the watch
+        # job pushed moments ago — assemble.sh reads the new version from it.
+        uses: actions/checkout@v5
+        with:
+          ref: main
+
+      - name: Install Debian source-packaging tooling
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            debhelper dpkg-dev devscripts dput gnupg \
+            curl ca-certificates unzip xz-utils \
+            meson ninja-build pkg-config
+
+      - name: Build signed source packages and upload to the PPA
+        env:
+          PPA_SIGNING_KEY: ${{ secrets.PPA_SIGNING_KEY }}
+        run: |
+          set -euo pipefail
+          TOOL='${{ inputs.tool }}'
+          KEYID=F95E3A17D02ED2D53C54DA78E2E956CC4B250741
+          PPA=ppa:dreunion61/media-preservation
+          RECIPE="ubuntu/$TOOL"
+
+          if [ -z "${PPA_SIGNING_KEY:-}" ]; then
+            echo "::warning::PPA_SIGNING_KEY secret is not set — skipping PPA upload for $TOOL."
+            echo "Set it once with:"
+            echo "  gpg --export-secret-keys --armor $KEYID | gh secret set PPA_SIGNING_KEY --repo gmipf/packaging-media-preservation"
+            exit 0
+          fi
+
+          # Import the passphrase-less signing key into a throwaway keyring on
+          # this ephemeral runner (destroyed with the VM after the job).
+          export GNUPGHOME
+          GNUPGHOME=$(mktemp -d); chmod 700 "$GNUPGHOME"
+          printf '%s\n' "$PPA_SIGNING_KEY" | gpg --batch --import
+          echo ":: imported signing key $KEYID"
+
+          # Build + upload each series SEQUENTIALLY (never in parallel: the
+          # shared .orig tarball is byte-identical across series and Launchpad
+          # dedups it on first upload; a concurrent second upload could race).
+          # -d skips the build-dep check (source-only upload: Launchpad compiles).
+          for SERIES in noble jammy; do
+            echo "::group::$TOOL $SERIES"
+            WORK=$(mktemp -d)
+            bash scripts/deb/assemble.sh "$TOOL" "$SERIES" "$RECIPE" "$WORK"
+            VER=$(dpkg-parsechangelog -l "$RECIPE/debian/changelog" -SVersion | sed -e 's/-[^-]*$//')
+            ( cd "$WORK/${TOOL}-${VER}" && dpkg-buildpackage -S -sa -d -k"$KEYID" )
+            CHANGES=$(ls -1 "$WORK"/${TOOL}_*_source.changes | head -1)
+            gpg --verify "$CHANGES" 2>&1 | sed -n '1,3p' || true
+            dput "$PPA" "$CHANGES"
+            echo ":: uploaded $TOOL $SERIES ($VER-1~${SERIES}1)"
+            echo "::endgroup::"
+          done
+          echo ":: PPA upload complete — Launchpad will build the .debs and email results."
