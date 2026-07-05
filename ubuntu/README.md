@@ -39,11 +39,12 @@ ubuntu/<tool>/
     └── source/format      # 3.0 (quilt)
 ```
 
-The tools are **repackages of upstream prebuilt binaries** (the same artifacts
+Most tools are **repackages of upstream prebuilt binaries** (the same artifacts
 the RPM specs repackage), so the `.orig` tarball is assembled from the upstream
 release ZIP/tarball rather than a source clone — `debian/rules` compiles
-nothing, it only stamps the manpage. `discimagecreator` will be the exception
-(source build) when it is added.
+nothing, it only stamps the manpage. `discimagecreator` is the exception: a real
+source build (meson + three helper makefiles), so its `debian/rules` does
+compile and `dh_strip`/`dh_dwz` run normally (a `-dbgsym` is produced).
 
 ## Local test build (the `mock` equivalent)
 
@@ -94,15 +95,20 @@ source upload, using the signing key stored as an Actions secret.
 
 ## Packaged tools
 
-| Tool     | Kind                              | Notes |
-|----------|-----------------------------------|-------|
-| redumper | static binary                     | no shlib deps; stamped manpage |
-| aaru5    | NativeAOT binary + sidecar `.so`  | `${shlibs:Depends}` from the ELF; static manpage; udev |
-| aaru     | self-contained .NET (single-file) | two tarballs merged; manpage generated from `--help`; udev; icons/MIME/desktop |
-| mpf      | self-contained .NET × 3           | `mpf` meta + `mpf-check`/`mpf-cli`/`mpf-gui`; generated `/usr/bin` wrappers |
+| Tool             | Kind                              | Notes |
+|------------------|-----------------------------------|-------|
+| redumper         | static binary                     | no shlib deps; stamped manpage |
+| aaru5            | NativeAOT binary + sidecar `.so`  | `${shlibs:Depends}` from the ELF; static manpage; udev |
+| aaru             | self-contained .NET (single-file) | two tarballs merged; manpage generated from `--help`; udev; icons/MIME/desktop |
+| mpf              | self-contained .NET × 3           | `mpf` meta + `mpf-check`/`mpf-cli`/`mpf-gui`; generated `/usr/bin` wrappers |
+| discimagecreator | **source build** (meson)          | four archive tarballs merged; `${shlibs:Depends}` from the ELF; helper makefiles; static manpage; udev |
 
-`discimagecreator` is the remaining tool; like `fedora/discimagecreator` it is
-a **source build** (meson/OpenSSL), not a repackage, so it gets its own recipe.
+`discimagecreator` is the only source build: like `fedora/discimagecreator` it
+compiles the main dumper via meson against the system libarchive/OpenSSL/zlib
+(so it links OpenSSL 3, sidestepping the EOL `libcrypto.so.1.1` the upstream
+prebuilt Linux binary needs) plus three helper tools via their own makefiles.
+Its `debian/rules` ports the RPM's `%prep` source fix-ups (they run at
+binary-build time, keeping the source package quilt-patch-free).
 
 ### Self-contained .NET runtime dependencies
 
