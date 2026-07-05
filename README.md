@@ -13,19 +13,19 @@ respective project URLs (see below).
 
 ## Tools
 
-| Tool | Update mode | [Fedora][copr] | [EPEL][copr] | [Ubuntu][ppa] | openSUSE |
+| Tool | Update mode | [Fedora][copr] | [EPEL][copr] | openSUSE | [Ubuntu][ppa] |
 |---|---|---|---|---|---|
-| [redumper](https://github.com/superg/redumper) | auto-tracked hourly on new `b<N>` tags (binary repackage) | ✅ | ✅ | ✅ | — |
-| [MPF suite](https://github.com/SabreTools/MPF) | rolling, auto-tracked hourly (binary repackage); meta-package `mpf` pulls in `mpf-check` (validator), `mpf-cli` (headless orchestrator) and `mpf-gui` (Avalonia desktop UI) | ✅ | ✅ | ✅ | — |
-| [DiscImageCreator suite](https://github.com/saramibreak/DiscImageCreator) | auto-tracked hourly on new master commits (built from source — upstream binary links against EOL OpenSSL 1.1); bundles DIC + EccEdc + DVDAuth + unscrambler in one package | ✅ | ✅ | ✅ | — |
-| [Aaru](https://github.com/aaru-dps/Aaru) | auto-tracked hourly on new `v6.0.0-alpha.<N>` tags (binary repackage); CLI + Avalonia GUI ship as one binary, launch the GUI via `aaru gui` | ✅ | ✅ | ✅ | — |
+| [redumper](https://github.com/superg/redumper) | auto-tracked hourly on new `b<N>` tags (binary repackage) | ✅ | ✅ | — | ✅ |
+| [MPF suite](https://github.com/SabreTools/MPF) | rolling, auto-tracked hourly (binary repackage); meta-package `mpf` pulls in `mpf-check` (validator), `mpf-cli` (headless orchestrator) and `mpf-gui` (Avalonia desktop UI) | ✅ | ✅ | — | ✅ |
+| [DiscImageCreator suite](https://github.com/saramibreak/DiscImageCreator) | auto-tracked hourly on new master commits (built from source — upstream binary links against EOL OpenSSL 1.1); bundles DIC + EccEdc + DVDAuth + unscrambler in one package | ✅ | ✅ | — | ✅ |
+| [Aaru](https://github.com/aaru-dps/Aaru) | auto-tracked hourly on new `v6.0.0-alpha.<N>` tags (binary repackage); CLI + Avalonia GUI ship as one binary, launch the GUI via `aaru gui` | ✅ | ✅ | — | ✅ |
 
 [copr]: https://copr.fedorainfracloud.org/coprs/gmipf/media-preservation/
 [ppa]: https://launchpad.net/~dreunion61/+archive/ubuntu/media-preservation
 
-The **Fedora** / **EPEL** column headers link to the COPR project and **Ubuntu**
-to the Launchpad PPA; the openSUSE (OBS) lane is planned. For the currently
-shipping versions and full install instructions, see those pages.
+The **Fedora** / **EPEL** column headers link to the COPR project and the
+openSUSE (OBS) lane is planned; **Ubuntu** links to the Launchpad PPA. For the
+currently shipping versions and full install instructions, see those pages.
 
 ## Layout
 
@@ -161,6 +161,14 @@ On enterprise-Linux clones the COPR `dnf` plugin lives in `dnf-plugins-core`
 in the base/AppStream repos — so EPEL does **not** need to be enabled to
 install them.
 
+### openSUSE (planned, not yet available)
+
+openSUSE is not built on COPR: its openSUSE support is limited to an EOL Leap
+15.6 and a currently-broken Tumbleweed, with no Leap 16.0 chroot, so openSUSE
+will be published natively on the
+[openSUSE Build Service](https://build.opensuse.org/) (OBS) instead — planned,
+not yet available.
+
 ### Ubuntu 24.04 (noble) and 22.04 (jammy)
 
 ```sh
@@ -171,14 +179,6 @@ sudo apt install redumper discimagecreator aaru mpf
 
 See [`ubuntu/README.md`](ubuntu/README.md) for how the PPA source packages are
 built and signed.
-
-### openSUSE (planned, not yet available)
-
-openSUSE is not built on COPR: its openSUSE support is limited to an EOL Leap
-15.6 and a currently-broken Tumbleweed, with no Leap 16.0 chroot, so openSUSE
-will be published natively on the
-[openSUSE Build Service](https://build.opensuse.org/) (OBS) instead — planned,
-not yet available.
 
 `mpf` is a meta-package; it pulls in `mpf-check` (log validator),
 `mpf-cli` (headless dump orchestrator) and `mpf-gui` (Avalonia desktop
