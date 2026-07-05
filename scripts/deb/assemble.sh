@@ -64,6 +64,26 @@ case "$TOOL" in
     mkdir -p "$SRC/src"
     tar -xJf "$WORK/src.tar.xz" -C "$SRC/src"
     ;;
+  mpf)
+    # Three self-contained .NET binaries from one rolling release (mirrors
+    # fedora/mpf): MPF.Check at the top, MPF.CLI under cli/, MPF.Avalonia
+    # under gui/. Each of cli/ and gui/ also carries a bundled Programs/
+    # dumper tree (~tens of MB) that we drop — the package resolves the
+    # system-installed redumper / aaru5 / discimagecreator via PATH instead.
+    B="https://github.com/SabreTools/MPF/releases/download/${TAG}"
+    curl -fsSL -o "$WORK/check.zip" "$B/MPF.Check_net10.0_linux-x64_release.zip"
+    curl -fsSL -o "$WORK/cli.zip"   "$B/MPF.CLI_net10.0_linux-x64_release.zip"
+    curl -fsSL -o "$WORK/gui.zip"   "$B/MPF.Avalonia_net10.0_linux-x64_release.zip"
+    unzip -q "$WORK/check.zip" -d "$SRC"
+    mkdir -p "$SRC/cli" "$SRC/gui"
+    unzip -q "$WORK/cli.zip" -d "$SRC/cli"
+    unzip -q "$WORK/gui.zip" -d "$SRC/gui"
+    rm -rf "$SRC/cli/Programs" "$SRC/gui/Programs"
+    # upstream names the GUI binary "MPF"; install it as MPF.Avalonia so the
+    # role is obvious on disk (parity with the RPM).
+    mv "$SRC/gui/MPF" "$SRC/gui/MPF.Avalonia"
+    chmod 0755 "$SRC/MPF.Check" "$SRC/cli/MPF.CLI" "$SRC/gui/MPF.Avalonia"
+    ;;
   *)
     echo "no fetch recipe for tool '$TOOL' yet" >&2; exit 1 ;;
 esac

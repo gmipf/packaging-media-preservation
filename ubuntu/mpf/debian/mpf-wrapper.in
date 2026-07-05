@@ -1,0 +1,57 @@
+#!/bin/sh
+# MPF launcher wrapper. Seeds AND heals ~/.config/mpf/config.json so the three
+# dumper-path keys are always present and resolvable. Bare tool names are
+# seeded (aaru5, DiscImageCreator.out, redumper): MPF resolves a bare name
+# through its runtime directory and $PATH, so the config stays valid wherever
+# the distro installs the dumpers and keeps working after the user deletes
+# config.json. @TARGET@ is substituted per role at package build time.
+config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/mpf"
+config="$config_dir/config.json"
+aaru_p=aaru5
+dic_p=DiscImageCreator.out
+red_p=redumper
+mkdir -p "$config_dir" 2>/dev/null
+
+# Does a configured tool value resolve the way MPF resolves it? A value with a
+# separator must exist as a file; a bare name must be found on $PATH.
+resolves() {
+    case "$1" in
+        "")  return 1 ;;
+        */*) [ -e "$1" ] ;;
+        *)   command -v "$1" >/dev/null 2>&1 ;;
+    esac
+}
+
+if [ ! -s "$config" ]; then
+    cat > "$config" <<JSON
+{
+  "AaruPath": "$aaru_p",
+  "DiscImageCreatorPath": "$dic_p",
+  "RedumperPath": "$red_p"
+}
+JSON
+elif command -v jq >/dev/null 2>&1; then
+    ca=$(jq -r '.AaruPath // ""' "$config" 2>/dev/null)
+    cd_=$(jq -r '.DiscImageCreatorPath // ""' "$config" 2>/dev/null)
+    cr=$(jq -r '.RedumperPath // ""' "$config" 2>/dev/null)
+    fa=0; fd=0; fr=0
+    resolves "$ca"  || fa=1
+    resolves "$cd_" || fd=1
+    resolves "$cr"  || fr=1
+    if [ $((fa + fd + fr)) -gt 0 ]; then
+        tmp=$(mktemp -p "$config_dir" .config.json.XXXXXX 2>/dev/null)
+        if [ -n "$tmp" ] && jq \
+            --arg ap "$aaru_p" --arg dp "$dic_p" --arg rp "$red_p" \
+            --argjson fa "$fa" --argjson fd "$fd" --argjson fr "$fr" '
+            (if $fa == 1 then .AaruPath = $ap else . end)
+            | (if $fd == 1 then .DiscImageCreatorPath = $dp else . end)
+            | (if $fr == 1 then .RedumperPath = $rp else . end)
+            ' "$config" > "$tmp" 2>/dev/null; then
+            mv "$tmp" "$config"
+        else
+            [ -n "$tmp" ] && rm -f "$tmp"
+        fi
+    fi
+fi
+
+exec @TARGET@ "$@"

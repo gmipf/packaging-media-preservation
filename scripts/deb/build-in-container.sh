@@ -30,7 +30,10 @@ echo ":: dpkg-buildpackage (source + binary, unsigned)"
 
 echo ":: collecting artifacts into /out"
 mkdir -p "$OUT"
-cp -v "$WORK"/${TOOL}_*.deb "$WORK"/${TOOL}_*.dsc "$WORK"/${TOOL}_*.orig.tar.* \
+# ${TOOL}*.deb (not ${TOOL}_*.deb) so multi-binary sources also collect their
+# sub-package .debs, e.g. mpf -> mpf-check_*, mpf-cli_*, mpf-gui_* (hyphen, not
+# the underscore of the source-named artifacts).
+cp -v "$WORK"/${TOOL}*.deb "$WORK"/${TOOL}_*.dsc "$WORK"/${TOOL}_*.orig.tar.* \
       "$WORK"/${TOOL}_*.debian.tar.* "$WORK"/${TOOL}_*.changes "$WORK"/${TOOL}_*.buildinfo \
       "$OUT/" 2>/dev/null || true
 

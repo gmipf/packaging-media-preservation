@@ -1,0 +1,113 @@
+Source: mpf
+Section: utils
+Priority: optional
+Maintainer: gmipf <gmipf64@gmail.com>
+Build-Depends: debhelper-compat (= 13),
+               libicu-dev
+Standards-Version: 4.6.2
+Homepage: https://github.com/SabreTools/MPF
+Rules-Requires-Root: no
+Vcs-Git: https://github.com/gmipf/packaging-media-preservation.git
+Vcs-Browser: https://github.com/gmipf/packaging-media-preservation
+
+Package: mpf
+Architecture: all
+Depends: ${misc:Depends},
+         mpf-check (= ${source:Version}),
+         mpf-cli (= ${source:Version}),
+         mpf-gui (= ${source:Version})
+Description: Media Preservation Frontend suite (metapackage)
+ Media Preservation Frontend (MPF) is a suite of tools that drives the
+ optical-media dumping workflow used by the Redump preservation project:
+ .
+   * mpf-check  log validator + submission-info writer
+   * mpf-cli    headless dump orchestrator
+   * mpf-gui    Avalonia desktop frontend
+ .
+ This metapackage installs all three. Install the individual packages if you
+ only need part of the suite.
+
+Package: mpf-check
+Architecture: amd64
+# Self-contained .NET binary: dh_shlibdeps sees only the apphost's own NEEDED,
+# so the dlopened .NET runtime libs are declared by hand (parity with the RPM).
+# ${dep:icu} is filled per-series at build (libicu74 noble / libicu70 jammy).
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+         ${dep:icu},
+         libkrb5-3,
+         libgssapi-krb5-2,
+         libssl3,
+         zlib1g,
+         libunwind8,
+         libcap2-bin,
+         jq
+Description: Validator that generates Redump !submissionInfo.txt from dump logs
+ MPF.Check reads the log files next to a finished optical-media dump and
+ writes a !submissionInfo.txt alongside in the Redump submission format.
+ Supported dump sources include redumper, Aaru, DiscImageCreator, Cleanrip
+ and UmdImageCreator.
+ .
+ Optional copy-protection scanning is available via --path/--scan; that path
+ uses vendor SCSI commands and requires cap_sys_rawio, which is set on the
+ shipped binary at install time so no sudo is needed.
+ .
+ Self-contained .NET binary, repackaged unchanged from the upstream rolling
+ release.
+
+Package: mpf-cli
+Architecture: amd64
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+         ${dep:icu},
+         libkrb5-3,
+         libgssapi-krb5-2,
+         libssl3,
+         zlib1g,
+         libunwind8,
+         libcap2-bin,
+         jq
+Recommends: redumper, aaru5, discimagecreator
+Description: Headless dump orchestrator (drives redumper, aaru, discimagecreator)
+ MPF.CLI orchestrates the disc-dumping workflow from a terminal: it drives the
+ selected backend (redumper, aaru or discimagecreator) through the dump,
+ post-processes the output and writes the submission info.
+ .
+ cap_sys_rawio is set on the shipped binary for vendor-SCSI access. The bundled
+ Programs/ dumper folder from the upstream zip is dropped at package build time
+ in favour of the system-installed dumpers; mpf-cli resolves the backend binary
+ via PATH (seeded into ~/.config/mpf/config.json by the wrapper).
+ .
+ Self-contained .NET binary, repackaged from the upstream rolling release.
+
+Package: mpf-gui
+Architecture: amd64
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+         ${dep:icu},
+         libkrb5-3,
+         libgssapi-krb5-2,
+         libssl3,
+         zlib1g,
+         libunwind8,
+         libcap2-bin,
+         jq,
+         hicolor-icon-theme,
+         desktop-file-utils
+Recommends: redumper, aaru5, discimagecreator,
+            libx11-6, libice6, libsm6, libxext6, libxi6, libxrandr2,
+            libxcursor1, libgl1, libfontconfig1, libfreetype6
+Description: Avalonia desktop frontend for the MPF disc-dumping workflow
+ MPF.Avalonia is the desktop GUI of the MPF suite. It drives the disc-dumping
+ workflow with a graphical interface built on Avalonia (.NET cross-platform UI
+ toolkit).
+ .
+ cap_sys_rawio is set on the shipped binary for vendor-SCSI access. The bundled
+ Programs/ dumper folder is dropped at build time in favour of the system-
+ installed dumpers, resolved via PATH.
+ .
+ Avalonia 11.x ships only the X11 backend; on Wayland sessions the GUI runs
+ through Xwayland. The X11 runtime libraries are weak dependencies so headless
+ installs of the other subpackages stay lean.
+ .
+ Self-contained .NET binary, repackaged from the upstream rolling release.

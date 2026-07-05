@@ -1,0 +1,20 @@
+mpf (3.8.2~20260703023433.eb239b60-1) UNRELEASED; urgency=medium
+
+  * Initial Ubuntu PPA packaging of the MPF suite (rolling snapshot
+    20260703023433, upstream commit eb239b60): a repackage of the three
+    upstream prebuilt linux-x64 self-contained .NET binaries — MPF.Check,
+    MPF.CLI and MPF.Avalonia — into mpf-check, mpf-cli and mpf-gui, with an
+    mpf meta-package pulling in all three.
+  * Each real binary is installed under /usr/lib/mpf-<role>/, driven by a
+    /usr/bin/mpf-<role> wrapper that seeds and heals the three dumper paths
+    (aaru5 / DiscImageCreator.out / redumper) in ~/.config/mpf/config.json so
+    they always resolve after a fresh install or a stale config.
+  * Drop the bundled Programs/Creator|Aaru|Redumper trees from the CLI and GUI
+    zips; the packages resolve the system-installed redumper / aaru5 /
+    discimagecreator via PATH instead.
+  * Ship the mpf-gui.desktop launcher and hicolor icons (32-512), and
+    handwritten mpf-check(1)/mpf-cli(1)/mpf-gui(1) manpages.
+  * Grant cap_sys_rawio on each binary via postinst so the vendor-SCSI
+    copy-protection scan path works without sudo.
+
+ -- gmipf <gmipf64@gmail.com>  Sun, 05 Jul 2026 16:20:00 +0200

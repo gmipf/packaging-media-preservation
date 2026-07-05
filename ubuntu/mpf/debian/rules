@@ -1,0 +1,43 @@
+#!/usr/bin/make -f
+#
+# mpf — repackage of three upstream self-contained .NET binaries (Check, CLI,
+# Avalonia GUI) from one rolling release. Nothing is compiled; the /usr/bin
+# wrappers are generated from a shared template and the dlopened .NET runtime
+# deps are declared by hand (manpages are static).
+
+%:
+	dh $@
+
+override_dh_auto_test:
+
+# Do not strip the self-contained single-file .NET binaries — stripping would
+# corrupt them and diverge from the published release.
+override_dh_strip:
+
+override_dh_dwz:
+
+# Generate the three /usr/bin wrappers from the shared template (seed/heal the
+# dumper paths in ~/.config/mpf/config.json) and lay down the GUI desktop entry
+# and hicolor icons — all packaging artifacts, absent from the upstream zips.
+execute_after_dh_install:
+	install -d debian/mpf-check/usr/bin
+	sed 's|@TARGET@|/usr/lib/mpf-check/MPF.Check|' debian/mpf-wrapper.in > debian/mpf-check/usr/bin/mpf-check
+	chmod 0755 debian/mpf-check/usr/bin/mpf-check
+	install -d debian/mpf-cli/usr/bin
+	sed 's|@TARGET@|/usr/lib/mpf-cli/MPF.CLI|' debian/mpf-wrapper.in > debian/mpf-cli/usr/bin/mpf-cli
+	chmod 0755 debian/mpf-cli/usr/bin/mpf-cli
+	install -d debian/mpf-gui/usr/bin
+	sed 's|@TARGET@|/usr/lib/mpf-gui/MPF.Avalonia|' debian/mpf-wrapper.in > debian/mpf-gui/usr/bin/mpf-gui
+	chmod 0755 debian/mpf-gui/usr/bin/mpf-gui
+	install -D -m0644 debian/mpf-gui.desktop debian/mpf-gui/usr/share/applications/mpf-gui.desktop
+	for sz in 32 64 128 256 512; do \
+	    install -D -m0644 debian/mpf-$$sz.png debian/mpf-gui/usr/share/icons/hicolor/$${sz}x$${sz}/apps/mpf.png; \
+	done
+
+# The ICU runtime package carries its soname in its name (libicu74 noble /
+# libicu70 jammy), so resolve it per-series and feed control's ${dep:icu} for
+# each of the three self-contained subpackages.
+override_dh_gencontrol:
+	ICU=$$(dpkg-query -W -f='$${Package}\n' 'libicu[0-9]*' 2>/dev/null | grep -E '^libicu[0-9]+$$' | sort -V | tail -n1); \
+	for p in mpf-check mpf-cli mpf-gui; do echo "dep:icu=$$ICU" >> debian/$$p.substvars; done
+	dh_gencontrol

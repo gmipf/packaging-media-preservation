@@ -1,0 +1,21 @@
+#!/bin/sh
+# postinst — grant cap_sys_rawio to the MPF.Check binary so the vendor-SCSI
+# copy-protection scan (--path/--scan) works without sudo (parity with the RPM
+# %caps). Best-effort: skipped without failing on filesystems that do not
+# support file capabilities.
+set -e
+
+case "$1" in
+    configure)
+        if command -v setcap >/dev/null 2>&1; then
+            setcap cap_sys_rawio+ep /usr/lib/mpf-check/MPF.Check 2>/dev/null || \
+                echo "mpf-check: could not set cap_sys_rawio (filesystem may" \
+                     "not support file capabilities); the copy-protection scan" \
+                     "will need sudo." >&2
+        fi
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0

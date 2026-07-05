@@ -1,0 +1,19 @@
+#!/bin/sh
+# postinst — grant cap_sys_rawio to the MPF.Avalonia binary so vendor-SCSI
+# commands work without sudo (parity with the RPM %caps). Best-effort: skipped
+# without failing on filesystems that do not support file capabilities.
+set -e
+
+case "$1" in
+    configure)
+        if command -v setcap >/dev/null 2>&1; then
+            setcap cap_sys_rawio+ep /usr/lib/mpf-gui/MPF.Avalonia 2>/dev/null || \
+                echo "mpf-gui: could not set cap_sys_rawio (filesystem may not" \
+                     "support file capabilities); run with sudo if needed." >&2
+        fi
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0
