@@ -80,8 +80,8 @@ registered there:
 
 ```sh
 # in the mp-deb-builder container, on the assembled source tree:
-debuild -S -sa -k<KEYID>      # signed *source* package
-dput ppa:gmipf/media-preservation ../<tool>_<ver>_source.changes
+debuild -S -sa -kE2E956CC4B250741   # signed *source* package (dedicated packaging key)
+dput ppa:dreunion61/media-preservation ../<tool>_<ver>_source.changes
 ```
 
 A GitHub-Actions watcher (mirroring the `fedora/` watchers) will later rebuild
