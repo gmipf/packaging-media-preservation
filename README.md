@@ -1,8 +1,11 @@
 # packaging-media-preservation
 
-Distribution packaging recipes (specs, debian rules, PKGBUILDs, …) for the
+Distribution packaging recipes (RPM specs, Debian rules) for the
+media-preservation tools, published to the
 [`gmipf/media-preservation`](https://copr.fedorainfracloud.org/coprs/gmipf/media-preservation/)
-COPR repository.
+COPR repository (Fedora / EPEL) and the
+[`ppa:dreunion61/media-preservation`](https://launchpad.net/~dreunion61/+archive/ubuntu/media-preservation)
+Launchpad PPA (Ubuntu).
 
 **This repo does *not* contain upstream tool source code** — only the recipes
 needed to build the tools into distro packages. Upstream source lives at the
@@ -10,15 +13,19 @@ respective project URLs (see below).
 
 ## Tools
 
-| Tool | Update mode | Fedora | EPEL | openSUSE | Debian | Arch | Alpine |
-|---|---|---|---|---|---|---|---|
-| [redumper](https://github.com/superg/redumper) | auto-tracked hourly on new `b<N>` tags (binary repackage) | ✅ | ✅ | — | — | — | — |
-| [MPF suite](https://github.com/SabreTools/MPF) | rolling, auto-tracked hourly (binary repackage); meta-package `mpf` pulls in `mpf-check` (validator), `mpf-cli` (headless orchestrator) and `mpf-gui` (Avalonia desktop UI) | ✅ | ✅ | — | — | — | — |
-| [DiscImageCreator suite](https://github.com/saramibreak/DiscImageCreator) | auto-tracked hourly on new master commits (built from source — upstream binary links against EOL OpenSSL 1.1); bundles DIC + EccEdc + DVDAuth + unscrambler in one RPM | ✅ | ✅ | — | — | — | — |
-| [Aaru](https://github.com/aaru-dps/Aaru) | auto-tracked hourly on new `v6.0.0-alpha.<N>` tags (binary repackage); CLI + Avalonia GUI ship as one binary, launch the GUI via `aaru gui` | ✅ | ✅ | — | — | — | — |
+| Tool | Update mode | [Fedora][copr] | [EPEL][copr] | [Ubuntu][ppa] | openSUSE |
+|---|---|---|---|---|---|
+| [redumper](https://github.com/superg/redumper) | auto-tracked hourly on new `b<N>` tags (binary repackage) | ✅ | ✅ | ✅ | — |
+| [MPF suite](https://github.com/SabreTools/MPF) | rolling, auto-tracked hourly (binary repackage); meta-package `mpf` pulls in `mpf-check` (validator), `mpf-cli` (headless orchestrator) and `mpf-gui` (Avalonia desktop UI) | ✅ | ✅ | ✅ | — |
+| [DiscImageCreator suite](https://github.com/saramibreak/DiscImageCreator) | auto-tracked hourly on new master commits (built from source — upstream binary links against EOL OpenSSL 1.1); bundles DIC + EccEdc + DVDAuth + unscrambler in one package | ✅ | ✅ | ✅ | — |
+| [Aaru](https://github.com/aaru-dps/Aaru) | auto-tracked hourly on new `v6.0.0-alpha.<N>` tags (binary repackage); CLI + Avalonia GUI ship as one binary, launch the GUI via `aaru gui` | ✅ | ✅ | ✅ | — |
 
-For the currently shipping versions and full install instructions,
-see the [COPR project page](https://copr.fedorainfracloud.org/coprs/gmipf/media-preservation/).
+[copr]: https://copr.fedorainfracloud.org/coprs/gmipf/media-preservation/
+[ppa]: https://launchpad.net/~dreunion61/+archive/ubuntu/media-preservation
+
+The **Fedora** / **EPEL** column headers link to the COPR project and **Ubuntu**
+to the Launchpad PPA; the openSUSE (OBS) lane is planned. For the currently
+shipping versions and full install instructions, see those pages.
 
 ## Layout
 
@@ -54,17 +61,15 @@ see the [COPR project page](https://copr.fedorainfracloud.org/coprs/gmipf/media-
         └── .upstream-tag                   # last seen upstream tag (written by watcher)
 ```
 
-Further distro lanes follow the same `<distro>/<tool>/` pattern. The Ubuntu
-lane (Launchpad PPA) is scaffolded — see [`ubuntu/README.md`](ubuntu/README.md):
+The Ubuntu lane (Launchpad PPA) is live — see [`ubuntu/README.md`](ubuntu/README.md):
 
 ```
 ubuntu/<tool>/debian/         # debian/control, debian/rules, debian/changelog (Launchpad PPA)
-arch/<tool>/PKGBUILD          # AUR (planned)
-alpine/<tool>/APKBUILD        # Alpine (planned)
 ```
 
-One repo, all distros. Each distro folder uses that distro's native tooling
-conventions — no custom abstraction layer on top.
+An openSUSE (OBS) lane is planned and will reuse the specs' `%if 0%{?suse_version}`
+branches. Each distro folder uses that distro's native tooling conventions —
+no custom abstraction layer on top.
 
 ## Automation
 
@@ -72,6 +77,12 @@ Builds are driven by [Packit](https://packit.dev/). Every commit that
 touches a tool's `fedora/<tool>/` path triggers Packit to fetch sources, build
 the SRPM, and ship a build to COPR project `gmipf/media-preservation`. No
 manual `copr-cli build` needed.
+
+The same per-tool watchers also drive the Ubuntu PPA: on an upstream bump they
+advance `ubuntu/<tool>/debian/changelog` in the same commit, then build and
+`dput` the signed source package (noble + jammy) to the Launchpad PPA, which
+compiles the `.deb`s on its own build farm. See
+[`ubuntu/README.md`](ubuntu/README.md).
 
 Each package is built for `fedora-all-x86_64` and `epel-all-x86_64` — x86_64
 only, since every spec is `ExclusiveArch: x86_64` and the repackaged tools have
@@ -123,8 +134,8 @@ upstream releases and let Packit handle the rebuild:
   package version is simply the commit's UTC timestamp plus short SHA
   (`<YYYYMMDDHHMMSS>.<short-SHA>`): monotonic, pinned, no release-tag anchor.
   Built from source: the upstream Linux release binary links against
-  EOL OpenSSL 1.1 (no longer in default Fedora/Ubuntu/Debian/Arch
-  repos), so we recompile against OpenSSL 3 ourselves until upstream
+  EOL OpenSSL 1.1 (no longer in default Fedora / Ubuntu repos), so we
+  recompile against OpenSSL 3 ourselves until upstream
   ([saramibreak/DiscImageCreator#321](https://github.com/saramibreak/DiscImageCreator/issues/321))
   migrates or static-links.
 - **aaru** is on the v6.0.0 alpha track; upstream publishes a new
@@ -150,13 +161,24 @@ On enterprise-Linux clones the COPR `dnf` plugin lives in `dnf-plugins-core`
 in the base/AppStream repos — so EPEL does **not** need to be enabled to
 install them.
 
-### openSUSE and Ubuntu (planned, not yet available)
+### Ubuntu 24.04 (noble) and 22.04 (jammy)
 
-openSUSE packages are not built here: COPR's openSUSE support is limited to an
-EOL Leap 15.6 and a currently-broken Tumbleweed, with no Leap 16.0 chroot, so
-openSUSE will be published natively on the
-[openSUSE Build Service](https://build.opensuse.org/) (OBS) instead.
-Ubuntu/Debian packages will come via a Launchpad PPA. Neither is available yet.
+```sh
+sudo add-apt-repository ppa:dreunion61/media-preservation
+sudo apt update
+sudo apt install redumper discimagecreator aaru mpf
+```
+
+See [`ubuntu/README.md`](ubuntu/README.md) for how the PPA source packages are
+built and signed.
+
+### openSUSE (planned, not yet available)
+
+openSUSE is not built on COPR: its openSUSE support is limited to an EOL Leap
+15.6 and a currently-broken Tumbleweed, with no Leap 16.0 chroot, so openSUSE
+will be published natively on the
+[openSUSE Build Service](https://build.opensuse.org/) (OBS) instead — planned,
+not yet available.
 
 `mpf` is a meta-package; it pulls in `mpf-check` (log validator),
 `mpf-cli` (headless dump orchestrator) and `mpf-gui` (Avalonia desktop
