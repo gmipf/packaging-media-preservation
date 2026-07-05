@@ -1,0 +1,23 @@
+#!/bin/sh
+# postinst — grant cap_sys_rawio to the real aaru binary so vendor SCSI
+# passthrough commands work without sudo (parity with the RPM's %caps). The
+# capability is set on the real binary under /usr/lib/aaru/, not the
+# /usr/bin/aaru symlink; the kernel follows the symlink on exec. Best-effort:
+# on filesystems that do not support file capabilities (some overlay /
+# container setups) this is skipped without failing the install.
+set -e
+
+case "$1" in
+    configure)
+        if command -v setcap >/dev/null 2>&1; then
+            setcap cap_sys_rawio+ep /usr/lib/aaru/aaru 2>/dev/null || \
+                echo "aaru: could not set cap_sys_rawio (filesystem may not" \
+                     "support file capabilities); run aaru with sudo or add" \
+                     "the capability manually." >&2
+        fi
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0

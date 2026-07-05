@@ -47,6 +47,23 @@ case "$TOOL" in
       "https://github.com/aaru-dps/Aaru/releases/download/${TAG}/aaru-${VER}_linux_amd64.tar.xz"
     tar -xJf "$WORK/aaru5.tar.xz" -C "$SRC"
     ;;
+  aaru)
+    # Two upstream tarballs (mirrors fedora/aaru): the binary tarball gives
+    # the self-contained `aaru` single-file binary + LICENSE/README/Changelog;
+    # the source tarball provides icons, the aaruformat MIME xml and the
+    # desktop entry. The upstream ASSET version keeps the hyphen (6.0.0-alpha.19)
+    # while the Debian VER uses the tilde (6.0.0~alpha.19) — different strings.
+    # We merge both into one .orig tarball: binary files at top, source tree
+    # under src/, so no Debian multi-component-orig machinery is needed.
+    ASSETVER=${TAG#v}
+    curl -fsSL -o "$WORK/bin.tar.xz" \
+      "https://github.com/aaru-dps/Aaru/releases/download/${TAG}/aaru-${ASSETVER}_linux_amd64.tar.xz"
+    curl -fsSL -o "$WORK/src.tar.xz" \
+      "https://github.com/aaru-dps/Aaru/releases/download/${TAG}/aaru-src-${ASSETVER}.tar.xz"
+    tar -xJf "$WORK/bin.tar.xz" -C "$SRC"
+    mkdir -p "$SRC/src"
+    tar -xJf "$WORK/src.tar.xz" -C "$SRC/src"
+    ;;
   *)
     echo "no fetch recipe for tool '$TOOL' yet" >&2; exit 1 ;;
 esac

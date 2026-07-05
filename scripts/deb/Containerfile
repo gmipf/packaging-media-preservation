@@ -17,4 +17,12 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends \
         build-essential debhelper devscripts dput lintian fakeroot \
         curl ca-certificates unzip xz-utils libcap2-bin \
+        gawk libicu-dev libkrb5-dev libssl-dev zlib1g-dev libunwind-dev \
  && rm -rf /var/lib/apt/lists/*
+# The trailing block (gawk + the -dev packages) is only needed by the
+# self-contained .NET tools (aaru v6, mpf): their prebuilt binary is run at
+# build time to generate its manpage from --help, so its runtime libraries
+# (ICU, krb5, OpenSSL, zlib, libunwind) must be present, and the same -dev
+# packages are the series-agnostic Build-Depends that pull the right runtime
+# SONAME on each series (libicu-dev -> libicu74 on noble / libicu70 on jammy).
+# redumper / aaru5 do not use them; a shared image is simpler than per-tool ones.

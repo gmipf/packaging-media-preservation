@@ -1,0 +1,122 @@
+.TH AARU 1 "@DATE@" "Aaru @VERSION@" "User Commands"
+.SH NAME
+aaru \- data preservation suite for optical, magnetic and solid-state media
+.SH SYNOPSIS
+.B aaru
+.RI [ command ]
+.RI [ options ...]
+.PP
+.B aaru gui
+.SH DESCRIPTION
+.B Aaru
+is a cross-platform data preservation suite. It dumps optical and
+removable media (CD, DVD, HD-DVD, Blu-ray, UMD, GameCube/Wii optical,
+floppy disks, magneto-optical) to byte-perfect images, decodes their
+filesystems, validates checksums, and produces metadata in the CICM
+format used by preservation projects.
+.PP
+The same
+.B aaru
+binary serves both a command-line interface (default) and an
+Avalonia-based graphical interface, the latter launched as
+.BR "aaru gui" .
+.SH DRIVE ACCESS
+.B aaru
+ships with the
+.B cap_sys_rawio
+file capability set, so vendor SCSI passthrough commands work without
+sudo.
+.PP
+The invoking user still needs read/write access to the device node
+.RB ( /dev/sr* ,
+.BR /dev/sg* ,
+removable USB or floppy nodes). On a desktop session at the local seat
+this is granted automatically via systemd-logind's
+.B uaccess
+ACL. For headless use (SSH, cron, systemd
+.BR \-\-user ,
+NFS-mounted device nodes) add the user to the
+.B cdrom
+group:
+.PP
+.RS
+.EX
+sudo usermod -aG cdrom $USER
+newgrp cdrom
+.EE
+.RE
+.SH "COMMAND REFERENCE"
+The following is the complete command tree of the
+.B aaru
+binary shipped in this package, reproduced verbatim from its
+.B \-\-help
+output. It is regenerated from the binary at package build time, so it
+always matches the installed version; run
+.B aaru \fICOMMAND\fB \-\-help
+for the same text interactively.
+.PP
+@AARU_COMMAND_REFERENCE@
+.SH FILES
+.TP
+.I /usr/bin/aaru
+Symlink to the real binary
+.IR /usr/lib/aaru/aaru ;
+the kernel follows it for
+.B cap_sys_rawio
+inheritance on exec.
+.TP
+.I /usr/lib/aaru/
+Real binary, dependent .NET assemblies, native libraries (SkiaSharp,
+Avalonia native), and runtime-specific extras.
+.TP
+.I /usr/share/applications/aaru.desktop
+Desktop launcher entry (
+.B Exec=aaru gui
+) that picks up the Avalonia GUI.
+.TP
+.I ~/.config/Aaru.json
+Per-user settings written by
+.BR "aaru configure" .
+.TP
+.I ~/.local/share/Aaru/
+Per-user device/media database, statistics and device reports.
+.TP
+.I /usr/share/doc/aaru/
+Upstream README, Changelog and contributor guide.
+.SH NOTES
+The command reference above is generated mechanically from the shipped
+binary's
+.B \-\-help
+output during packaging, so it cannot drift from the installed version.
+The surrounding sections (drive access, files, see also) are
+maintained by hand as part of the distribution packaging \(em upstream
+provides no manpage.
+.SH SEE ALSO
+.BR aaru5 (1),
+.BR redumper (1),
+.BR discimagecreator (1)
+.PP
+Upstream documentation, bug tracker and release notes:
+.UR https://github.com/aaru-dps/Aaru
+.UE .
+.SH AUTHOR
+Upstream lead: Natalia Portillo
+.RB ( https://github.com/claunia ).
+.PP
+Distribution packaging maintained as part of the media-preservation
+packaging repository
+.I gmipf/packaging-media-preservation .
+.SH LICENSE
+The
+.B aaru
+binary aggregates code under multiple licenses:
+.IP \(bu 2
+GPL-3.0-or-later (main application and most subprojects)
+.IP \(bu 2
+LGPL-2.1-or-later (selected library components)
+.IP \(bu 2
+MIT (third-party vendored components)
+.PP
+Each component retains its individual license; full license texts are
+under
+.IR /usr/share/doc/aaru/ .

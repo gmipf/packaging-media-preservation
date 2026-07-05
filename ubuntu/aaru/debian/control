@@ -1,0 +1,57 @@
+Source: aaru
+Section: utils
+Priority: optional
+Maintainer: gmipf <gmipf64@gmail.com>
+Build-Depends: debhelper-compat (= 13),
+               gawk,
+               libicu-dev,
+               libkrb5-dev,
+               libssl-dev,
+               zlib1g-dev,
+               libunwind-dev
+Standards-Version: 4.6.2
+Homepage: https://github.com/aaru-dps/Aaru
+Rules-Requires-Root: no
+Vcs-Git: https://github.com/gmipf/packaging-media-preservation.git
+Vcs-Browser: https://github.com/gmipf/packaging-media-preservation
+
+Package: aaru
+Architecture: amd64
+# Self-contained single-file .NET binary: dh_shlibdeps only sees the apphost's
+# own NEEDED entries (libc/libstdc++), not the runtime libraries the extracted
+# .NET runtime loads by dlopen at run time, so those are declared by hand
+# (parity with fedora/aaru's Requires). ${dep:icu} is filled in per-series at
+# build (libicu74 on noble, libicu70 on jammy) because the ICU runtime package
+# carries its soname in its name; the other runtime libs have stable names.
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+         ${dep:icu},
+         libkrb5-3,
+         libgssapi-krb5-2,
+         libssl3,
+         zlib1g,
+         libunwind8,
+         libcap2-bin,
+         shared-mime-info,
+         desktop-file-utils,
+         hicolor-icon-theme
+# The same binary serves the Avalonia GUI (`aaru gui`); Avalonia 11.x targets
+# X11 (covers Wayland via XWayland). Weak deps so headless installs stay lean.
+Recommends: libx11-6, libice6, libsm6, libxext6, libxi6, libxrandr2,
+            libxcursor1, libgl1, libfontconfig1, libfreetype6
+Description: data preservation suite for optical, magnetic and solid-state media
+ Aaru is a data preservation suite for optical, magnetic and solid-state
+ media. It dumps discs (CD/DVD/HD-DVD/BD/UMD/floppy/magneto-optical) to
+ byte-perfect images, decodes filesystems, validates checksums and produces
+ metadata in the CICM format used by preservation projects.
+ .
+ The single aaru binary handles both modes: the command-line entry point
+ (default) and the Avalonia desktop UI (`aaru gui`). This is the rolling v6
+ alpha; it installs alongside the stable aaru5 package without conflict
+ (separate binary name, library directory and manpage). Note that the
+ Media Preservation Frontend (MPF) drives aaru5, not this v6 alpha.
+ .
+ The upstream self-contained .NET binary is repackaged unchanged. On install
+ it is given the cap_sys_rawio file capability so vendor SCSI passthrough
+ commands work without sudo; a shipped udev rule grants the cdrom group
+ access to USB floppy drives for root-less floppy dumping.

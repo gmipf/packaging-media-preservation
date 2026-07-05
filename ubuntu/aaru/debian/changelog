@@ -1,0 +1,23 @@
+aaru (6.0.0~alpha.19-1) UNRELEASED; urgency=medium
+
+  * Initial Ubuntu PPA packaging of aaru (rolling v6 alpha): a repackage of the
+    upstream prebuilt linux_amd64 self-contained .NET single-file binary (no
+    recompilation — building from source needs NuGet at build time, which the
+    Launchpad build farm does not grant).
+  * Two upstream tarballs are merged into one .orig: the binary tarball
+    provides `aaru` and the LICENSE/README/Changelog tree; the source tarball
+    provides the icons, the aaruformat MIME definition and the desktop entry.
+  * Install the real binary under /usr/lib/aaru/, exposed on PATH via a
+    /usr/bin/aaru symlink so the kernel propagates the cap_sys_rawio file
+    capability across exec. The same binary serves the CLI and `aaru gui`.
+  * Generate the aaru(1) manpage at build time by walking the shipped binary's
+    --help command tree and splicing it into a curated template (self-healing:
+    ships the curated page if the binary cannot run on the builder).
+  * Ship a udev rule (70-aaru-floppy.rules) granting the cdrom group access to
+    USB floppy block devices so `aaru media dump` reads floppies without root.
+    Package-unique filename so it never collides with the aaru5 (stable) or
+    discimagecreator rules, keeping all three co-installable.
+  * Grant cap_sys_rawio on the binary via postinst so vendor SCSI passthrough
+    commands work without sudo.
+
+ -- gmipf <gmipf64@gmail.com>  Sun, 05 Jul 2026 15:40:00 +0200

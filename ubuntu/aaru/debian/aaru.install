@@ -1,0 +1,8 @@
+aaru                       usr/lib/aaru/
+src/Aaru/aaruformat.xml    usr/share/mime/packages/
+src/Aaru/aaru.desktop      usr/share/applications/
+src/icons/32x32/aaru.png   usr/share/icons/hicolor/32x32/apps/
+src/icons/64x64/aaru.png   usr/share/icons/hicolor/64x64/apps/
+src/icons/128x128/aaru.png usr/share/icons/hicolor/128x128/apps/
+src/icons/256x256/aaru.png usr/share/icons/hicolor/256x256/apps/
+src/icons/512x512/aaru.png usr/share/icons/hicolor/512x512/apps/

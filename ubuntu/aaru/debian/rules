@@ -1,0 +1,42 @@
+#!/usr/bin/make -f
+#
+# aaru (v6) — repackage of the upstream prebuilt self-contained .NET single-file
+# binary. Nothing is compiled; the "build" step generates the manpage from the
+# binary's --help output.
+
+# Debian upstream version (e.g. 6.0.0~alpha.19), from the changelog minus the
+# -revision (and any ~series suffix a per-series build appended).
+UPSTREAM_VERSION := $(shell dpkg-parsechangelog -SVersion | sed -e 's/-[^-]*$$//')
+
+%:
+	dh $@
+
+# No compile. Generate the aaru(1) manpage: aaru-manpage.sh walks the shipped
+# binary's --help command tree and splices it into the curated template. It is
+# self-healing — if the prebuilt binary cannot start on this builder it emits
+# the curated page with a short note instead of failing the build. The upstream
+# version is passed as the .TH fallback for that degraded case.
+override_dh_auto_build:
+	sh debian/aaru-manpage.sh ./aaru debian/aaru.1.in "$(UPSTREAM_VERSION)" > debian/aaru.1
+
+override_dh_auto_test:
+
+# Do not touch the upstream release binary: it is a self-contained single-file
+# .NET publish shipped as-is; stripping / dwz would corrupt it and make the
+# packaged binary differ from the published release.
+override_dh_strip:
+
+override_dh_dwz:
+
+# The ICU runtime package carries its soname in the package name (libicu74 on
+# noble, libicu70 on jammy), so resolve it per-series from what libicu-dev
+# pulled into the build environment and feed it to control's ${dep:icu}.
+override_dh_gencontrol:
+	echo "dep:icu=$$(dpkg-query -W -f='$${Package}\n' 'libicu[0-9]*' 2>/dev/null | grep -E '^libicu[0-9]+$$' | sort -V | tail -n1)" >> debian/aaru.substvars
+	dh_gencontrol
+
+# The udev rule is a packaging artifact (not in the upstream tarballs), so it
+# lives in debian/ and is installed after dh_install has laid down the payload.
+execute_after_dh_install:
+	install -D -m0644 debian/70-aaru-floppy.rules \
+	    debian/aaru/usr/lib/udev/rules.d/70-aaru-floppy.rules
