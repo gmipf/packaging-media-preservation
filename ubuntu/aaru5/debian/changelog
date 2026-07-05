@@ -1,0 +1,19 @@
+aaru5 (5.4.2-1) UNRELEASED; urgency=medium
+
+  * Initial Ubuntu PPA packaging of aaru5: a repackage of the upstream
+    prebuilt linux_amd64 stable Aaru 5.4.2 NativeAOT release binary (no
+    recompilation — building from source needs NuGet at build time, which the
+    Launchpad build farm does not grant).
+  * Install the real binary and its private libe_sqlite3.so SQLite provider
+    under /usr/lib/aaru5/, exposed on PATH via a /usr/bin/aaru5 symlink so the
+    kernel propagates the cap_sys_rawio file capability across exec.
+  * Ship the handwritten aaru5(1) manpage; its .TH header is stamped with the
+    upstream version and the changelog date at build time.
+  * Ship a udev rule (70-aaru5-floppy.rules) granting the cdrom group access to
+    USB floppy block devices so `aaru5 media dump` reads floppies without root.
+    Package-unique filename so it never collides with the aaru (v6) or
+    discimagecreator rules, keeping all three co-installable.
+  * Grant cap_sys_rawio on the binary via postinst so vendor SCSI passthrough
+    commands (optical dumping) work without sudo.
+
+ -- gmipf <gmipf64@gmail.com>  Sun, 05 Jul 2026 15:10:00 +0200

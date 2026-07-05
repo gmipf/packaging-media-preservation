@@ -1,0 +1,34 @@
+Source: aaru5
+Section: utils
+Priority: optional
+Maintainer: gmipf <gmipf64@gmail.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.2
+Homepage: https://github.com/aaru-dps/Aaru
+Rules-Requires-Root: no
+Vcs-Git: https://github.com/gmipf/packaging-media-preservation.git
+Vcs-Browser: https://github.com/gmipf/packaging-media-preservation
+
+Package: aaru5
+Architecture: amd64
+# ${shlibs:Depends}: unlike redumper, the Aaru 5.4.x NativeAOT binary is
+# dynamically linked against the standard C/C++ runtime, so dh_shlibdeps
+# resolves its real runtime dependencies straight from the ELF (mirrors how
+# the RPM relies on rpm's automatic ELF dep generator).
+Depends: ${shlibs:Depends}, ${misc:Depends}, libcap2-bin
+Description: Aaru 5.x stable data-preservation CLI (MPF-compatible)
+ Aaru is a cross-platform data-preservation suite: it dumps optical and
+ removable media (CD, DVD, HD-DVD, Blu-ray, UMD, floppy, magneto-optical) to
+ byte-perfect images, decodes filesystems, validates checksums and writes
+ CICM metadata.
+ .
+ This package ships the stable 5.4.x command-line release as aaru5 (binary
+ /usr/bin/aaru5), the Aaru series the Media Preservation Frontend (MPF)
+ drives for floppy and optical dumping. It installs alongside a rolling
+ aaru (v6 alpha) package without conflict: separate binary name, library
+ directory and manpage. Point MPF's Aaru path at /usr/bin/aaru5.
+ .
+ The upstream NativeAOT binary is repackaged unchanged. On install it is
+ given the cap_sys_rawio file capability so vendor SCSI passthrough commands
+ work without sudo; a shipped udev rule grants the cdrom group access to USB
+ floppy drives for root-less floppy dumping.
