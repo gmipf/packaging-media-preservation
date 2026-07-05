@@ -1,8 +1,8 @@
 %global debug_package %{nil}
 
 Name:           redumper
-Version:        726
-Release:        2%{?dist}
+Version:        727
+Release:        1%{?dist}
 Summary:        A low-level byte-perfect CD disc dumper
 
 License:        GPL-3.0-only
@@ -69,6 +69,9 @@ install -m 0644 redumper.1 %{buildroot}%{_mandir}/man1/redumper.1
 %{_mandir}/man1/redumper.1*
 
 %changelog
+* Sun Jul 05 2026 gmipf <gmipf64@gmail.com> - 727-1
+- Automated sync to upstream redumper release b727; Release reset to 1.
+
 * Wed Jun 24 2026 gmipf <gmipf64@gmail.com> - 726-2
 - Stamp the upstream tag and build date into the handwritten redumper(1)
   manpage at build time (%%build sed on %%{version}), so its header always
