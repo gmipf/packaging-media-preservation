@@ -1,3 +1,9 @@
+mpf (3.8.2~20260706021400.78237d7d-1) UNRELEASED; urgency=medium
+
+  * Automated rolling-snapshot sync to upstream MPF commit 78237d7d (published 20260706021400 UTC).
+
+ -- gmipf <gmipf64@gmail.com>  Mon, 06 Jul 2026 06:11:11 +0000
+
 mpf (3.8.2~20260703023433.eb239b60-1) UNRELEASED; urgency=medium
 
   * Initial Ubuntu PPA packaging of the MPF suite (rolling snapshot
