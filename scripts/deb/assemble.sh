@@ -114,8 +114,21 @@ case "$TOOL" in
     echo "no fetch recipe for tool '$TOOL' yet" >&2; exit 1 ;;
 esac
 
-echo ":: assembling orig tarball ${TOOL}_${VER}.orig.tar.xz"
+# Deterministic orig tarball. Launchpad shares ONE immutable
+# <src>_<upstream>.orig.tar.xz across every series, so both series' source
+# uploads must ship a byte-identical orig. Without a fixed mtime, tar stamps
+# every entry (the top-level <tool>-<ver>/ dir, any mkdir'd subdirs, and
+# curl/install'd files) with the assembly-time wall clock — and the upload path
+# runs this once per series (noble, then jammy seconds later), so the two runs
+# produced different origs and Launchpad rejected the second series ("orig
+# already exists, different contents"). Pin every mtime to the changelog
+# timestamp (identical for both series: they read the same committed changelog)
+# and force the gnu format (stable across the noble/jammy container tar
+# versions) so the orig is reproducible across series, containers and re-runs.
+SOURCE_DATE_EPOCH=$(dpkg-parsechangelog -l "$RECIPE/debian/changelog" -STimestamp)
+echo ":: assembling orig tarball ${TOOL}_${VER}.orig.tar.xz (SOURCE_DATE_EPOCH=$SOURCE_DATE_EPOCH)"
 ( cd "$WORK" && tar --sort=name --owner=0 --group=0 --numeric-owner \
+    --mtime="@${SOURCE_DATE_EPOCH}" --format=gnu \
     -caf "${TOOL}_${VER}.orig.tar.xz" "${TOOL}-${VER}" )
 
 echo ":: staging debian/ and targeting series $SERIES"
