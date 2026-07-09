@@ -98,15 +98,16 @@ cosmetic `permissions-missing-verifyscript` warning is a stale rpmlint check
 
 ## Account setup (one-time gate)
 
-Nothing here can be built until there is an OBS account and a home project:
+Nothing here can be **published** until there is an OBS account, a home project
+and its build targets. Full walkthrough: **[ACCOUNT-SETUP.md](ACCOUNT-SETUP.md)**.
 
-1. Create an account on <https://build.opensuse.org/> (openSUSE / SUSE login).
-2. `osc` is already installed locally (1.27.1). Configure credentials on first
-   use: `osc checkout home:<user>` will prompt and write `~/.config/osc/oscrc`.
-   **That file holds the OBS password/token - never display or commit it.**
-3. Create the home project `home:<user>` and a package `redumper`, with
-   repositories for **openSUSE Leap 16.0** (repository name `16.0`) and
-   **openSUSE Tumbleweed**, architecture `x86_64`.
+In short: OBS logins are SUSE IDP accounts (sign up via the link on
+build.opensuse.org, *not* `accounts.opensuse.org`); create `home:<user>`, add the
+repositories **`16.0`** (openSUSE Leap 16.0 — the name is the bare version, not
+`openSUSE_Leap_16.0`) and **`openSUSE_Tumbleweed`**, arch `x86_64`; then point
+`osc` at the API (`osc -A https://api.opensuse.org ls`), which prompts for
+credentials and writes `~/.config/osc/oscrc`. **That file holds the OBS
+credentials — never display, dump (`--dump-full`) or commit it.**
 
 ## Publishing a package
 
