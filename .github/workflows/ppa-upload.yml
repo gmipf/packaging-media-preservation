@@ -29,6 +29,11 @@ on:
         description: 'ubuntu/<tool> recipe directory (= Debian source package name)'
         required: true
         type: string
+      series:
+        description: 'Which series to upload: all, noble or jammy'
+        required: false
+        default: all
+        type: string
   workflow_dispatch:
     inputs:
       tool:
@@ -36,6 +41,12 @@ on:
         required: true
         type: choice
         options: [redumper, mpf, aaru, aaru5, discimagecreator]
+      series:
+        description: 'Which series to upload (retry a single one after a transient dput failure)'
+        required: false
+        default: all
+        type: choice
+        options: [all, noble, jammy]
 
 permissions:
   contents: read
@@ -87,21 +98,29 @@ jobs:
           # shared .orig tarball is byte-identical across series and Launchpad
           # dedups it on first upload; a concurrent second upload could race).
           #
-          # Whether to ship the orig at all depends on the Debian revision.
-          # Launchpad stores ONE immutable <src>_<upstream>.orig.tar.xz forever
-          # and rejects any upload carrying different bytes under that name.
+          # Whether to ship the orig depends on the Debian revision. Launchpad
+          # stores ONE immutable <src>_<upstream>.orig.tar.xz forever and
+          # rejects any upload whose .dsc records a different checksum for it.
           #   -1  = new upstream version. Launchpad has no orig yet, so send it
           #         (-sa). Both series build the same bytes, so the second one
           #         dedups. This is the path every watcher takes.
-          #   -2+ = packaging-only revision. The orig is already stored, and it
-          #         may predate our byte-reproducible assembly, so we generally
-          #         CANNOT rebuild it byte-for-byte. Never re-send it (-sd);
-          #         Launchpad reuses what it has.
+          #   -2+ = packaging-only revision. assemble.sh fetches the stored orig
+          #         instead of rebuilding it, so the .dsc checksum matches; the
+          #         file itself is then left out of the upload (-sd).
           # -d skips the build-dep check (source-only upload: Launchpad compiles).
           FULLVER=$(dpkg-parsechangelog -l "$RECIPE/debian/changelog" -SVersion)
           if [ "${FULLVER##*-}" = "1" ]; then SRCOPT=-sa; else SRCOPT=-sd; fi
-          echo ":: $TOOL $FULLVER -> dpkg-buildpackage $SRCOPT"
-          for SERIES in noble jammy; do
+
+          # ppa.launchpad.net's FTP endpoint intermittently answers the second
+          # upload of a run with "550 ... internal server error". Retry rather
+          # than leave one series behind; `series:` can re-run just one.
+          case "${{ inputs.series }}" in
+            noble|jammy) SERIES_LIST="${{ inputs.series }}" ;;
+            *)           SERIES_LIST="noble jammy" ;;
+          esac
+          echo ":: $TOOL $FULLVER -> dpkg-buildpackage $SRCOPT, series: $SERIES_LIST"
+
+          for SERIES in $SERIES_LIST; do
             echo "::group::$TOOL $SERIES"
             WORK=$(mktemp -d)
             bash scripts/deb/assemble.sh "$TOOL" "$SERIES" "$RECIPE" "$WORK"
@@ -109,7 +128,16 @@ jobs:
             ( cd "$WORK/${TOOL}-${VER}" && dpkg-buildpackage -S "$SRCOPT" -d -k"$KEYID" )
             CHANGES=$(ls -1 "$WORK"/${TOOL}_*_source.changes | head -1)
             gpg --verify "$CHANGES" 2>&1 | sed -n '1,3p' || true
-            dput "$PPA" "$CHANGES"
+
+            ok=
+            for attempt in 1 2 3; do
+              if dput "$PPA" "$CHANGES"; then ok=1; break; fi
+              echo "::warning::dput attempt $attempt for $TOOL $SERIES failed; retrying in $((attempt * 30))s"
+              rm -f "$WORK"/*.upload          # dput skips a .changes it thinks it already sent
+              sleep $((attempt * 30))
+            done
+            [ -n "$ok" ] || { echo "::error::dput failed 3x for $TOOL $SERIES"; exit 1; }
+
             echo ":: uploaded $TOOL $SERIES (${FULLVER}~${SERIES}1)"
             echo "::endgroup::"
           done
