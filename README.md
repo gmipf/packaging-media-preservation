@@ -192,9 +192,14 @@ the GUI via `aaru gui` or via the `Aaru` desktop entry. `redumper` and
 
 `cap_sys_rawio` is preset on the dumper binaries (redumper, discimagecreator,
 aaru, mpf-check, mpf-cli, mpf-gui) so vendor SCSI passthrough commands work
-without sudo. Drive-node access (`/dev/sr*`) is granted automatically via
-`uaccess` when logged in at a local desktop seat; for headless / SSH use add
-yourself to the `cdrom` group. See the
+without sudo. Logged in at a local desktop seat you also need **no group
+membership and no root** to read the drives themselves: systemd-logind grants a
+`uaccess` ACL to the device node automatically — for optical drives (`/dev/sr*`)
+via systemd's own rule, and for USB or legacy floppy drives via a udev rule
+these packages ship. Only headless / SSH / cron sessions, which have no seat,
+need more: the `cdrom` group for optical drives, or root for floppies (the
+floppy node stays `root:disk`; the `disk` group would expose every block device
+and is not a safe substitute). See the
 [COPR project page](https://copr.fedorainfracloud.org/coprs/gmipf/media-preservation/)
 for details.
 
