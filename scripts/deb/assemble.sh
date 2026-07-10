@@ -24,9 +24,45 @@ RECIPE=${3:?recipe-dir}
 WORK=${4:?work-dir}
 
 TAG=$(cat "$RECIPE/.upstream-tag")
-VER=$(dpkg-parsechangelog -l "$RECIPE/debian/changelog" -SVersion | sed -e 's/-[^-]*$//')
+FULLVER=$(dpkg-parsechangelog -l "$RECIPE/debian/changelog" -SVersion)
+VER=${FULLVER%-*}
+REV=${FULLVER##*-}
 SRC="$WORK/${TOOL}-${VER}"
 mkdir -p "$SRC"
+
+LP_OWNER=${LP_OWNER:-dreunion61}
+LP_PPA=${LP_PPA:-media-preservation}
+
+# A packaging-only revision (-2, -3, ...) must be built against the EXACT
+# orig tarball Launchpad already stores for this upstream version, not a
+# freshly assembled one.
+#
+# Launchpad keeps one immutable <src>_<upstream>.orig.tar.xz per upstream
+# version. Even with `dpkg-buildpackage -sd` (which omits the file from the
+# upload) the .dsc still records its checksum, and Launchpad compares that
+# against its stored copy. Our stored origs predate the mtime pinning in
+# a1566e2, so re-assembling them yields different bytes and the upload is
+# rejected. Fetch the stored file and unpack the source tree from it: the
+# checksum then matches by construction, for any orig however it was built.
+if [ "$REV" != "1" ]; then
+  ORIG="$WORK/${TOOL}_${VER}.orig.tar.xz"
+  echo ":: revision $REV -- reusing the orig Launchpad already stores"
+  got=
+  for s in noble jammy; do
+    url="https://launchpad.net/~${LP_OWNER}/+archive/ubuntu/${LP_PPA}/+sourcefiles/${TOOL}/${VER}-1~${s}1/${TOOL}_${VER}.orig.tar.xz"
+    if curl -fsSL -o "$ORIG" "$url"; then got=$s; break; fi
+  done
+  [ -n "$got" ] || { echo "no stored orig for ${TOOL} ${VER} in ppa:${LP_OWNER}/${LP_PPA}" >&2; exit 1; }
+  echo ":: fetched ${TOOL}_${VER}.orig.tar.xz (via ${VER}-1~${got}1), sha256 $(sha256sum "$ORIG" | cut -d' ' -f1)"
+  tar -xf "$ORIG" -C "$WORK"
+  [ -d "$SRC" ] || { echo "stored orig did not unpack to ${TOOL}-${VER}/" >&2; exit 1; }
+
+  echo ":: staging debian/ and targeting series $SERIES"
+  cp -a "$RECIPE/debian" "$SRC/debian"
+  sed -i "1s/(\([^)]*\)) [A-Za-z][A-Za-z]*/(\1~${SERIES}1) ${SERIES}/" "$SRC/debian/changelog"
+  head -1 "$SRC/debian/changelog"
+  exit 0
+fi
 
 echo ":: fetching upstream $TOOL $TAG (version $VER)"
 case "$TOOL" in
