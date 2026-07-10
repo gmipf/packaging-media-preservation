@@ -34,10 +34,12 @@ Source1:        https://github.com/saramibreak/EccEdc/archive/refs/tags/%{eccedc
 Source2:        https://github.com/saramibreak/DVDAuth/archive/refs/tags/v%{dvdauthver}.tar.gz#/DVDAuth-%{dvdauthver}.tar.gz
 Source3:        https://github.com/saramibreak/unscrambler/archive/refs/tags/%{unscramblver}.tar.gz#/unscrambler-%{unscramblver}.tar.gz
 Source4:        discimagecreator.1
-# udev rule granting the `cdrom` group access to USB floppy block devices
-# so DIC's `fd` (floppy dump) command can read floppies without root.
-# Package-unique filename so it never collides with the same rule shipped
-# by `aaru` (v6) or `aaru5` (stable), keeping all three co-installable.
+# udev rule tagging USB and legacy floppy block devices with "uaccess", so
+# systemd-logind puts an ACL on the node for whoever is logged in at the local
+# desktop seat and DIC's `fd` (floppy dump) command can read floppies with no
+# group and no root. Package-unique filename so it never collides with the same
+# rule shipped by `aaru` (v6) or `aaru5` (stable), keeping all three
+# co-installable.
 Source5:        70-discimagecreator-floppy.rules
 ExclusiveArch:  x86_64
 
@@ -80,9 +82,10 @@ This RPM bundles four binaries from the same upstream author:
 
 cap_sys_rawio is set on the main DIC binary and dvdauth (via the openSUSE
 permissions framework) so vendor SCSI passthrough commands work without
-sudo. A udev rule grants the `cdrom` group access to USB floppy drives so
-the `fd` (floppy dump) command works without root too; add yourself with
-`usermod -aG cdrom <user>` and re-login. See discimagecreator(1) for
+sudo. A udev rule tags floppy drives with `uaccess`, so the user logged in
+at the local desktop seat can use the `fd` (floppy dump) command without
+root and without joining any group. Headless, SSH and cron sessions have no
+seat and therefore no ACL; dump as root there. See discimagecreator(1) for
 details on drive access and runtime data file locations.
 
 %prep
@@ -253,6 +256,20 @@ EOF
 %{_datadir}/permissions/permissions.d/discimagecreator
 
 %changelog
+* Fri Jul 10 2026 gmipf <gmipf64@gmail.com> - 20260703121302.efa7d482-0
+- Fix 70-discimagecreator-floppy.rules before it is ever published. It
+  matched ENV{ID_DRIVE_FLOPPY}, a property 80-udisks2.rules only sets at
+  priority 80 - after this rule runs at priority 70, and after
+  73-seat-late.rules has already applied the device ACL, so it never
+  fired. It now matches ID_TYPE and ID_USB_TYPE (set by usb_id at
+  priority 60) and tags the node "uaccess", letting systemd-logind grant
+  an ACL to the local-seat user.
+- The fd (floppy dump) command needs no group membership. This also
+  sidesteps openSUSE Leap 16 having no floppy group at all. Headless
+  sessions have no seat and must run it as root: the node stays root:disk.
+- Drop the false "add yourself to the cdrom group for floppy access"
+  advice from the package description.
+
 * Sun Jul 05 2026 gmipf <gmipf64@gmail.com> - 20260703121302.efa7d482-0
 - Initial openSUSE (OBS) packaging of the DiscImageCreator suite
   (discimagecreator + EccEdc / DVDAuth / unscrambler helpers) from the

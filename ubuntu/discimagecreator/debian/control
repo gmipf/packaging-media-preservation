@@ -44,7 +44,8 @@ Description: low-level disc dumper plus EccEdc / DVDAuth / unscrambler helpers
    * unscrambler:      brute-force unscramble for non-standard DVD IVs
  .
  On install, cap_sys_rawio is set on the main DIC binary and dvdauth so vendor
- SCSI passthrough commands work without sudo. A shipped udev rule grants the
- cdrom group access to USB floppy drives so the `fd` (floppy dump) command
- works without root too; add yourself with `usermod -aG cdrom <user>` and
- re-login. See discimagecreator(1) for drive access and data-file details.
+ SCSI passthrough commands work without sudo. A shipped udev rule tags floppy
+ drives with uaccess, so the user logged in at the local desktop seat can use
+ the `fd` (floppy dump) command without root and without joining any group.
+ Headless, SSH and cron sessions have no seat and therefore no ACL; dump as
+ root there. See discimagecreator(1) for drive access and data-file details.

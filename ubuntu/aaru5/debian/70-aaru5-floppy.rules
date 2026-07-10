@@ -1,14 +1,21 @@
-# Floppy-drive access for disc-preservation dumping.
+# Floppy-drive access for disc-preservation dumping — groupless, via systemd-logind uaccess.
 #
-# USB floppy drives expose their media as a SCSI/USB block device
-# (/dev/sdX); udev's default leaves that node root:disk 0660, so dumping
-# a floppy would otherwise need root. Re-group the node to `cdrom` -- the
-# group already used for optical drive access -- and grant group
-# read/write, so a member of the `cdrom` group can dump floppies without
-# sudo. Grant yourself access once:
+# Optical drives already get a per-login ACL automatically: systemd's own
+# 70-uaccess.rules tags ID_CDROM==1 devices with "uaccess", so whoever is logged in at
+# the local desktop seat reads them with no group and no sudo. Floppies are NOT tagged
+# by default, so this rule adds the same uaccess tag for them, giving the active
+# local-seat desktop user read/write on the floppy node without ANY group membership.
+# By design no group is created or required for desktop use.
 #
-#   sudo usermod -aG cdrom "$USER"     # then log out and back in
+# Match properties set EARLY: usb_id sets ID_TYPE/ID_USB_TYPE at prio 60, before
+# 73-seat-late.rules applies the ACL. Do NOT match ID_DRIVE_FLOPPY — 80-udisks2.rules
+# sets it at prio 80 (after the ACL is applied), so the tag would be silently ignored.
 #
-SUBSYSTEM=="block", ENV{ID_DRIVE_FLOPPY}=="1", GROUP="cdrom", MODE="0660"
-# Legacy internal floppy-controller nodes (/dev/fd0 ...): same grant.
-KERNEL=="fd[0-9]*", GROUP="cdrom", MODE="0660"
+# Headless / SSH / cron have no seat and thus no uaccess ACL; run the dumper as root there.
+#
+# Package-unique filename so the identical rule shipped by the co-installable
+# aaru / aaru5 / discimagecreator packages never collides.
+SUBSYSTEM=="block", ENV{ID_TYPE}=="floppy", TAG+="uaccess"
+SUBSYSTEM=="block", ENV{ID_USB_TYPE}=="floppy", TAG+="uaccess"
+# Legacy internal floppy-controller nodes (/dev/fd0 ...).
+KERNEL=="fd[0-9]*", TAG+="uaccess"

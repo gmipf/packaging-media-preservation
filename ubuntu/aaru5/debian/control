@@ -30,5 +30,7 @@ Description: Aaru 5.x stable data-preservation CLI (MPF-compatible)
  .
  The upstream NativeAOT binary is repackaged unchanged. On install it is
  given the cap_sys_rawio file capability so vendor SCSI passthrough commands
- work without sudo; a shipped udev rule grants the cdrom group access to USB
- floppy drives for root-less floppy dumping.
+ work without sudo; a shipped udev rule tags floppy drives with uaccess, so
+ the user logged in at the local desktop seat can dump them without root and
+ without joining any group. Headless, SSH and cron sessions have no seat and
+ therefore no ACL; dump as root there.

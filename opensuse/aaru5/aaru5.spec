@@ -33,10 +33,11 @@ Source0:        %{url}/releases/download/%{aarutag}/aaru-%{aaruver}_linux_amd64.
 # stamped from %%{version} and the build date at %%build, so the .TH line
 # always matches the shipped version without running the binary.
 Source1:        aaru5.1
-# udev rule granting the `cdrom` group access to USB floppy block devices
-# so `aaru5 media dump` can read floppies without root. Package-unique
-# filename so it never collides with the same rule shipped by `aaru`
-# (v6) or `discimagecreator`, keeping all three co-installable.
+# udev rule tagging USB and legacy floppy block devices with "uaccess", so
+# systemd-logind puts an ACL on the node for whoever is logged in at the local
+# desktop seat and `aaru5 media dump` can read floppies with no group and no
+# root. Package-unique filename so it never collides with the same rule shipped
+# by `aaru` (v6) or `discimagecreator`, keeping all three co-installable.
 Source2:        70-aaru5-floppy.rules
 
 ExclusiveArch:  x86_64
@@ -72,9 +73,10 @@ MPF's Aaru path at /usr/bin/aaru5.
 
 cap_sys_rawio is set on the launcher (via the openSUSE permissions
 framework) so vendor SCSI passthrough commands (optical dumping) work
-without sudo. A udev rule grants the `cdrom` group access to USB floppy
-drives so floppy dumping works without root too; add yourself with
-`usermod -aG cdrom <user>` and re-login.
+without sudo. A udev rule tags floppy drives with `uaccess`, so the user
+logged in at the local desktop seat can dump them without root and without
+joining any group. Headless, SSH and cron sessions have no seat and
+therefore no ACL; dump as root there.
 
 %prep
 # The binary tarball is rootless and drops its files directly into cwd.
@@ -143,6 +145,20 @@ EOF
 %{_datadir}/permissions/permissions.d/aaru5
 
 %changelog
+* Fri Jul 10 2026 gmipf <gmipf64@gmail.com> - 5.4.2-0
+- Fix 70-aaru5-floppy.rules before it is ever published. It matched
+  ENV{ID_DRIVE_FLOPPY}, a property 80-udisks2.rules only sets at priority
+  80 - after this rule runs at priority 70, and after 73-seat-late.rules
+  has already applied the device ACL, so it never fired. It now matches
+  ID_TYPE and ID_USB_TYPE (set by usb_id at priority 60) and tags the node
+  "uaccess", letting systemd-logind grant an ACL to the local-seat user.
+- Floppy dumping needs no group membership. This also sidesteps openSUSE
+  Leap 16 having no floppy group at all. Headless sessions have no seat
+  and must dump as root: the node stays root:disk.
+- Correct aaru5(1): it claimed logind does not apply a uaccess ACL to
+  block devices. It does - /dev/sr* is one and is tagged by default. Also
+  drop the false cdrom-group advice for floppies from the description.
+
 * Sun Jul 05 2026 gmipf <gmipf64@gmail.com> - 5.4.2-0
 - Initial openSUSE (OBS) packaging of Aaru 5.4.2 stable as `aaru5`.
 - Repackage of the upstream prebuilt linux_amd64 NativeAOT binary plus its

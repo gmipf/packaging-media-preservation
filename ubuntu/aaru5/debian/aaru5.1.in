@@ -88,15 +88,19 @@ ships with the
 file capability set, so vendor SCSI passthrough commands (optical
 dumping) work without sudo.
 .PP
-The invoking user still needs read/write access to the device node
-.RB ( /dev/sr* ,
-.BR /dev/sg* ,
-removable USB or floppy nodes). On a desktop session at the local seat
-this is granted automatically via systemd-logind's
+The invoking user still needs read/write access to the device node. On a
+desktop session at the local seat this is granted automatically by a
+systemd-logind
 .B uaccess
-ACL. For headless use (SSH, cron, systemd
+ACL: for optical drives
+.RB ( /dev/sr* ,
+.BR /dev/sg* )
+by systemd itself, for floppy nodes by the udev rule this package ships.
+.PP
+Headless use (SSH, cron, systemd
 .BR \-\-user ,
-NFS-mounted device nodes) add the user to the
+NFS-mounted device nodes) has no seat and therefore no ACL. Optical drives
+remain reachable through the
 .B cdrom
 group:
 .PP
@@ -107,18 +111,24 @@ newgrp cdrom
 .EE
 .RE
 .PP
+Floppy nodes stay
+.BR root:disk ,
+so dumping a floppy headlessly needs root. The
+.B disk
+group would grant access to every block device on the system and is not a
+safe substitute.
+.PP
 USB floppy drives enumerate as
 .B root:disk
 SCSI block devices
-.RB ( /dev/sd* )
-and logind does not apply a
+.RB ( /dev/sd* ),
+which systemd does not tag
 .B uaccess
-ACL to block devices; dumping one without root needs a udev rule that
-grants the node to a group the user is in. This package ships
+by default. This package ships
 .I 70\-aaru5\-floppy.rules
-for exactly that (grants the
-.B cdrom
-group).
+to add that tag, so logind grants the local-seat user an ACL on the node and
+floppies dump with no group and no root. Headless sessions have no seat and
+therefore no ACL; dump as root there.
 .SH FILES
 .TP
 .I /usr/bin/aaru5

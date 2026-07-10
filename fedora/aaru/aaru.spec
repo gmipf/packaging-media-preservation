@@ -25,7 +25,7 @@ Name:           aaru
 # history was wiped (copr-cli delete-package) before this build, so
 # nothing previously published needs to be sort-overridden.
 Version:        %{aaruver}~%{aaruprerel}
-Release:        4%{?dist}
+Release:        5%{?dist}
 Summary:        Data preservation suite for optical, magnetic and solid-state media
 
 License:        GPL-3.0-or-later AND LGPL-2.1-or-later AND MIT
@@ -43,10 +43,11 @@ Source1:        %{url}/releases/download/%{aarutag}/aaru-src-%{aaruver}-%{aarupr
 # where the build-time generator splices in the live --help reference.
 Source2:        aaru.1.in
 Source3:        aaru-manpage.sh
-# udev rule granting the `cdrom` group access to USB floppy block devices
-# so `aaru media dump` can read floppies without root. Package-unique
-# filename so it never collides with the same rule shipped by `aaru5`
-# (stable) or `discimagecreator`, keeping all three co-installable.
+# udev rule tagging USB and legacy floppy block devices with "uaccess", so
+# systemd-logind puts an ACL on the node for whoever is logged in at the local
+# desktop seat and `aaru media dump` can read floppies with no group and no
+# root. Package-unique filename so it never collides with the same rule shipped
+# by `aaru5` (stable) or `discimagecreator`, keeping all three co-installable.
 Source4:        70-aaru-floppy.rules
 
 ExclusiveArch:  x86_64
@@ -129,9 +130,10 @@ The single `aaru` binary handles both modes:
   * `aaru gui` ........ launches the Avalonia desktop UI
 
 cap_sys_rawio is set on the launcher binary so vendor SCSI passthrough
-commands work without sudo. A udev rule grants the `cdrom` group access
-to USB floppy drives so floppy dumping works without root too; add
-yourself with `usermod -aG cdrom <user>` and re-login.
+commands work without sudo. A udev rule tags floppy drives with `uaccess`,
+so the user logged in at the local desktop seat can dump them without root
+and without joining any group. Headless, SSH and cron sessions have no seat
+and therefore no ACL; dump as root there.
 
 %prep
 # Two tarballs, manually extracted side-by-side. The binary tarball
@@ -221,6 +223,21 @@ ln -sf %{aarudir}/aaru %{buildroot}%{_bindir}/aaru
 %{_udevrulesdir}/70-aaru-floppy.rules
 
 %changelog
+* Fri Jul 10 2026 gmipf <gmipf64@gmail.com> - 6.0.0~alpha.19-5
+- Fix 70-aaru-floppy.rules, which never fired. It matched
+  ENV{ID_DRIVE_FLOPPY}, a property 80-udisks2.rules only sets at priority
+  80 - after this rule runs at priority 70, and after 73-seat-late.rules
+  has already applied the device ACL. Neither the GROUP="cdrom"/MODE=0660
+  grant nor a uaccess tag could take effect at that point. The rule now
+  matches ID_TYPE and ID_USB_TYPE (set by usb_id at priority 60) and tags
+  the node "uaccess", so systemd-logind grants an ACL to the user at the
+  local desktop seat.
+- Floppy dumping now needs no group membership at all. Headless and SSH
+  sessions have no seat and must dump as root: the node stays root:disk.
+- Drop the false "add yourself to the cdrom group for floppy access"
+  advice from the package description and aaru(1). The cdrom-group note
+  for optical drives is a separate, still-correct mechanism and stays.
+
 * Thu Jul 02 2026 gmipf <gmipf64@gmail.com> - 6.0.0~alpha.19-4
 - Ship a udev rule (70-aaru-floppy.rules) that grants the cdrom group
   read/write on USB floppy block devices (ENV{ID_DRIVE_FLOPPY}) and the

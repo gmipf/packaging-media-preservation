@@ -53,5 +53,7 @@ Description: data preservation suite for optical, magnetic and solid-state media
  .
  The upstream self-contained .NET binary is repackaged unchanged. On install
  it is given the cap_sys_rawio file capability so vendor SCSI passthrough
- commands work without sudo; a shipped udev rule grants the cdrom group
- access to USB floppy drives for root-less floppy dumping.
+ commands work without sudo; a shipped udev rule tags floppy drives with
+ uaccess, so the user logged in at the local desktop seat can dump them
+ without root and without joining any group. Headless, SSH and cron sessions
+ have no seat and therefore no ACL; dump as root there.

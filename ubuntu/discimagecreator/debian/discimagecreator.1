@@ -77,15 +77,17 @@ membership in the
 .B cdrom
 group is sufficient on Debian and Ubuntu.
 .PP
-A shipped udev rule grants the
-.B cdrom
-group read/write on USB floppy block devices and the legacy
+A shipped udev rule tags USB floppy block devices and the legacy
 .I /dev/fd*
-controller nodes, so the
+controller nodes with
+.BR uaccess ,
+so systemd-logind grants the user at the local desktop seat an ACL on the
+node and the
 .B fd
-(floppy dump) command works without root. Add yourself with
-.RB \(dq usermod \-aG cdrom \fI<user>\fB\(dq
-and log out and back in.
+(floppy dump) command works with no group and no root. Headless sessions have
+no seat and therefore no ACL; run
+.B fd
+as root there.
 .SH DATA FILES
 Drive-offset tables and protection databases ship in
 .IR /usr/share/discimagecreator/ :
