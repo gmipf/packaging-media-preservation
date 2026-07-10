@@ -127,10 +127,14 @@ esac
 # The epoch must depend on the UPSTREAM version alone. Reading it from the top
 # changelog stanza would break the moment a packaging-only revision (-2, -3, ...)
 # is added: same upstream payload, same immutable orig name, but a fresh stanza
-# date => byte-different orig => same rejection, one axis over. So walk the
-# stanzas and keep the OLDEST one carrying this upstream version — "when we first
-# packaged this release". It is invariant under later revision bumps, and moves
-# only when upstream itself moves.
+# date => byte-different orig. So walk the stanzas and keep the OLDEST one
+# carrying this upstream version — "when we first packaged this release". It is
+# invariant under later revision bumps, and moves only when upstream itself moves.
+#
+# This makes the orig reproducible going forward; it does NOT make it match an
+# orig Launchpad already stores from before the mtime pinning. That is why the
+# upload path never re-sends the orig for a -2+ revision (dpkg-buildpackage -sd)
+# rather than relying on rebuilding it byte-for-byte.
 CL="$RECIPE/debian/changelog"
 SOURCE_DATE_EPOCH=""
 i=0

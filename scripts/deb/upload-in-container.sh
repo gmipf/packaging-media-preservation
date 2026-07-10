@@ -38,11 +38,20 @@ echo ":: imported signing key $KEYID"
 WORK=$(mktemp -d)
 bash "$REPO/scripts/deb/assemble.sh" "$TOOL" "$SERIES" "$RECIPE" "$WORK"
 
-VER=$(dpkg-parsechangelog -l "$RECIPE/debian/changelog" -SVersion | sed -e 's/-[^-]*$//')
+FULLVER=$(dpkg-parsechangelog -l "$RECIPE/debian/changelog" -SVersion)
+VER=${FULLVER%-*}
 SRC="$WORK/${TOOL}-${VER}"
 
-echo ":: building SIGNED source package (key $KEYID)"
-( cd "$SRC" && dpkg-buildpackage -S -sa -k"$KEYID" )
+# Launchpad stores ONE immutable <src>_<upstream>.orig.tar.xz forever and
+# rejects an upload carrying different bytes under that name. A -1 revision is
+# a new upstream version, so send the orig (-sa). A -2+ revision is
+# packaging-only: the orig is already stored and may predate our
+# byte-reproducible assembly, so it generally cannot be rebuilt byte-for-byte.
+# Never re-send it (-sd); Launchpad reuses what it has.
+if [ "${FULLVER##*-}" = "1" ]; then SRCOPT=-sa; else SRCOPT=-sd; fi
+
+echo ":: building SIGNED source package (key $KEYID, $SRCOPT)"
+( cd "$SRC" && dpkg-buildpackage -S "$SRCOPT" -k"$KEYID" )
 
 CHANGES=$(ls -1 "$WORK"/${TOOL}_*_source.changes | head -1)
 mkdir -p "$OUT"

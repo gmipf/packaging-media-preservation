@@ -86,17 +86,27 @@ jobs:
           # Build + upload each series SEQUENTIALLY (never in parallel: the
           # shared .orig tarball is byte-identical across series and Launchpad
           # dedups it on first upload; a concurrent second upload could race).
-          # It is byte-identical across Debian revisions too — assemble.sh pins
-          # the orig mtime to the OLDEST stanza of this upstream version — so a
-          # -2 re-upload matches the orig Launchpad already stores.
+          #
+          # Whether to ship the orig at all depends on the Debian revision.
+          # Launchpad stores ONE immutable <src>_<upstream>.orig.tar.xz forever
+          # and rejects any upload carrying different bytes under that name.
+          #   -1  = new upstream version. Launchpad has no orig yet, so send it
+          #         (-sa). Both series build the same bytes, so the second one
+          #         dedups. This is the path every watcher takes.
+          #   -2+ = packaging-only revision. The orig is already stored, and it
+          #         may predate our byte-reproducible assembly, so we generally
+          #         CANNOT rebuild it byte-for-byte. Never re-send it (-sd);
+          #         Launchpad reuses what it has.
           # -d skips the build-dep check (source-only upload: Launchpad compiles).
           FULLVER=$(dpkg-parsechangelog -l "$RECIPE/debian/changelog" -SVersion)
+          if [ "${FULLVER##*-}" = "1" ]; then SRCOPT=-sa; else SRCOPT=-sd; fi
+          echo ":: $TOOL $FULLVER -> dpkg-buildpackage $SRCOPT"
           for SERIES in noble jammy; do
             echo "::group::$TOOL $SERIES"
             WORK=$(mktemp -d)
             bash scripts/deb/assemble.sh "$TOOL" "$SERIES" "$RECIPE" "$WORK"
             VER=${FULLVER%-*}
-            ( cd "$WORK/${TOOL}-${VER}" && dpkg-buildpackage -S -sa -d -k"$KEYID" )
+            ( cd "$WORK/${TOOL}-${VER}" && dpkg-buildpackage -S "$SRCOPT" -d -k"$KEYID" )
             CHANGES=$(ls -1 "$WORK"/${TOOL}_*_source.changes | head -1)
             gpg --verify "$CHANGES" 2>&1 | sed -n '1,3p' || true
             dput "$PPA" "$CHANGES"
