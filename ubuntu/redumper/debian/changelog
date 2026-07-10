@@ -1,3 +1,9 @@
+redumper (730-1) UNRELEASED; urgency=medium
+
+  * Automated sync to upstream redumper release b730.
+
+ -- gmipf <gmipf64@gmail.com>  Fri, 10 Jul 2026 12:55:04 +0000
+
 redumper (726-1) UNRELEASED; urgency=medium
 
   * Initial Ubuntu PPA packaging of redumper: a repackage of the upstream
