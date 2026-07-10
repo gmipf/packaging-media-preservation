@@ -115,17 +115,31 @@ case "$TOOL" in
 esac
 
 # Deterministic orig tarball. Launchpad shares ONE immutable
-# <src>_<upstream>.orig.tar.xz across every series, so both series' source
-# uploads must ship a byte-identical orig. Without a fixed mtime, tar stamps
-# every entry (the top-level <tool>-<ver>/ dir, any mkdir'd subdirs, and
-# curl/install'd files) with the assembly-time wall clock — and the upload path
-# runs this once per series (noble, then jammy seconds later), so the two runs
-# produced different origs and Launchpad rejected the second series ("orig
-# already exists, different contents"). Pin every mtime to the changelog
-# timestamp (identical for both series: they read the same committed changelog)
-# and force the gnu format (stable across the noble/jammy container tar
-# versions) so the orig is reproducible across series, containers and re-runs.
-SOURCE_DATE_EPOCH=$(dpkg-parsechangelog -l "$RECIPE/debian/changelog" -STimestamp)
+# <src>_<upstream>.orig.tar.xz across every series AND every Debian revision of
+# that upstream version, so each upload must ship a byte-identical orig. Without
+# a fixed mtime, tar stamps every entry (the top-level <tool>-<ver>/ dir, any
+# mkdir'd subdirs, and curl/install'd files) with the assembly-time wall clock —
+# and the upload path runs this once per series (noble, then jammy seconds
+# later), so the two runs produced different origs and Launchpad rejected the
+# second series ("orig already exists, different contents"). Pin every mtime and
+# force the gnu format (stable across the noble/jammy container tar versions).
+#
+# The epoch must depend on the UPSTREAM version alone. Reading it from the top
+# changelog stanza would break the moment a packaging-only revision (-2, -3, ...)
+# is added: same upstream payload, same immutable orig name, but a fresh stanza
+# date => byte-different orig => same rejection, one axis over. So walk the
+# stanzas and keep the OLDEST one carrying this upstream version — "when we first
+# packaged this release". It is invariant under later revision bumps, and moves
+# only when upstream itself moves.
+CL="$RECIPE/debian/changelog"
+SOURCE_DATE_EPOCH=""
+i=0
+while v=$(dpkg-parsechangelog -l "$CL" --offset "$i" --count 1 -S Version 2>/dev/null) && [ -n "$v" ]; do
+  [ "${v%-*}" = "$VER" ] && \
+    SOURCE_DATE_EPOCH=$(dpkg-parsechangelog -l "$CL" --offset "$i" --count 1 -S Timestamp)
+  i=$((i + 1))
+done
+[ -n "$SOURCE_DATE_EPOCH" ] || { echo "no changelog stanza for upstream version $VER" >&2; exit 1; }
 echo ":: assembling orig tarball ${TOOL}_${VER}.orig.tar.xz (SOURCE_DATE_EPOCH=$SOURCE_DATE_EPOCH)"
 ( cd "$WORK" && tar --sort=name --owner=0 --group=0 --numeric-owner \
     --mtime="@${SOURCE_DATE_EPOCH}" --format=gnu \

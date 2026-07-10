@@ -17,6 +17,11 @@ name: ppa-upload
 #   gpg --export-secret-keys --armor F95E3A17D02ED2D53C54DA78E2E956CC4B250741 \
 #     | gh secret set PPA_SIGNING_KEY --repo gmipf/packaging-media-preservation
 
+# workflow_call: the watch-<tool> jobs invoke this after an upstream bump.
+# workflow_dispatch: manual route for a packaging-only revision (a -2 stanza with
+#   no upstream change). The watchers only reach the ppa job when they detect new
+#   upstream, and aaru5 is version-pinned with no watcher at all, so without this
+#   a doc/udev-only rebuild could never reach the PPA.
 on:
   workflow_call:
     inputs:
@@ -24,6 +29,13 @@ on:
         description: 'ubuntu/<tool> recipe directory (= Debian source package name)'
         required: true
         type: string
+  workflow_dispatch:
+    inputs:
+      tool:
+        description: 'ubuntu/<tool> recipe directory (= Debian source package name)'
+        required: true
+        type: choice
+        options: [redumper, mpf, aaru, aaru5, discimagecreator]
 
 permissions:
   contents: read
@@ -74,17 +86,21 @@ jobs:
           # Build + upload each series SEQUENTIALLY (never in parallel: the
           # shared .orig tarball is byte-identical across series and Launchpad
           # dedups it on first upload; a concurrent second upload could race).
+          # It is byte-identical across Debian revisions too — assemble.sh pins
+          # the orig mtime to the OLDEST stanza of this upstream version — so a
+          # -2 re-upload matches the orig Launchpad already stores.
           # -d skips the build-dep check (source-only upload: Launchpad compiles).
+          FULLVER=$(dpkg-parsechangelog -l "$RECIPE/debian/changelog" -SVersion)
           for SERIES in noble jammy; do
             echo "::group::$TOOL $SERIES"
             WORK=$(mktemp -d)
             bash scripts/deb/assemble.sh "$TOOL" "$SERIES" "$RECIPE" "$WORK"
-            VER=$(dpkg-parsechangelog -l "$RECIPE/debian/changelog" -SVersion | sed -e 's/-[^-]*$//')
+            VER=${FULLVER%-*}
             ( cd "$WORK/${TOOL}-${VER}" && dpkg-buildpackage -S -sa -d -k"$KEYID" )
             CHANGES=$(ls -1 "$WORK"/${TOOL}_*_source.changes | head -1)
             gpg --verify "$CHANGES" 2>&1 | sed -n '1,3p' || true
             dput "$PPA" "$CHANGES"
-            echo ":: uploaded $TOOL $SERIES ($VER-1~${SERIES}1)"
+            echo ":: uploaded $TOOL $SERIES (${FULLVER}~${SERIES}1)"
             echo "::endgroup::"
           done
           echo ":: PPA upload complete — Launchpad will build the .debs and email results."
