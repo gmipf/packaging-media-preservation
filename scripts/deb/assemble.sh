@@ -155,10 +155,10 @@ esac
 # that upstream version, so each upload must ship a byte-identical orig. Without
 # a fixed mtime, tar stamps every entry (the top-level <tool>-<ver>/ dir, any
 # mkdir'd subdirs, and curl/install'd files) with the assembly-time wall clock —
-# and the upload path runs this once per series (noble, then jammy seconds
-# later), so the two runs produced different origs and Launchpad rejected the
-# second series ("orig already exists, different contents"). Pin every mtime and
-# force the gnu format (stable across the noble/jammy container tar versions).
+# and the upload path runs this once per series (resolute, then noble, then
+# jammy seconds later), so the runs produced different origs and Launchpad
+# rejected every series after the first ("orig already exists, different
+# contents"). Pin every mtime and force the gnu format (stable across series).
 #
 # The epoch must depend on the UPSTREAM version alone. Reading it from the top
 # changelog stanza would break the moment a packaging-only revision (-2, -3, ...)

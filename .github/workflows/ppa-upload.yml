@@ -30,7 +30,7 @@ on:
         required: true
         type: string
       series:
-        description: 'Which series to upload: all, noble or jammy'
+        description: 'Which series to upload: all, resolute, noble or jammy'
         required: false
         default: all
         type: string
@@ -46,7 +46,7 @@ on:
         required: false
         default: all
         type: choice
-        options: [all, noble, jammy]
+        options: [all, resolute, noble, jammy]
 
 permissions:
   contents: read
@@ -114,9 +114,13 @@ jobs:
           # ppa.launchpad.net's FTP endpoint intermittently answers the second
           # upload of a run with "550 ... internal server error". Retry rather
           # than leave one series behind; `series:` can re-run just one.
+          # resolute = 24.04's successor and the current LTS. It was missing for a
+          # while, which made the packages uninstallable on it: ${dep:icu} is
+          # resolved per series at build time, so the noble build depends on
+          # libicu74 and 26.04 only ships libicu78.
           case "${{ inputs.series }}" in
-            noble|jammy) SERIES_LIST="${{ inputs.series }}" ;;
-            *)           SERIES_LIST="noble jammy" ;;
+            resolute|noble|jammy) SERIES_LIST="${{ inputs.series }}" ;;
+            *)                    SERIES_LIST="resolute noble jammy" ;;
           esac
           echo ":: $TOOL $FULLVER -> dpkg-buildpackage $SRCOPT, series: $SERIES_LIST"
 
