@@ -132,6 +132,7 @@ EOF
 %verify_permissions -e %{aarudir}/aaru
 
 %files
+%dir %{aarudir}
 %attr(0755,root,root) %{aarudir}/aaru
 %{aarudir}/libe_sqlite3.so
 %{aarudir}/README.md

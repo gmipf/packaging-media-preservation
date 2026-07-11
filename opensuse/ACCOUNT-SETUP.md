@@ -1,5 +1,19 @@
 # OBS account setup (one-time gate)
 
+> **Done.** The project is live at
+> [`home:gmipf:media-preservation`](https://build.opensuse.org/project/show/home:gmipf:media-preservation)
+> with the `16.0` and `openSUSE_Tumbleweed` repositories (x86_64). This document
+> is kept as a record of the setup and as a guide for anyone reproducing it.
+>
+> Two things worth knowing if you repeat this:
+> - **`api.opensuse.org` offers Basic auth only.** SSH-key authentication is not
+>   enabled (`WWW-Authenticate: Basic realm="Use your SUSE developer account"`, no
+>   `Signature` realm), which is why the web UI has no SSH-key page.
+> - **OBS tokens cannot replace the password for publishing.** `osc token
+>   --operation` only knows `runservice|branch|release|rebuild|workflow` — all of
+>   which act on packages that *already exist*. They are useful for automation
+>   (triggering a rebuild), never for creating or uploading a package.
+
 Nothing in this lane can be published until there is an account on the
 [openSUSE Build Service](https://build.opensuse.org/) (OBS) and a home project
 with build targets. This is the OBS equivalent of "create the COPR project" /

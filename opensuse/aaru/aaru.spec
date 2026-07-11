@@ -58,6 +58,11 @@ BuildRequires:  libicu
 # openSUSE grants file capabilities through the permissions framework
 # (chkstat), not a bare %%caps entry (see %%install / %%post).
 BuildRequires:  permissions
+# hicolor-icon-theme owns /usr/share/icons/hicolor/**; it is a runtime Requires
+# below, but it must ALSO be in the build root: openSUSE's 50-check-filelist
+# post-build check fails the build on directories that no *installed* package
+# owns, and it only sees BuildRequires. (Fedora does not run this check.)
+BuildRequires:  hicolor-icon-theme
 # Native runtime libs the prebuilt .NET binary links to (same set as the
 # runtime Requires below). openSUSE names them differently: krb5-libs ->
 # krb5, openssl-libs -> libopenssl3, zlib -> libz1, and libunwind is
@@ -220,6 +225,7 @@ EOF
 %verify_permissions -e %{aarudir}/aaru
 
 %files
+%dir %{aarudir}
 %attr(0755,root,root) %{aarudir}/aaru
 %{aarudir}/README.md
 %{aarudir}/Changelog.md

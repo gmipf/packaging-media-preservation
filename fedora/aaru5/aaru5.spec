@@ -17,7 +17,7 @@
 
 Name:           aaru5
 Version:        5.4.2
-Release:        3%{?dist}
+Release:        4%{?dist}
 Summary:        Aaru 5.x stable data-preservation CLI (MPF-compatible)
 
 License:        GPL-3.0-or-later AND LGPL-2.1-or-later AND MIT
@@ -111,6 +111,7 @@ install -d %{buildroot}%{_bindir}
 ln -sf %{aarudir}/aaru %{buildroot}%{_bindir}/aaru5
 
 %files
+%dir %{aarudir}
 %caps(cap_sys_rawio=ep) %attr(0755,root,root) %{aarudir}/aaru
 %{aarudir}/libe_sqlite3.so
 %{aarudir}/README.md
@@ -123,6 +124,12 @@ ln -sf %{aarudir}/aaru %{buildroot}%{_bindir}/aaru5
 %{_udevrulesdir}/70-aaru5-floppy.rules
 
 %changelog
+* Sat Jul 11 2026 gmipf <gmipf64@gmail.com> - 5.4.2-4
+- Own the private %{aarudir} directory in %%files. It was previously left
+  unowned, so uninstalling the package orphaned /usr/lib64/aaru5. Surfaced by
+  openSUSE's stricter 50-check-filelist post-build check (which fails the build
+  on unowned directories, where Fedora only warns).
+
 * Fri Jul 10 2026 gmipf <gmipf64@gmail.com> - 5.4.2-3
 - Fix 70-aaru5-floppy.rules, which never fired. It matched
   ENV{ID_DRIVE_FLOPPY}, a property 80-udisks2.rules only sets at priority

@@ -5,17 +5,32 @@ RPM packaging for the media-preservation tools, published on the
 openSUSE counterpart to the Fedora/EPEL `fedora/` lane (COPR) and the Ubuntu
 `ubuntu/` lane (Launchpad PPA).
 
-> **Status: validated locally, not yet on OBS.** All five tools (`redumper`,
-> `aaru5`, `aaru`, `mpf`, `discimagecreator`) have been built in a real
-> **openSUSE Leap 16.0 chroot** (a podman container, `rpmbuild -ba`) — including
-> the `discimagecreator` meson source build (the hermetic-build gate). The one
-> mechanism that differs from the Fedora/Ubuntu lanes, the **permissions-framework
-> capability handling**, is confirmed working: the `permissions.d` profile parses
-> (`permctl`), the `%set_permissions`/`%verify_permissions` macros resolve, and
-> `cap_sys_rawio=ep` actually lands on every target binary (`getcap`). See
-> *Permissions framework & rpmlint* below for the one policy nuance this surfaced.
-> What is **not** done yet is publishing on OBS: the account / home project still
-> has to be created (see *Account setup*). Until then `redumper` is bumped by hand.
+> **Status: LIVE on OBS.** All five tools are published from
+> **[`home:gmipf:media-preservation`](https://build.opensuse.org/project/show/home:gmipf:media-preservation)**
+> and build for **openSUSE Leap 16.0** and **Tumbleweed** (x86_64) — including the
+> `discimagecreator` meson source build, which clears the hermetic-build gate (no
+> network in the OBS build root). The mechanism that differs from the Fedora/Ubuntu
+> lanes, the **permissions-framework capability handling**, works as intended: the
+> `permissions.d` profile parses (`permctl`), `%set_permissions`/`%verify_permissions`
+> resolve, and `cap_sys_rawio=ep` lands on every target binary. See *Permissions
+> framework & rpmlint* below for the one policy nuance this surfaced.
+>
+> Publishing surfaced two packaging bugs that Fedora had silently tolerated, both
+> now fixed in **both** lanes: `aaru`/`aaru5` did not own their private
+> `%{_libdir}/<tool>` directory, and the icon-shipping packages (`aaru`, `mpf`) did
+> not pull `hicolor-icon-theme` into the **build root**. openSUSE's
+> `50-check-filelist` post-build check *fails the build* on directories no installed
+> package owns; Fedora only warns.
+
+## Install
+
+```sh
+sudo zypper addrepo https://download.opensuse.org/repositories/home:gmipf:media-preservation/16.0/home:gmipf:media-preservation.repo
+sudo zypper refresh
+sudo zypper install redumper discimagecreator aaru aaru5 mpf
+```
+
+For Tumbleweed, swap `16.0` for `openSUSE_Tumbleweed` in the repo URL.
 
 ## How an OBS build works
 
@@ -26,15 +41,24 @@ repackaging model as the other lanes (ship the upstream prebuilt binary), with
 the assets pulled in by a **source service** rather than fetched at build time.
 
 1. A `_service` runs `download_files`, which reads the spec's `Source:` URLs and
-   downloads each one by basename into the package.
+   downloads each one into the package. It honours rpm's `#/rename` convention
+   (`<URL>#/<filename>`), storing the download under the name after `#/`.
 2. We commit the spec, the `_service` and the downloaded assets together.
 3. OBS builds the `.rpm` for each configured repository (Leap 16.0,
    Tumbleweed) and publishes them.
 
 `download_files` reads the URLs straight from the spec, so a version bump only
-touches the spec's `Version:` field - the `_service` never changes. Because
-build.opensuse.org does not run `download_files` server-side (network policy),
-the service is `mode="manual"`: run it locally and commit the result.
+touches the spec's `Version:` (or the version macros) - the `_service` never
+changes. It runs `mode="manual"`: run it locally and commit the result, so the
+committed sources are exactly what the build root sees.
+
+**All five tools use one `download_files` service**, `discimagecreator` included.
+An earlier draft of this lane assumed `download_files` could not reproduce DIC's
+`#/rename` Source lines and used four explicit `download_url` services instead.
+That was wrong - `/usr/lib/obs/service/download_files` splits on `#/` and renames
+accordingly - and it cost nothing to keep, but it did hard-code the DIC commit in
+the `_service` as well as the spec, so every bump had to be made in two places.
+It also required `obs-service-download_url`, which Fedora does not package.
 
 ## Layout
 
@@ -145,14 +169,15 @@ openSUSE's native changelog convention is a separate `<tool>.changes` file
 (managed with `osc vc`); the scaffold keeps a `%changelog` in the spec for now,
 which OBS accepts. Switching to `.changes` is a later polish, not a blocker.
 
-## Automation (planned)
+## Automation (still to do)
 
 The Fedora and Ubuntu lanes are driven by per-tool watchers
-(`.github/workflows/watch-<tool>.yml`) that bump both lanes on a new upstream
-revision. OBS can be wired the same way once the account exists - either a
-watcher step that commits to OBS via `osc` with a stored token, or OBS's own
-`_service` scheduled remotely. Not built yet; `redumper` is bumped by hand for
-now.
+(`.github/workflows/watch-<tool>.yml`). **They do not yet bump `opensuse/`** — the
+lane was not live when they were written, so an upstream release currently updates
+the Fedora and Ubuntu recipes and leaves the openSUSE ones behind. Closing that gap
+is the next task for this lane. Until then, an upstream bump means editing the
+version macros in `opensuse/<tool>/<tool>.spec` by hand and re-running the publish
+flow above.
 
 ## Packaged tools
 
@@ -162,7 +187,7 @@ now.
 | aaru5            | NativeAOT binary + sidecar `.so`  | download_files  | auto ELF deps; static manpage; udev |
 | aaru             | self-contained .NET (single-file) | download_files  | two tarballs; manpage from `--help`; udev; icons/MIME/desktop |
 | mpf              | self-contained .NET × 3           | download_files  | `mpf` meta + `mpf-check`/`mpf-cli`/`mpf-gui`; caps per subpackage |
-| discimagecreator | **source build** (meson)          | download_url ×4 | four archives; helper makefiles; two caps binaries; udev |
+| discimagecreator | **source build** (meson)          | download_files  | four archives via `#/rename`; helper makefiles; two caps binaries; udev |
 
 Every tool grants its `cap_sys_rawio` capability through the **permissions
 framework** (see *Permissions framework & rpmlint*) instead of `%caps`. `aaru`,
@@ -174,11 +199,11 @@ Leap 16.0 (`aaru`'s `libicu` / `krb5` / `libopenssl3` / `libz1` /
 all five specs built with `rpmbuild -ba`.
 
 `discimagecreator` is the only **source build** and the hermetic-build gate:
-its `debian`-free meson compile plus three helper makefiles must complete with
-no network in the OBS build root. Its four upstream archives use rpm's
-`#/rename` Source convention, which `download_files` may not reproduce, so it
-uses explicit `download_url` services with a matching `filename` per source
-(the tag is hard-coded in `_service` and bumped per release alongside the spec).
+its `debian`-free meson compile plus three helper makefiles complete with no
+network in the OBS build root — confirmed on the first OBS build for both Leap
+16.0 and Tumbleweed. Its four upstream archives use rpm's `#/rename` Source
+convention, which `download_files` handles natively, so it uses the same single
+`download_files` service as the other four tools.
 
 The GUI weak `Recommends` (`aaru`, `mpf-gui`) still carry the Fedora library
 names; they never enter the build root so they don't affect the build, but they

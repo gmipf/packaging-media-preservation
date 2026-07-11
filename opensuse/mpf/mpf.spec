@@ -1,5 +1,5 @@
-%global mpfver         3.8.2
-%global mpfsnap        20260703023433.eb239b60
+%global mpfver         3.8.3
+%global mpfsnap        20260707133302.e1081655
 %global rolltag        rolling
 
 %global debug_package      %{nil}
@@ -38,6 +38,11 @@ BuildRequires:  unzip
 # openSUSE grants file capabilities through the permissions framework
 # (chkstat), not a bare %%caps entry (see %%install / %%post per subpackage).
 BuildRequires:  permissions
+# hicolor-icon-theme owns /usr/share/icons/hicolor/**; it is a runtime Requires
+# below, but it must ALSO be in the build root: openSUSE's 50-check-filelist
+# post-build check fails the build on directories that no *installed* package
+# owns, and it only sees BuildRequires. (Fedora does not run this check.)
+BuildRequires:  hicolor-icon-theme
 AutoReqProv:    no
 
 # Meta-package: pulls in all three subpackages.
@@ -405,6 +410,11 @@ EOF
 %{_datadir}/permissions/permissions.d/mpf-gui
 
 %changelog
+* Sat Jul 11 2026 gmipf <gmipf64@gmail.com> - 3.8.3~20260707133302.e1081655-0
+- Initial openSUSE (OBS) packaging of the MPF suite (mpf-check, mpf-cli,
+  mpf-gui), synced to the same rolling snapshot as the Fedora lane
+  (upstream commit e1081655, published 20260707133302 UTC).
+
 * Sun Jul 05 2026 gmipf <gmipf64@gmail.com> - 3.8.2~20260703023433.eb239b60-0
 - Initial openSUSE (OBS) packaging of the MPF suite (mpf meta + mpf-check,
   mpf-cli, mpf-gui) from the upstream rolling snapshot eb239b60.
