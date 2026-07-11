@@ -1,3 +1,15 @@
+discimagecreator (20260703121302.efa7d482-3) UNRELEASED; urgency=medium
+
+  * Apply the shipped udev rule in postinst to drives that are ALREADY
+    connected. Reloading the rule set only affects future uevents, so a floppy
+    plugged in at install time kept its old permissions -- measured, the node
+    stayed root:disk with no uaccess ACL and reads failed with EACCES -- until
+    it was physically unplugged and replugged. postinst now reloads the rules
+    and re-emits a change event for floppy block devices, so the drive works
+    right after installing.
+
+ -- gmipf <gmipf64@gmail.com>  Sat, 11 Jul 2026 23:15:00 +0000
+
 discimagecreator (20260703121302.efa7d482-2) UNRELEASED; urgency=medium
 
   * Fix 70-discimagecreator-floppy.rules, which never fired. It matched

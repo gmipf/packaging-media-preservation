@@ -15,6 +15,18 @@ case "$1" in
                      "support file capabilities); run aaru5 with sudo or add" \
                      "the capability manually." >&2
         fi
+
+        # Make the shipped udev rule take effect on drives that are ALREADY
+        # connected. Reloading the rule set only affects future uevents, so a
+        # floppy plugged in right now would keep its old permissions until it is
+        # physically unplugged and replugged. Re-emit a change event for floppy
+        # block devices instead. Best-effort: a container or chroot has no udevd.
+        if command -v udevadm >/dev/null 2>&1; then
+            udevadm control --reload-rules >/dev/null 2>&1 || true
+            udevadm trigger --subsystem-match=block --property-match=ID_TYPE=floppy --action=change >/dev/null 2>&1 || true
+            udevadm trigger --subsystem-match=block --property-match=ID_USB_TYPE=floppy --action=change >/dev/null 2>&1 || true
+            udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=change >/dev/null 2>&1 || true
+        fi
         ;;
 esac
 

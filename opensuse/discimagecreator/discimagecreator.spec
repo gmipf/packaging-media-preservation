@@ -221,6 +221,17 @@ EOF
 
 %post
 %set_permissions %{dicdir}/DiscImageCreator.out %{dicdir}/DVDAuth.out
+# Make the udev rule take effect on drives that are ALREADY connected. The file
+# trigger shipped by udev only reloads the rule set, and it runs at the very end
+# of the transaction, so a floppy plugged in right now would keep its old
+# permissions until it is physically unplugged and replugged. Reload the rules
+# and re-emit a change event for floppy block devices instead. Measured: after
+# the reload alone the node still has no uaccess ACL and reads fail with EACCES;
+# the trigger grants it. Best effort - a container or chroot has no udevd.
+udevadm control --reload-rules >/dev/null 2>&1 || :
+udevadm trigger --subsystem-match=block --property-match=ID_TYPE=floppy --action=change >/dev/null 2>&1 || :
+udevadm trigger --subsystem-match=block --property-match=ID_USB_TYPE=floppy --action=change >/dev/null 2>&1 || :
+udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=change >/dev/null 2>&1 || :
 
 %verifyscript
 %verify_permissions -e %{dicdir}/DiscImageCreator.out
@@ -256,6 +267,15 @@ EOF
 %{_datadir}/permissions/permissions.d/discimagecreator
 
 %changelog
+* Sat Jul 11 2026 gmipf <gmipf64@gmail.com> - 20260703121302.efa7d482-0
+- Apply the udev rule in %%post to drives that are ALREADY connected. The file
+  trigger shipped by udev only reloads the rule set, and only at the end of the
+  transaction, which does nothing for a floppy that is plugged in at install
+  time: measured, the node kept root:disk with no uaccess ACL and reads failed
+  with EACCES until it was physically unplugged and replugged. %%post now
+  reloads the rules and re-emits a change event for floppy block devices, so
+  the drive is usable right after installing.
+
 * Fri Jul 10 2026 gmipf <gmipf64@gmail.com> - 20260703121302.efa7d482-0
 - Fix 70-discimagecreator-floppy.rules before it is ever published. It
   matched ENV{ID_DRIVE_FLOPPY}, a property 80-udisks2.rules only sets at

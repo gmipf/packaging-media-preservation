@@ -26,7 +26,7 @@
 
 Name:           discimagecreator
 Version:        %{dicsnap}
-Release:        2%{?dist}
+Release:        3%{?dist}
 Summary:        Low-level disc dumper plus EccEdc / DVDAuth / unscrambler helpers
 License:        Apache-2.0 AND GPL-3.0-or-later AND GPL-2.0-or-later
 URL:            https://github.com/saramibreak/DiscImageCreator
@@ -208,11 +208,24 @@ ln -s %{name}.1 %{buildroot}%{_mandir}/man1/eccedc.1
 ln -s %{name}.1 %{buildroot}%{_mandir}/man1/dvdauth.1
 ln -s %{name}.1 %{buildroot}%{_mandir}/man1/unscrambler.1
 
-# udev rule for USB-floppy access (see Source5). No scriptlet needed: the
-# udev package ships a file trigger on %{_udevrulesdir} that reloads rules
-# automatically when this file lands.
+# udev rule for USB-floppy access (see Source5). See the %%post scriptlet: the
+# file trigger shipped by systemd-udev only RELOADS the rule set, which does
+# nothing for a drive that is already plugged in.
 install -D -m 0644 %{SOURCE5} \
     %{buildroot}%{_udevrulesdir}/70-discimagecreator-floppy.rules
+
+%post
+# Make the udev rule take effect on drives that are ALREADY connected. The file
+# trigger in systemd-udev only reloads the rule set, and it runs at the very end
+# of the transaction, so a floppy plugged in right now would keep its old
+# permissions until it is physically unplugged and replugged. Reload the rules
+# and re-emit a change event for floppy block devices instead. Measured: after
+# the reload alone the node still has no uaccess ACL and reads fail with EACCES;
+# the trigger grants it. Best effort - a container or chroot has no udevd.
+udevadm control --reload-rules >/dev/null 2>&1 || :
+udevadm trigger --subsystem-match=block --property-match=ID_TYPE=floppy --action=change >/dev/null 2>&1 || :
+udevadm trigger --subsystem-match=block --property-match=ID_USB_TYPE=floppy --action=change >/dev/null 2>&1 || :
+udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=change >/dev/null 2>&1 || :
 
 %files
 %license LICENSE
@@ -243,6 +256,15 @@ install -D -m 0644 %{SOURCE5} \
 %{_udevrulesdir}/70-discimagecreator-floppy.rules
 
 %changelog
+* Sat Jul 11 2026 gmipf <gmipf64@gmail.com> - 20260703121302.efa7d482-3
+- Apply the udev rule in %%post to drives that are ALREADY connected. The file
+  trigger in systemd-udev only reloads the rule set, and only at the end of the
+  transaction, which does nothing for a floppy that is plugged in at install
+  time: measured, the node kept root:disk with no uaccess ACL and reads failed
+  with EACCES until it was physically unplugged and replugged. %%post now
+  reloads the rules and re-emits a change event for floppy block devices, so
+  the drive is usable right after installing.
+
 * Fri Jul 10 2026 gmipf <gmipf64@gmail.com> - 20260703121302.efa7d482-2
 - Fix 70-discimagecreator-floppy.rules, which never fired. It matched
   ENV{ID_DRIVE_FLOPPY}, a property 80-udisks2.rules only sets at priority

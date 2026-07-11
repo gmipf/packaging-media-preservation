@@ -25,7 +25,7 @@ Name:           aaru
 # history was wiped (copr-cli delete-package) before this build, so
 # nothing previously published needs to be sort-overridden.
 Version:        %{aaruver}~%{aaruprerel}
-Release:        6%{?dist}
+Release:        7%{?dist}
 Summary:        Data preservation suite for optical, magnetic and solid-state media
 
 License:        GPL-3.0-or-later AND LGPL-2.1-or-later AND MIT
@@ -192,9 +192,9 @@ install -D -m 0644 src/icons/512x512/aaru.png  %{buildroot}%{_datadir}/icons/hic
 # Manpage (generated from the binary at %build time — see above)
 install -D -m 0644 aaru.1 %{buildroot}%{_mandir}/man1/aaru.1
 
-# udev rule for USB-floppy access (see Source4). No scriptlet needed:
-# the udev package ships a file trigger on %{_udevrulesdir} that reloads
-# rules automatically when this file lands.
+# udev rule for USB-floppy access (see Source4). See the %%post scriptlet: the
+# file trigger shipped by systemd-udev only RELOADS the rule set, which does
+# nothing for a drive that is already plugged in.
 install -D -m 0644 %{SOURCE4} \
     %{buildroot}%{_udevrulesdir}/70-aaru-floppy.rules
 
@@ -202,6 +202,19 @@ install -D -m 0644 %{SOURCE4} \
 # for cap_sys_rawio inheritance on exec.
 install -d %{buildroot}%{_bindir}
 ln -sf %{aarudir}/aaru %{buildroot}%{_bindir}/aaru
+
+%post
+# Make the udev rule take effect on drives that are ALREADY connected. The file
+# trigger in systemd-udev only reloads the rule set, and it runs at the very end
+# of the transaction, so a floppy plugged in right now would keep its old
+# permissions until it is physically unplugged and replugged. Reload the rules
+# and re-emit a change event for floppy block devices instead. Measured: after
+# the reload alone the node still has no uaccess ACL and reads fail with EACCES;
+# the trigger grants it. Best effort - a container or chroot has no udevd.
+udevadm control --reload-rules >/dev/null 2>&1 || :
+udevadm trigger --subsystem-match=block --property-match=ID_TYPE=floppy --action=change >/dev/null 2>&1 || :
+udevadm trigger --subsystem-match=block --property-match=ID_USB_TYPE=floppy --action=change >/dev/null 2>&1 || :
+udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=change >/dev/null 2>&1 || :
 
 %files
 %dir %{aarudir}
@@ -224,6 +237,15 @@ ln -sf %{aarudir}/aaru %{buildroot}%{_bindir}/aaru
 %{_udevrulesdir}/70-aaru-floppy.rules
 
 %changelog
+* Sat Jul 11 2026 gmipf <gmipf64@gmail.com> - 6.0.0~alpha.19-7
+- Apply the udev rule in %%post to drives that are ALREADY connected. The file
+  trigger in systemd-udev only reloads the rule set, and only at the end of the
+  transaction, which does nothing for a floppy that is plugged in at install
+  time: measured, the node kept root:disk with no uaccess ACL and reads failed
+  with EACCES until it was physically unplugged and replugged. %%post now
+  reloads the rules and re-emits a change event for floppy block devices, so
+  the drive is usable right after installing.
+
 * Sat Jul 11 2026 gmipf <gmipf64@gmail.com> - 6.0.0~alpha.19-6
 - Own the private %{aarudir} directory in %%files. It was previously left
   unowned, so uninstalling the package orphaned /usr/lib64/aaru. Surfaced by
