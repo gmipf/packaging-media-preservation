@@ -83,7 +83,16 @@ jobs:
           bash scripts/deb/ppa-bump-changelog.sh "$UB" "$VERSION" \
             "Automated sync to upstream redumper release ${UPSTREAM_TAG}."
 
-          git add "$SPEC" "$MARKER" "$UB/.upstream-tag" "$UB/debian/changelog"
+          # --- openSUSE/OBS lane: advance the recipe in lockstep as well, so all
+          # three lanes describe the same upstream revision in one commit. This
+          # updates the recipe in GIT only — publishing to OBS still needs `osc`
+          # (OBS tokens cannot commit sources; see opensuse/README.md). ---
+          bash scripts/opensuse-bump.sh redumper "$VERSION" "$UPSTREAM_TAG" \
+            "Automated sync to upstream redumper release ${UPSTREAM_TAG}." \
+            Version="$VERSION"
+
+          git add "$SPEC" "$MARKER" "$UB/.upstream-tag" "$UB/debian/changelog" \
+                  opensuse/redumper/redumper.spec opensuse/redumper/.upstream-tag
           if git diff --cached --quiet; then
             echo "Spec and marker unchanged after rewrite — exiting clean"
             exit 0

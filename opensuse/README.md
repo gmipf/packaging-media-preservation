@@ -169,15 +169,31 @@ openSUSE's native changelog convention is a separate `<tool>.changes` file
 (managed with `osc vc`); the scaffold keeps a `%changelog` in the spec for now,
 which OBS accepts. Switching to `.changes` is a later polish, not a blocker.
 
-## Automation (still to do)
+## Automation
 
-The Fedora and Ubuntu lanes are driven by per-tool watchers
-(`.github/workflows/watch-<tool>.yml`). **They do not yet bump `opensuse/`** — the
-lane was not live when they were written, so an upstream release currently updates
-the Fedora and Ubuntu recipes and leaves the openSUSE ones behind. Closing that gap
-is the next task for this lane. Until then, an upstream bump means editing the
-version macros in `opensuse/<tool>/<tool>.spec` by hand and re-running the publish
-flow above.
+The per-tool watchers (`.github/workflows/watch-<tool>.yml`) advance this lane in
+lockstep with Fedora and Ubuntu. On an upstream release they rewrite the version
+macros in `opensuse/<tool>/<tool>.spec`, refresh `.upstream-tag` and prepend a
+`%changelog` entry — in the same commit as the fedora spec and debian changelog
+bumps, via `scripts/opensuse-bump.sh`. The openSUSE specs deliberately reuse the
+fedora macro names (`mpfver`/`mpfsnap`, `dicsnap`/`diccommit`, `aaruver`/
+`aaruprerel`), so one rewrite serves both; if a macro is ever renamed on one side
+only, the bump script fails loudly rather than silently skipping the lane.
+`Release:` is never touched — it stays `0` and OBS supplies its own counter.
+
+> This was a real gap, not a hypothetical: the lane went live after the watchers
+> were written, so for a while an upstream release updated fedora/ and ubuntu/ and
+> left openSUSE behind. redumper (b729 vs b731) and mpf (3.8.2 vs 3.8.3) both had
+> to be caught up by hand.
+
+**Publishing is still manual.** The watchers update the recipe *in git*; they cannot
+push it to OBS. An OBS token cannot commit sources (`osc token --operation` only
+knows `runservice|branch|release|rebuild|workflow`, all of which act on packages that
+already exist), and the only credential that *can* commit is the account password —
+which is not something to hand to CI lightly. So after a watcher bump, publish with
+the `osc` flow above. Closing this last step would mean either putting the account
+password in CI, or restructuring `_service` to pull the recipe from this repo so that
+a scoped `runservice` token can trigger the rest.
 
 ## Packaged tools
 

@@ -80,7 +80,17 @@ jobs:
           bash scripts/deb/ppa-bump-changelog.sh "$UB" "${UPSTREAM_VERSION}~${UPSTREAM_TS}.${UPSTREAM_SHA}" \
             "Automated rolling-snapshot sync to upstream MPF commit ${UPSTREAM_SHA} (published ${UPSTREAM_TS} UTC)."
 
-          git add "$SPEC" "$MARKER" "$UB/debian/changelog"
+          # --- openSUSE/OBS lane: advance the recipe in lockstep as well, so all
+          # three lanes describe the same upstream snapshot in one commit. The
+          # openSUSE marker is the constant `rolling` tag (like ubuntu's), so it
+          # is left alone ("-") — only the two version macros move. This updates
+          # the recipe in GIT only; publishing to OBS still needs `osc` (OBS
+          # tokens cannot commit sources; see opensuse/README.md). ---
+          bash scripts/opensuse-bump.sh mpf "${UPSTREAM_VERSION}~${UPSTREAM_TS}.${UPSTREAM_SHA}" - \
+            "Automated rolling-snapshot sync to upstream MPF commit ${UPSTREAM_SHA} (published ${UPSTREAM_TS} UTC)." \
+            mpfver="$UPSTREAM_VERSION" mpfsnap="${UPSTREAM_TS}.${UPSTREAM_SHA}"
+
+          git add "$SPEC" "$MARKER" "$UB/debian/changelog" opensuse/mpf/mpf.spec
           if git diff --cached --quiet; then
             echo "Spec and marker unchanged after rewrite — exiting clean"
             exit 0

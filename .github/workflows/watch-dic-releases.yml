@@ -82,7 +82,17 @@ jobs:
           bash scripts/deb/ppa-bump-changelog.sh "$UB" "${UPSTREAM_TS}.${UPSTREAM_SHA}" \
             "Automated master-snapshot sync to upstream DiscImageCreator commit ${UPSTREAM_SHA} (committed ${UPSTREAM_TS} UTC)."
 
-          git add "$SPEC" "$MARKER" "$UB/.upstream-tag" "$UB/debian/changelog"
+          # --- openSUSE/OBS lane: advance the recipe in lockstep as well, so all
+          # three lanes describe the same upstream commit in one git commit. This
+          # updates the recipe in GIT only — publishing to OBS still needs `osc`
+          # (OBS tokens cannot commit sources; see opensuse/README.md). ---
+          bash scripts/opensuse-bump.sh discimagecreator "${UPSTREAM_TS}.${UPSTREAM_SHA}" "$UPSTREAM_SHA_FULL" \
+            "Automated master-snapshot sync to upstream DiscImageCreator commit ${UPSTREAM_SHA} (committed ${UPSTREAM_TS} UTC)." \
+            dicsnap="${UPSTREAM_TS}.${UPSTREAM_SHA}" diccommit="$UPSTREAM_SHA_FULL"
+
+          git add "$SPEC" "$MARKER" "$UB/.upstream-tag" "$UB/debian/changelog" \
+                  opensuse/discimagecreator/discimagecreator.spec \
+                  opensuse/discimagecreator/.upstream-tag
           if git diff --cached --quiet; then
             echo "Spec and marker unchanged after rewrite — exiting clean"
             exit 0
