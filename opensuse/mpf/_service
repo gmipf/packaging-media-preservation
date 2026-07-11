@@ -1,22 +1,67 @@
 <services>
-  <!--
-    OBS builds are hermetic (no network in the build root), so the three
-    upstream release ZIPs must be fetched at *service* time and committed as
-    package sources. download_files reads the spec's Source0/1/2 URLs (all on
-    the constant `rolling` tag) and downloads each by basename; the local
-    sources (desktop, manpages, icons) are left untouched.
+  <!-- OBS pulls EVERYTHING itself; `_service` is the only file committed to OBS.
 
-    Because the upstream tag is the constant `rolling`, this _service never
-    changes even across snapshots (only the spec's %{mpfsnap} moves).
-    mode="manual" (build.opensuse.org does not run download_files server-side):
+       1. download_url fetches each recipe file (spec, manpages, udev rule, icons,
+          rpmlintrc) straight from `main` of the packaging repo, so git stays the
+          single source of truth: a push is all it takes, there is no second copy
+          of the recipe to keep in sync.
+       2. download_files then reads the *generated* spec and downloads the upstream
+          assets named in its Source: URLs. It supports service-generated specs on
+          purpose - it strips the `_service:<svc>:` prefix when globbing for *.spec.
 
-        osc service manualrun        # downloads MPF.Check/CLI/Avalonia zips
-        osc addremove                # stage the freshly downloaded files
-        osc commit                   # spec + _service + zips in one revision
+       The services run SERVER-SIDE (no mode= attribute), so a scoped `runservice`
+       token can refresh a package (.github/workflows/obs-trigger.yml). An OBS token
+       can never commit - which is precisely why the recipe has to be fetched by OBS
+       rather than pushed to it.
 
-    NOTE: `rolling` is a moving tag; each manualrun re-pulls whatever it
-    currently points at, so bump %{mpfsnap}/%{mpfver} in the spec to match
-    the assets you just fetched before committing.
-  -->
-  <service name="download_files" mode="manual"/>
+       Deliberately NOT tar_scm: it always also produces a tarball whose name carries
+       the git commit, so every unrelated push to main would change the sources of
+       all five packages and rebuild them for nothing. download_url writes only the
+       files themselves: an unchanged recipe keeps verifymd5 stable -> no rebuild. -->
+  <service name="download_url">
+    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/mpf/mpf-128.png</param>
+    <param name="filename">mpf-128.png</param>
+  </service>
+  <service name="download_url">
+    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/mpf/mpf-256.png</param>
+    <param name="filename">mpf-256.png</param>
+  </service>
+  <service name="download_url">
+    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/mpf/mpf-32.png</param>
+    <param name="filename">mpf-32.png</param>
+  </service>
+  <service name="download_url">
+    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/mpf/mpf-512.png</param>
+    <param name="filename">mpf-512.png</param>
+  </service>
+  <service name="download_url">
+    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/mpf/mpf-64.png</param>
+    <param name="filename">mpf-64.png</param>
+  </service>
+  <service name="download_url">
+    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/mpf/mpf-check.1</param>
+    <param name="filename">mpf-check.1</param>
+  </service>
+  <service name="download_url">
+    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/mpf/mpf-cli.1</param>
+    <param name="filename">mpf-cli.1</param>
+  </service>
+  <service name="download_url">
+    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/mpf/mpf-gui.1</param>
+    <param name="filename">mpf-gui.1</param>
+  </service>
+  <service name="download_url">
+    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/mpf/mpf-gui.desktop</param>
+    <param name="filename">mpf-gui.desktop</param>
+  </service>
+  <service name="download_url">
+    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/mpf/mpf-rpmlintrc</param>
+    <param name="filename">mpf-rpmlintrc</param>
+  </service>
+  <service name="download_url">
+    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/mpf/mpf.spec</param>
+    <param name="filename">mpf.spec</param>
+  </service>
+  <!-- upstream assets, taken from the Source: URLs of the spec above -->
+  <service name="download_files"/>
 </services>

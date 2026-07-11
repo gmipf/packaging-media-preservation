@@ -1,24 +1,35 @@
 <services>
-  <!--
-    OBS builds are hermetic (no network in the build root), so the upstream
-    release assets must be fetched at *service* time and committed as package
-    sources - the OBS analogue of what copr/Packit fetch for the Fedora lane.
+  <!-- OBS pulls EVERYTHING itself; `_service` is the only file committed to OBS.
 
-    download_files parses the spec's Source: URLs (Source0 release zip, Source1
-    LICENSE, Source2 README) and downloads each by basename. Because it reads
-    the URLs straight from the spec, a version bump only has to touch the spec's
-    Version: field - this _service never changes. Source3 (redumper.1) is a
-    local file, not a URL, so it is left untouched.
+       1. download_url fetches each recipe file (spec, manpages, udev rule, icons,
+          rpmlintrc) straight from `main` of the packaging repo, so git stays the
+          single source of truth: a push is all it takes, there is no second copy
+          of the recipe to keep in sync.
+       2. download_files then reads the *generated* spec and downloads the upstream
+          assets named in its Source: URLs. It supports service-generated specs on
+          purpose - it strips the `_service:<svc>:` prefix when globbing for *.spec.
 
-    mode="manual": build.opensuse.org does not run download_files server-side
-    (network policy), so run it locally and commit the results:
+       The services run SERVER-SIDE (no mode= attribute), so a scoped `runservice`
+       token can refresh a package (.github/workflows/obs-trigger.yml). An OBS token
+       can never commit - which is precisely why the recipe has to be fetched by OBS
+       rather than pushed to it.
 
-        osc service manualrun        # downloads the 3 assets into the package
-        osc addremove                # stage the freshly downloaded files
-        osc commit                   # spec + _service + assets in one revision
-
-    On a redumper release bump: edit Version: in redumper.spec, then repeat the
-    three commands above.
-  -->
-  <service name="download_files" mode="manual"/>
+       Deliberately NOT tar_scm: it always also produces a tarball whose name carries
+       the git commit, so every unrelated push to main would change the sources of
+       all five packages and rebuild them for nothing. download_url writes only the
+       files themselves: an unchanged recipe keeps verifymd5 stable -> no rebuild. -->
+  <service name="download_url">
+    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/redumper/redumper-rpmlintrc</param>
+    <param name="filename">redumper-rpmlintrc</param>
+  </service>
+  <service name="download_url">
+    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/redumper/redumper.1</param>
+    <param name="filename">redumper.1</param>
+  </service>
+  <service name="download_url">
+    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/redumper/redumper.spec</param>
+    <param name="filename">redumper.spec</param>
+  </service>
+  <!-- upstream assets, taken from the Source: URLs of the spec above -->
+  <service name="download_files"/>
 </services>

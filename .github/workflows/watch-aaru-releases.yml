@@ -111,8 +111,8 @@ jobs:
           # --- openSUSE/OBS lane: advance the recipe in lockstep as well, so all
           # three lanes describe the same upstream tag in one commit. Only
           # aaruprerel moves (aaruver stays the 6.0.0 base, as in fedora). This
-          # updates the recipe in GIT only — publishing to OBS still needs `osc`
-          # (OBS tokens cannot commit sources; see opensuse/README.md). ---
+          # OBS pulls the recipe from main itself, so nothing is uploaded here; the
+          # `obs` job below just asks it to re-run its source services. ---
           bash scripts/opensuse-bump.sh aaru "${AARUVER}~${PRERELEASE}" "$UPSTREAM_TAG" \
             "Automated sync to upstream Aaru ${UPSTREAM_TAG}." \
             aaruprerel="$PRERELEASE"
@@ -155,4 +155,13 @@ jobs:
     uses: ./.github/workflows/ppa-upload.yml
     with:
       tool: aaru
+    secrets: inherit
+
+  # Tell OBS to re-pull the recipe from main and rebuild what actually changed.
+  # OBS fetches the recipe itself, so there is nothing to upload — this only asks
+  # it to re-run the source services. See .github/workflows/obs-trigger.yml.
+  obs:
+    needs: watch
+    if: needs.watch.outputs.changed == 'true'
+    uses: ./.github/workflows/obs-trigger.yml
     secrets: inherit

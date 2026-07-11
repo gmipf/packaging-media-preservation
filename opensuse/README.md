@@ -34,47 +34,57 @@ For Tumbleweed, swap `16.0` for `openSUSE_Tumbleweed` in the repo URL.
 
 ## How an OBS build works
 
-Like COPR, OBS builds the RPMs itself on its own farm; unlike COPR the build
-root is **hermetic - no network**. So every upstream asset has to be present as
-a committed package source before the build starts. We use the same
-repackaging model as the other lanes (ship the upstream prebuilt binary), with
-the assets pulled in by a **source service** rather than fetched at build time.
+Like COPR, OBS builds the RPMs itself on its own farm; unlike COPR the build root
+is **hermetic - no network**. So every upstream asset has to exist as a package
+source before the build starts. Both the recipe and the assets are produced by
+**source services**, which OBS runs on its source server (that one *does* have
+network). The only file committed to OBS is `_service` itself:
 
-1. A `_service` runs `download_files`, which reads the spec's `Source:` URLs and
-   downloads each one into the package. It honours rpm's `#/rename` convention
-   (`<URL>#/<filename>`), storing the download under the name after `#/`.
-2. We commit the spec, the `_service` and the downloaded assets together.
-3. OBS builds the `.rpm` for each configured repository (Leap 16.0,
-   Tumbleweed) and publishes them.
+1. A `download_url` service per recipe file fetches the spec, the manpages, the
+   udev rule and the icons straight from `main` of **this repo**
+   (raw.githubusercontent). Git stays the single source of truth - there is no
+   second copy of the recipe living on OBS that could drift.
+2. `download_files` then reads that **generated** spec and downloads every asset
+   named in its `Source:` URLs. It supports service-generated specs on purpose:
+   it strips the `_service:<svc>:` prefix when it globs for `*.spec`. It also
+   honours rpm's `#/rename` convention (`<URL>#/<filename>`), which is what
+   `discimagecreator`'s four archives rely on.
+3. OBS builds the `.rpm` for each configured repository (Leap 16.0, Tumbleweed)
+   and publishes them.
 
-`download_files` reads the URLs straight from the spec, so a version bump only
-touches the spec's `Version:` (or the version macros) - the `_service` never
-changes. It runs `mode="manual"`: run it locally and commit the result, so the
-committed sources are exactly what the build root sees.
+Because OBS **pulls** the recipe rather than having it pushed, updating a package
+needs no credential that can write: a scoped `runservice` token is enough to say
+"re-read everything". That is the whole reason the lane is built this way - see
+*Automation*.
 
-**All five tools use one `download_files` service**, `discimagecreator` included.
-An earlier draft of this lane assumed `download_files` could not reproduce DIC's
-`#/rename` Source lines and used four explicit `download_url` services instead.
-That was wrong - `/usr/lib/obs/service/download_files` splits on `#/` and renames
-accordingly - and it cost nothing to keep, but it did hard-code the DIC commit in
-the `_service` as well as the spec, so every bump had to be made in two places.
-It also required `obs-service-download_url`, which Fedora does not package.
+**Why not `tar_scm`.** It can do the same job (`extract` pulls build descriptions
+out of an SCM), but it *always* also produces a tarball whose name carries the git
+commit. Every unrelated push to `main` would therefore change the sources of all
+five packages and rebuild them for nothing. `download_url` writes only the files
+themselves, so an unchanged recipe leaves `verifymd5` untouched and nothing
+rebuilds.
 
 ## Layout
 
 ```
 opensuse/<tool>/
 ├── .upstream-tag       # last-seen upstream tag (watcher anchor, mirrors fedora/ & ubuntu/)
-├── _service            # download_files (manual) - fetches the Source: URLs
+├── _service            # download_url per recipe file (from git) + download_files (assets)
 ├── <tool>.spec         # openSUSE spec (Fedora spec + distro-native adaptations)
 ├── <tool>.1            # handwritten manpage, @TAG@/@DATE@ stamped in %build
 ├── <tool>-rpmlintrc    # self-authorizes the permissions.d cap profile (see below)
-└── <asset files>       # committed after `osc service manualrun` (release zip, LICENSE, README)
+└── ...                 # udev rule, icons, .desktop — whatever the spec lists as a local Source
 ```
 
+**Every file here except `.upstream-tag` is listed in that tool's `_service`.** If
+you add one, add it there too — otherwise OBS never sees it. The upstream assets
+are *not* in git: `download_files` fetches them from the `Source:` URLs.
+
 The `<tool>-rpmlintrc` is not a `Source:` and is not installed — OBS copies the
-whole package directory into the build root's `SOURCES/`, and rpmlint
-auto-loads any `*-rpmlintrc` it finds there.
+whole package directory into the build root's `SOURCES/` (stripping the
+`_service:<svc>:` prefix from generated files), and rpmlint auto-loads any
+`*-rpmlintrc` it finds there. Verified in a real build log:
+`rpmlintrc: /home/abuild/rpmbuild/SOURCES/redumper-rpmlintrc`.
 
 The spec is deliberately close to `fedora/<tool>/<tool>.spec`. The one
 structural difference is file capabilities: openSUSE grants them through the
@@ -133,22 +143,34 @@ repositories **`16.0`** (openSUSE Leap 16.0 — the name is the bare version, no
 credentials and writes `~/.config/osc/oscrc`. **That file holds the OBS
 credentials — never display, dump (`--dump-full`) or commit it.**
 
-## Publishing a package
+## Updating a package
 
-From `opensuse/redumper/` after the package exists on OBS:
+**Push the recipe change to `main`. That is the whole procedure.** The
+`obs-trigger` workflow then asks OBS to re-run the source services; OBS re-reads
+the recipe from git, re-downloads the assets, and rebuilds — but *only* if the
+sources actually changed (see *Automation*).
+
+To refresh by hand — after editing a recipe, or to force a re-fetch:
 
 ```sh
-osc checkout home:<user> redumper        # or work in an osc-managed checkout
-# copy redumper.spec, _service, redumper.1 into the checkout, then:
-osc service manualrun                     # download the release zip, LICENSE, README
-osc addremove                             # stage spec + _service + assets
-osc commit -m "redumper b729"             # triggers the OBS build
+osc service remoterun home:<user>:media-preservation redumper   # re-run the services
+osc results home:<user>:media-preservation redumper
+```
+
+Creating a **new** package still needs `osc` and the account password, because an
+OBS token cannot create or upload:
+
+```sh
+osc mkpac <tool>            # then commit ONLY the _service file
+osc add _service && osc commit -m "<tool>: recipe pulled from git"
 ```
 
 ### Local test build (the `mock` equivalent)
 
 `osc build` runs the exact OBS build locally in a chroot - the openSUSE analogue
-of `mock` for the Fedora lane. Run the service first so the assets are present:
+of `mock` for the Fedora lane. Fetch the sources first (`manualrun` also runs the
+`download_url` services, so the recipe comes from `main`, not from your working
+tree — edit there first, or copy the files in by hand):
 
 ```sh
 osc service manualrun
@@ -157,13 +179,14 @@ osc build 16.0 x86_64 redumper.spec       # openSUSE Leap 16.0
 ```
 
 Needs network (chroot bootstrap + asset download), so run it outside the command
-sandbox.
+sandbox. It also needs root (chroot), so it is not runnable non-interactively —
+in practice OBS itself is the authoritative oracle and answers in about 2 minutes.
 
 ## Versioning
 
 Base version in the spec is the upstream number with `Release: 0`; OBS supplies
-its own build/release counter on top. A real upstream bump edits `Version:`,
-re-runs `osc service manualrun` (fetching the new assets) and commits.
+its own build/release counter on top. A real upstream bump only edits `Version:`
+(or the version macros) in git — OBS picks the rest up on the next service run.
 
 openSUSE's native changelog convention is a separate `<tool>.changes` file
 (managed with `osc vc`); the scaffold keeps a `%changelog` in the spec for now,
@@ -186,24 +209,47 @@ only, the bump script fails loudly rather than silently skipping the lane.
 > left openSUSE behind. redumper (b729 vs b731) and mpf (3.8.2 vs 3.8.3) both had
 > to be caught up by hand.
 
-**Publishing is still manual.** The watchers update the recipe *in git*; they cannot
-push it to OBS. An OBS token cannot commit sources (`osc token --operation` only
-knows `runservice|branch|release|rebuild|workflow`, all of which act on packages that
-already exist), and the only credential that *can* commit is the account password —
-which is not something to hand to CI lightly. So after a watcher bump, publish with
-the `osc` flow above. Closing this last step would mean either putting the account
-password in CI, or restructuring `_service` to pull the recipe from this repo so that
-a scoped `runservice` token can trigger the rest.
+**Publishing is automated too**, without giving CI a credential that can write.
+After a bump, the watcher calls `.github/workflows/obs-trigger.yml`, which POSTs to
+`/trigger/runservice` for each package. OBS then re-reads the recipe from `main`,
+re-downloads the assets, rebuilds and publishes.
+
+Three properties make this safe:
+
+- **The token cannot write.** An OBS token only ever performs the one operation it
+  was created for — here `runservice`. It cannot commit, upload or delete. (It also
+  cannot be scoped to a whole project: OBS answers *"project wide trigger is not
+  supported"*, so it is one unbound `runservice` token, stored as the repository
+  secret `OBS_TOKEN`.) The account password never leaves the maintainer's machine.
+  This is the reason OBS *pulls* the recipe instead of having it pushed.
+- **A no-op trigger is free.** OBS decides on a rebuild from `verifymd5`, which is
+  computed from the *content* of the generated sources. Re-running the services with
+  an unchanged recipe reproduces byte-identical files, so `verifymd5` does not move
+  and nothing rebuilds. (Only the expanded `srcmd5` changes, which is service
+  metadata and does not trigger builds.) That is why the workflow simply refreshes
+  **all five** packages on every run instead of routing per tool: it cannot cause a
+  spurious rebuild, and no tool can be forgotten.
+- **Watcher pushes cannot self-trigger.** GitHub deliberately does not start
+  workflows from commits made with the default `GITHUB_TOKEN`, so the watchers call
+  `obs-trigger` explicitly. A `push` trigger on `opensuse/**` additionally covers
+  recipe edits pushed by a human.
+
+Setup, once: `osc token --create --operation runservice` and store the printed
+string as the repository secret `OBS_TOKEN`. Without the secret the workflow warns
+and skips rather than failing.
 
 ## Packaged tools
 
-| Tool             | Kind                              | `_service`      | Notes |
-|------------------|-----------------------------------|-----------------|-------|
-| redumper         | static binary                     | download_files  | no shlib deps; stamped manpage |
-| aaru5            | NativeAOT binary + sidecar `.so`  | download_files  | auto ELF deps; static manpage; udev |
-| aaru             | self-contained .NET (single-file) | download_files  | two tarballs; manpage from `--help`; udev; icons/MIME/desktop |
-| mpf              | self-contained .NET × 3           | download_files  | `mpf` meta + `mpf-check`/`mpf-cli`/`mpf-gui`; caps per subpackage |
-| discimagecreator | **source build** (meson)          | download_files  | four archives via `#/rename`; helper makefiles; two caps binaries; udev |
+Every `_service` has the same shape: one `download_url` per recipe file, then a
+single `download_files` for the upstream assets.
+
+| Tool             | Kind                              | Recipe files | Notes |
+|------------------|-----------------------------------|--------------|-------|
+| redumper         | static binary                     | 3            | no shlib deps; stamped manpage |
+| aaru5            | NativeAOT binary + sidecar `.so`  | 4            | auto ELF deps; static manpage; udev |
+| aaru             | self-contained .NET (single-file) | 5            | two tarballs; manpage from `--help`; udev; icons/MIME/desktop |
+| mpf              | self-contained .NET × 3           | 11           | `mpf` meta + `mpf-check`/`mpf-cli`/`mpf-gui`; caps per subpackage; 5 icons |
+| discimagecreator | **source build** (meson)          | 4            | four archives via `#/rename`; helper makefiles; two caps binaries; udev |
 
 Every tool grants its `cap_sys_rawio` capability through the **permissions
 framework** (see *Permissions framework & rpmlint*) instead of `%caps`. `aaru`,

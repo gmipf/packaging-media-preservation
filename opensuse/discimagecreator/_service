@@ -1,29 +1,39 @@
 <services>
-  <!--
-    OBS builds are hermetic (no network in the build root), so all four upstream
-    source archives must be fetched at *service* time and committed as package
-    sources.
+  <!-- OBS pulls EVERYTHING itself; `_service` is the only file committed to OBS.
 
-    download_files parses the spec's Source: URLs and downloads each one. DIC's
-    Source lines use rpm's `#/rename` convention (Source0..Source3), and
-    download_files honours it: it splits on "#/" and stores the download under
-    the name that follows. So no per-archive download_url services are needed -
-    one download_files covers all four, exactly like the other four tools in
-    this repo.
+       1. download_url fetches each recipe file (spec, manpages, udev rule, icons,
+          rpmlintrc) straight from `main` of the packaging repo, so git stays the
+          single source of truth: a push is all it takes, there is no second copy
+          of the recipe to keep in sync.
+       2. download_files then reads the *generated* spec and downloads the upstream
+          assets named in its Source: URLs. It supports service-generated specs on
+          purpose - it strips the `_service:<svc>:` prefix when globbing for *.spec.
 
-    Because it reads the URLs straight from the spec, a DIC master-commit bump
-    only has to touch %{diccommit}/%{dicsnap} in the spec - this _service never
-    changes. (The previous download_url version hard-coded the commit here too,
-    so every bump had to be made in two places.)
+       The services run SERVER-SIDE (no mode= attribute), so a scoped `runservice`
+       token can refresh a package (.github/workflows/obs-trigger.yml). An OBS token
+       can never commit - which is precisely why the recipe has to be fetched by OBS
+       rather than pushed to it.
 
-    Source4 (discimagecreator.1) and Source5 (the udev rule) are local files,
-    not URLs, so they are left untouched.
-
-    mode="manual": run it locally and commit the results.
-
-        osc service manualrun        # downloads the four archives
-        osc addremove                # stage the freshly downloaded files
-        osc commit                   # spec + _service + archives in one revision
-  -->
-  <service name="download_files" mode="manual"/>
+       Deliberately NOT tar_scm: it always also produces a tarball whose name carries
+       the git commit, so every unrelated push to main would change the sources of
+       all five packages and rebuild them for nothing. download_url writes only the
+       files themselves: an unchanged recipe keeps verifymd5 stable -> no rebuild. -->
+  <service name="download_url">
+    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/discimagecreator/70-discimagecreator-floppy.rules</param>
+    <param name="filename">70-discimagecreator-floppy.rules</param>
+  </service>
+  <service name="download_url">
+    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/discimagecreator/discimagecreator-rpmlintrc</param>
+    <param name="filename">discimagecreator-rpmlintrc</param>
+  </service>
+  <service name="download_url">
+    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/discimagecreator/discimagecreator.1</param>
+    <param name="filename">discimagecreator.1</param>
+  </service>
+  <service name="download_url">
+    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/discimagecreator/discimagecreator.spec</param>
+    <param name="filename">discimagecreator.spec</param>
+  </service>
+  <!-- upstream assets, taken from the Source: URLs of the spec above -->
+  <service name="download_files"/>
 </services>

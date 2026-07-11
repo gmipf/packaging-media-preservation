@@ -9,10 +9,13 @@
 > - **`api.opensuse.org` offers Basic auth only.** SSH-key authentication is not
 >   enabled (`WWW-Authenticate: Basic realm="Use your SUSE developer account"`, no
 >   `Signature` realm), which is why the web UI has no SSH-key page.
-> - **OBS tokens cannot replace the password for publishing.** `osc token
->   --operation` only knows `runservice|branch|release|rebuild|workflow` — all of
->   which act on packages that *already exist*. They are useful for automation
->   (triggering a rebuild), never for creating or uploading a package.
+> - **OBS tokens cannot upload anything.** `osc token --operation` only knows
+>   `runservice|branch|release|rebuild|workflow` — all of which act on packages
+>   that *already exist*. A token can never create or upload a package, so the
+>   account password stays necessary for the one-time `osc mkpac` + first commit.
+>   Everything *after* that is automated without it: each package commits only its
+>   `_service`, and OBS **pulls** the recipe from git, so a scoped `runservice`
+>   token is all CI needs. See [README](README.md) → *Automation*.
 
 Nothing in this lane can be published until there is an account on the
 [openSUSE Build Service](https://build.opensuse.org/) (OBS) and a home project

@@ -1,0 +1,73 @@
+name: obs-trigger
+
+# Refresh the openSUSE/OBS packages after a recipe change on main.
+#
+# How this lane works: OBS pulls the recipe itself. Each `opensuse/<tool>/_service`
+# fetches the spec, manpages, udev rule and icons from raw.githubusercontent at
+# `main` (download_url), and `download_files` then reads that generated spec and
+# downloads the upstream assets from its Source: URLs. So git is the single source
+# of truth and nothing has to be uploaded to OBS.
+#
+# All this workflow does is tell OBS to re-run those services. OBS creates a new
+# source revision — and therefore a rebuild — ONLY if the generated sources really
+# changed: the rebuild-relevant hash (verifymd5) is content-based, so triggering a
+# package whose recipe did not move is a free no-op (verified on a probe project).
+# That is why we simply refresh all five packages instead of routing per tool: it
+# cannot cause a spurious rebuild, and no tool can be forgotten.
+#
+# Why a token and not `osc`: an OBS token can ONLY do the operation it was created
+# for — here `runservice`. It cannot commit, upload or delete anything. The only
+# credential that *could* commit is the account password, which is exactly what we
+# do not want in CI. Hence the recipe is FETCHED by OBS rather than PUSHED to it.
+#
+# Setup (once):
+#   osc token --create --operation runservice     # unbound: OBS rejects project-wide tokens
+#   -> store the printed string as the repository secret OBS_TOKEN
+
+on:
+  workflow_call:
+  workflow_dispatch:
+  # Covers recipe edits pushed by a human. Watcher commits are made with the
+  # default GITHUB_TOKEN, and GitHub deliberately does not start workflows from
+  # those — which is why every watcher calls this workflow explicitly instead.
+  push:
+    branches: [main]
+    paths:
+      - 'opensuse/**'
+
+permissions: {}
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ask OBS to re-run the source services
+        env:
+          OBS_TOKEN: ${{ secrets.OBS_TOKEN }}
+          PROJECT: home:gmipf:media-preservation
+        run: |
+          set -euo pipefail
+
+          if [ -z "${OBS_TOKEN:-}" ]; then
+            echo "::warning::OBS_TOKEN is not set — skipping the OBS refresh."
+            echo "Create one with: osc token --create --operation runservice"
+            exit 0
+          fi
+
+          rc=0
+          for pkg in redumper aaru aaru5 mpf discimagecreator; do
+            code=$(curl -sS -o /tmp/obs-trigger.out -w '%{http_code}' -X POST \
+              -H "Authorization: Token $OBS_TOKEN" \
+              "https://api.opensuse.org/trigger/runservice?project=${PROJECT}&package=${pkg}")
+
+            if [ "$code" = "200" ]; then
+              echo ":: $pkg — services re-run requested"
+            else
+              # Keep going: one broken package must not hide the others. The
+              # response body carries OBS's reason (it never echoes the token).
+              echo "::error::OBS refused the trigger for $pkg (HTTP $code)"
+              cat /tmp/obs-trigger.out || true
+              rc=1
+            fi
+          done
+          exit $rc
