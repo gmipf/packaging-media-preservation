@@ -110,6 +110,16 @@ jobs:
   #    refs are disposable so the force-push is harmless). That fires
   #    ONLY that tool's job.
   #
+  #    ANCHOR THE BRANCH NAMES. `branch:` is a REGEX, matched with re.match(),
+  #    which anchors at the START only (packit-service, build_helper.py ->
+  #    is_job_config_trigger_matching). An unanchored `build-aaru` therefore
+  #    ALSO matches the branch `build-aaru5`: on 2026-07-11 a push to
+  #    build-aaru5 fired the aaru job too and rebuilt aaru under its unchanged
+  #    NEVRA (COPR 10708963 = package `aaru`, branch `build-aaru5`) — the exact
+  #    same-NEVRA republish that branch-scoping exists to prevent. Hence the
+  #    ^...$ anchors below; they are load-bearing whenever one tool name is a
+  #    prefix of another (aaru / aaru5).
+  #
   # 2. update_release: false + a same-NEVRA guard — clean, unique NEVRA.
   #    update_release stays false so the published NEVRA is EXACTLY what
   #    the spec says (our convention: bare-N Release, no build suffix —
@@ -152,7 +162,7 @@ jobs:
   # go via a Launchpad PPA (next up). See TODO #51 / #49.
   - job: copr_build
     trigger: commit
-    branch: build-redumper
+    branch: ^build-redumper$
     packages: [redumper]
     update_release: false
     owner: gmipf
@@ -163,7 +173,7 @@ jobs:
 
   - job: copr_build
     trigger: commit
-    branch: build-mpf
+    branch: ^build-mpf$
     packages: [mpf]
     update_release: false
     owner: gmipf
@@ -178,7 +188,7 @@ jobs:
   # No auto-suffix needed.
   - job: copr_build
     trigger: commit
-    branch: build-dic
+    branch: ^build-dic$
     packages: [discimagecreator]
     update_release: false
     owner: gmipf
@@ -191,7 +201,7 @@ jobs:
   # upstream alpha bump the Release segment goes up.
   - job: copr_build
     trigger: commit
-    branch: build-aaru
+    branch: ^build-aaru$
     packages: [aaru]
     update_release: false
     owner: gmipf
@@ -204,7 +214,7 @@ jobs:
   # via scripts/build-tool.sh on a manual rebuild.
   - job: copr_build
     trigger: commit
-    branch: build-aaru5
+    branch: ^build-aaru5$
     packages: [aaru5]
     update_release: false
     owner: gmipf
