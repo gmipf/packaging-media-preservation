@@ -221,7 +221,14 @@ network in the OBS build root — confirmed on the first OBS build for both Leap
 convention, which `download_files` handles natively, so it uses the same single
 `download_files` service as the other four tools.
 
-The GUI weak `Recommends` (`aaru`, `mpf-gui`) still carry the Fedora library
-names; they never enter the build root so they don't affect the build, but they
-should be ported to openSUSE runtime names (`libX11-6`, `Mesa-libGL1`, ...) so a
-GUI install actually pulls them. Tracked as a post-first-build polish.
+The GUI weak `Recommends` (`aaru`, `mpf-gui`) are expressed as **sonames**
+(`libX11.so.6()(64bit)`, ...) rather than package names. They used to carry the
+Fedora spellings (`libX11`, `mesa-libGL`, ...), which simply do not exist on
+openSUSE — so they resolved to nothing and a GUI install pulled none of them,
+silently, because an unresolvable *weak* dep is ignored rather than reported.
+Sonames avoid the whole mapping problem: they are distro-agnostic and survive
+package renames. Each was checked against the Leap 16.0 and Tumbleweed repodata
+and is a real 64-bit `Provides` — from `libX11-6`, `libICE6`, `libSM6`,
+`libXext6`, `libXi6`, `libXrandr2`, `libXcursor1`, `libglvnd`, `libfontconfig1`
+and `libfreetype6`. Worth knowing if you ever do map names by hand: `libGL.so.1`
+comes from **`libglvnd`**, not from `Mesa-libGL1`.

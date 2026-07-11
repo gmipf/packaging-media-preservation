@@ -112,20 +112,26 @@ Requires:       hicolor-icon-theme
 # Avalonia.Desktop 11.x targets X11; this set covers both pure X11
 # sessions and Wayland-via-XWayland sessions. Headless installs skip
 # them with `--no-recommends` and the CLI still works.
-Recommends:     libX11
-Recommends:     libICE
-Recommends:     libSM
-Recommends:     libXext
-Recommends:     libXi
-Recommends:     libXrandr
-# NOTE: GUI runtime libs are weak deps (never enter the OBS build root, so
-# they don't affect the build). Names below are the Fedora spellings; port
-# to openSUSE runtime names (libX11-6, libICE6, Mesa-libGL1, libfreetype6,
-# ...) so a GUI install pulls them. Harmless-but-unresolved until then.
-Recommends:     libXcursor
-Recommends:     mesa-libGL
-Recommends:     fontconfig
-Recommends:     freetype
+#
+# Expressed as SONAMEs rather than package names. These are weak deps and
+# never enter the build root, so a wrong name breaks nothing loudly — it just
+# silently resolves to nothing, which is what the fedora spellings (libX11,
+# mesa-libGL, ...) did here: they do not exist on openSUSE, so a GUI install
+# pulled none of them. Sonames are distro-agnostic and survive renames.
+# Verified against the Leap 16.0 and Tumbleweed repodata: each of these is a
+# real 64-bit Provides, coming from libX11-6, libICE6, libSM6, libXext6,
+# libXi6, libXrandr2, libXcursor1, libglvnd, libfontconfig1 and libfreetype6.
+# Note libGL.so.1 is provided by libglvnd, NOT by Mesa-libGL1.
+Recommends:     libX11.so.6()(64bit)
+Recommends:     libICE.so.6()(64bit)
+Recommends:     libSM.so.6()(64bit)
+Recommends:     libXext.so.6()(64bit)
+Recommends:     libXi.so.6()(64bit)
+Recommends:     libXrandr.so.2()(64bit)
+Recommends:     libXcursor.so.1()(64bit)
+Recommends:     libGL.so.1()(64bit)
+Recommends:     libfontconfig.so.1()(64bit)
+Recommends:     libfreetype.so.6()(64bit)
 
 %description
 Aaru is a data preservation suite for optical, magnetic and solid-state
