@@ -13,19 +13,37 @@ respective project URLs (see below).
 
 ## Tools
 
-| Tool | Update mode | [Fedora][copr] | [EPEL][copr] | openSUSE | [Ubuntu][ppa] |
+| Tool | Update mode | [Fedora][copr] | [EPEL][copr] | [openSUSE][obs] | [Ubuntu][ppa] |
 |---|---|---|---|---|---|
-| [redumper](https://github.com/superg/redumper) | auto-tracked hourly on new `b<N>` tags (binary repackage) | ✅ | ✅ | — | ✅ |
-| [MPF suite](https://github.com/SabreTools/MPF) | rolling, auto-tracked hourly (binary repackage); meta-package `mpf` pulls in `mpf-check` (validator), `mpf-cli` (headless orchestrator) and `mpf-gui` (Avalonia desktop UI) | ✅ | ✅ | — | ✅ |
-| [DiscImageCreator suite](https://github.com/saramibreak/DiscImageCreator) | auto-tracked hourly on new master commits (built from source — upstream binary links against EOL OpenSSL 1.1); bundles DIC + EccEdc + DVDAuth + unscrambler in one package | ✅ | ✅ | — | ✅ |
-| [Aaru](https://github.com/aaru-dps/Aaru) | auto-tracked hourly on new `v6.0.0-alpha.<N>` tags (binary repackage); CLI + Avalonia GUI ship as one binary, launch the GUI via `aaru gui` | ✅ | ✅ | — | ✅ |
+| [redumper](https://github.com/superg/redumper) | auto-tracked hourly on new `b<N>` tags (binary repackage) | ✅ | ✅ | ✅ | ✅ |
+| [MPF suite](https://github.com/SabreTools/MPF) | rolling, auto-tracked hourly (binary repackage); meta-package `mpf` pulls in `mpf-check` (validator), `mpf-cli` (headless orchestrator) and `mpf-gui` (Avalonia desktop UI) | ✅ | ✅ | ✅ | ✅ |
+| [DiscImageCreator suite](https://github.com/saramibreak/DiscImageCreator) | auto-tracked hourly on new master commits (built from source — upstream binary links against EOL OpenSSL 1.1); bundles DIC + EccEdc + DVDAuth + unscrambler in one package | ✅ | ✅ | ✅ | ✅ |
+| [Aaru](https://github.com/aaru-dps/Aaru) | auto-tracked hourly on new `v6.0.0-alpha.<N>` tags (binary repackage); CLI + Avalonia GUI ship as one binary, launch the GUI via `aaru gui` | ✅ | ✅ | ✅ | ✅ |
+| [Aaru 5.4.x](https://github.com/aaru-dps/Aaru) (`aaru5`) | version-pinned, no auto-tracking (binary repackage); the stable 5.4 CLI that MPF drives, installs as `/usr/bin/aaru5` alongside the rolling `aaru` v6 | ✅ | ✅ | ✅ | ✅ |
 
 [copr]: https://copr.fedorainfracloud.org/coprs/gmipf/media-preservation/
+[obs]: https://build.opensuse.org/project/show/home:gmipf:media-preservation
 [ppa]: https://launchpad.net/~dreunion61/+archive/ubuntu/media-preservation
 
-The **Fedora** / **EPEL** column headers link to the COPR project and the
-openSUSE (OBS) lane is planned; **Ubuntu** links to the Launchpad PPA. For the
-currently shipping versions and full install instructions, see those pages.
+The **Fedora** / **EPEL** column headers link to the COPR project, **openSUSE**
+to the OBS project (Leap 16.0 + Tumbleweed) and **Ubuntu** to the Launchpad PPA
+(24.04 noble + 22.04 jammy). For the currently shipping versions and full install
+instructions, see those pages.
+
+## Drive access
+
+`cap_sys_rawio` is preset on the dumper binaries, so vendor SCSI passthrough
+commands (Plextor `0xD8`, etc.) work without `sudo`.
+
+Logged in at a **local desktop seat** you also need **no group membership and no
+root** to read the drives: systemd-logind grants a `uaccess` ACL to the device
+node automatically — for optical drives (`/dev/sr*`) via systemd's own rule, and
+for USB or legacy floppy drives via a udev rule these packages ship.
+
+Only headless / SSH / cron sessions, which have no seat, need more. For optical
+drives, add yourself to the `cdrom` group. A headless floppy dump needs root: the
+floppy node stays `root:disk`, and the `disk` group would expose every block
+device on the system, so it is not a safe substitute.
 
 ## Layout
 
@@ -67,9 +85,9 @@ The Ubuntu lane (Launchpad PPA) is live — see [`ubuntu/README.md`](ubuntu/READ
 ubuntu/<tool>/debian/         # debian/control, debian/rules, debian/changelog (Launchpad PPA)
 ```
 
-An openSUSE (OBS) lane is planned and will reuse the specs' `%if 0%{?suse_version}`
-branches. Each distro folder uses that distro's native tooling conventions —
-no custom abstraction layer on top.
+The openSUSE lane lives in `opensuse/<tool>/` (spec + OBS `_service`) and reuses the
+Fedora specs' `%if 0%{?suse_version}` branches. Each distro folder uses that distro's
+native tooling conventions — no custom abstraction layer on top.
 
 ## Automation
 
@@ -101,7 +119,7 @@ future port.
 compiles everywhere: for the EL8/EL9 EPEL builds it drops upstream meson's
 `fs.copyfile` and renames a doc file with an `&` in its name for the older
 toolchain (on EL8 it links the vendor-maintained system openssl 1.1.1k). It also
-keeps `%if 0%{?suse_version}` portability for the planned openSUSE (OBS) port —
+keeps `%if 0%{?suse_version}` portability, which the openSUSE (OBS) lane builds on —
 BuildRequiring Ninja under its openSUSE name (`ninja` vs `ninja-build`) and a
 `<limits.h>` include for GCC 15 — and the self-contained .NET tools (`aaru`,
 `mpf`) map their runtime dependency names under the same guard
@@ -153,7 +171,7 @@ See `.packit.yaml` for the per-tool trigger configuration.
 
 ```sh
 sudo dnf copr enable gmipf/media-preservation
-sudo dnf install redumper discimagecreator aaru mpf
+sudo dnf install redumper discimagecreator aaru aaru5 mpf
 ```
 
 On enterprise-Linux clones the COPR `dnf` plugin lives in `dnf-plugins-core`
@@ -161,20 +179,26 @@ On enterprise-Linux clones the COPR `dnf` plugin lives in `dnf-plugins-core`
 in the base/AppStream repos — so EPEL does **not** need to be enabled to
 install them.
 
-### openSUSE (planned, not yet available)
+### openSUSE Leap 16.0 and Tumbleweed
 
-openSUSE is not built on COPR: its openSUSE support is limited to an EOL Leap
-15.6 and a currently-broken Tumbleweed, with no Leap 16.0 chroot, so openSUSE
-will be published natively on the
-[openSUSE Build Service](https://build.opensuse.org/) (OBS) instead — planned,
-not yet available.
+Published on the [openSUSE Build Service](https://build.opensuse.org/project/show/home:gmipf:media-preservation)
+(OBS) rather than COPR, whose openSUSE support is limited to an EOL Leap 15.6 and
+a currently-broken Tumbleweed, with no Leap 16.0 chroot.
+
+```sh
+sudo zypper addrepo https://download.opensuse.org/repositories/home:gmipf:media-preservation/16.0/home:gmipf:media-preservation.repo
+sudo zypper refresh
+sudo zypper install redumper discimagecreator aaru aaru5 mpf
+```
+
+For Tumbleweed, swap `16.0` for `openSUSE_Tumbleweed` in the repo URL.
 
 ### Ubuntu 24.04 (noble) and 22.04 (jammy)
 
 ```sh
 sudo add-apt-repository ppa:dreunion61/media-preservation
 sudo apt update
-sudo apt install redumper discimagecreator aaru mpf
+sudo apt install redumper discimagecreator aaru aaru5 mpf
 ```
 
 See [`ubuntu/README.md`](ubuntu/README.md) for how the PPA source packages are
