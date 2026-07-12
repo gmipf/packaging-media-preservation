@@ -1,7 +1,7 @@
 %global debug_package %{nil}
 
 Name:           redumper
-Version:        731
+Version:        732
 Release:        0
 Summary:        A low-level byte-perfect CD disc dumper
 
@@ -96,6 +96,9 @@ EOF
 %{_mandir}/man1/redumper.1*
 
 %changelog
+* Sun Jul 12 2026 gmipf <gmipf64@gmail.com> - 732-0
+- Automated sync to upstream redumper release b732.
+
 * Sat Jul 11 2026 gmipf <gmipf64@gmail.com> - 731-0
 - Initial openSUSE (OBS) packaging of redumper b731.
 - Repackage of the upstream prebuilt static linux-x64 binary (identical
