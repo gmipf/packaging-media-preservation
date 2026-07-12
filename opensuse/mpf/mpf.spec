@@ -1,5 +1,5 @@
 %global mpfver         3.8.3
-%global mpfsnap        20260707133302.e1081655
+%global mpfsnap        20260712230315.2f3b511f
 %global rolltag        rolling
 
 %global debug_package      %{nil}
@@ -417,6 +417,9 @@ install -m 0644 %{SOURCE6} %{buildroot}%{_mandir}/man1/mpf-gui.1
 %{_datadir}/icons/hicolor/512x512/apps/mpf.png
 
 %changelog
+* Sun Jul 12 2026 gmipf <gmipf64@gmail.com> - 3.8.3~20260712230315.2f3b511f-0
+- Automated rolling-snapshot sync to upstream MPF commit 2f3b511f (published 20260712230315 UTC).
+
 * Sun Jul 12 2026 gmipf <gmipf64@gmail.com> - 3.8.3~20260707133302.e1081655-0
 - Drop the cap_sys_rawio permissions-framework profiles from all three MPF
   binaries. They made every file dialog in the GUI abort the process: a

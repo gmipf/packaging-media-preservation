@@ -1,3 +1,9 @@
+mpf (3.8.3~20260712230315.2f3b511f-1) UNRELEASED; urgency=medium
+
+  * Automated rolling-snapshot sync to upstream MPF commit 2f3b511f (published 20260712230315 UTC).
+
+ -- gmipf <gmipf64@gmail.com>  Sun, 12 Jul 2026 23:37:38 +0000
+
 mpf (3.8.3~20260707133302.e1081655-2) UNRELEASED; urgency=medium
 
   * Drop cap_sys_rawio from all three MPF binaries (the setcap postinst scripts

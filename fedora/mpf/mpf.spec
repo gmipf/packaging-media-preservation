@@ -1,5 +1,5 @@
 %global mpfver         3.8.3
-%global mpfsnap        20260707133302.e1081655
+%global mpfsnap        20260712230315.2f3b511f
 %global rolltag        rolling
 
 %global debug_package      %{nil}
@@ -17,7 +17,7 @@ Version:        %{mpfver}~%{mpfsnap}
 # lives in the changelog. (Stuck at 5 here from pre-fix manual bumps of
 # the 71dafe3d snapshot — already shipped as -5, so left as-is to avoid
 # a downgrade; the next snapshot resets it.)
-Release:        2%{?dist}
+Release:        1%{?dist}
 Summary:        Media Preservation Frontend suite (mpf-check, mpf-cli, mpf-gui)
 
 License:        MIT
@@ -408,6 +408,10 @@ install -m 0644 %{SOURCE6} %{buildroot}%{_mandir}/man1/mpf-gui.1
 %{_datadir}/icons/hicolor/512x512/apps/mpf.png
 
 %changelog
+* Sun Jul 12 2026 gmipf <gmipf64@gmail.com> - 3.8.3~20260712230315.2f3b511f-1
+- Automated rolling-snapshot sync to upstream MPF commit 2f3b511f
+  (rolling tag, published 20260712230315 UTC); Release reset to 1.
+
 * Sun Jul 12 2026 gmipf <gmipf64@gmail.com> - 3.8.3~20260707133302.e1081655-2
 - Drop cap_sys_rawio from all three MPF binaries. It made every file dialog
   in the GUI abort the process: a binary with file capabilities runs
