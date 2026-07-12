@@ -253,4 +253,5 @@ clever `0.<N>.alpha.<M>` Release tricks.
 ## Status
 
 Unsupported third-party recipes. Personal hobby project, not affiliated with
-the Fedora Project, Redump, No-Intro, or any upstream tool author.
+any of the distributions it targets, with Redump or No-Intro, or with any
+upstream tool author.
