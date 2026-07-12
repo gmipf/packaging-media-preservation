@@ -12,11 +12,19 @@ Unlike COPR (where we upload an SRPM), Launchpad builds the binaries itself:
 1. **Locally** we build a signed **source package** (`.dsc` + `.orig.tar.*` +
    `.debian.tar.*` + `_source.changes`) and `dput` it to the PPA.
 2. **Launchpad's build farm** compiles the `.deb` for each enabled series
-   (noble, jammy) and architecture, then publishes them.
+   (resolute, noble, jammy) and architecture, then publishes them.
 
 So no local binary build is strictly required to publish — but we still run a
 local test build first (see below) to catch failures without the slow upload
 round-trip.
+
+> ⚠️ **Launchpad needs one upload per series** — unlike COPR and OBS, where a
+> single build fans out to every enabled target. So adding a series only covers
+> the tools that are uploaded *afterwards*; every tool not re-uploaded stays
+> silently absent from it. When a series is added, re-upload **all five** tools
+> and verify against `getPublishedSources`, not against the tool you just
+> touched. (This bit us: `resolute` was added while bumping aaru/aaru5/dic, so
+> `redumper` and `mpf` were missing from 26.04 until they were uploaded too.)
 
 ## Layout
 
@@ -69,10 +77,12 @@ repackaging prebuilt binaries.
 ## Versioning
 
 Base version in the committed changelog is `<upstream>-1` (e.g. `726-1`). Per
-series the build appends `~<series>1`, so `726-1~noble1` and `726-1~jammy1`.
-The `~` sorts *before* the plain version, and `jammy` < `noble` alphabetically,
-so the per-series uploads never collide and always order sensibly — the same
-tilde discipline the RPM lane uses.
+series the build appends `~<series>1`, so `726-1~resolute1`, `726-1~noble1` and
+`726-1~jammy1`. The `~` sorts *before* the plain version, and `jammy` < `noble` <
+`resolute` alphabetically, so the per-series uploads never collide and always
+order sensibly — the same tilde discipline the RPM lane uses. It also means the
+same upstream version can be uploaded for a newly added series without bumping
+the Debian revision.
 
 ## Signed upload to Launchpad
 
@@ -96,8 +106,10 @@ The same per-tool watchers that drive the Fedora/COPR lane
 revision a watcher bumps both lanes in one commit (the fedora spec **and**
 `ubuntu/<tool>/debian/changelog` + `.upstream-tag`), then a gated `ppa` job
 calls the reusable `ppa-upload.yml` workflow, which builds the signed source
-package for noble + jammy and `dput`s them — no `build-<tool>` trigger branch
-needed (Launchpad rejects duplicate versions, so there is nothing to isolate).
+package for resolute + noble + jammy and `dput`s them — no `build-<tool>` trigger
+branch needed (Launchpad rejects duplicate versions, so there is nothing to
+isolate). The workflow also runs via *Run workflow* with a `tool` and an optional
+`series`, which is the route for a packaging-only rebuild or a series backfill.
 
 `ppa-upload.yml` signs with the dedicated passphrase-less packaging key, stored
 as the `PPA_SIGNING_KEY` Actions secret (an ASCII-armored secret key). If the
@@ -134,9 +146,12 @@ binary-build time, keeping the source package quilt-patch-free).
 The self-contained .NET tools (`aaru`, `mpf`) load their runtime libraries by
 `dlopen` at run time, so `dh_shlibdeps` cannot see them — they are declared by
 hand (parity with the RPM `Requires`). The ICU runtime package carries its
-soname in its *name* (`libicu74` on noble, `libicu70` on jammy), so it is
-resolved per-series at build via a `${dep:icu}` substvar in
-`override_dh_gencontrol` (from what `libicu-dev` pulled in); the others
+soname in its *name* (`libicu78` on resolute, `libicu74` on noble, `libicu70` on
+jammy), so it is resolved per-series at build via a `${dep:icu}` substvar in
+`override_dh_gencontrol` (from what `libicu-dev` pulled in). That substvar is
+what makes a build **series-bound**: a noble package hard-depends on `libicu74`,
+which 26.04 does not ship, so it is not merely suboptimal there but
+uninstallable. Every new series needs its own build. The others
 (`libkrb5-3`, `libssl3`, `zlib1g`, `libunwind8`) have stable names. The shared
 builder image carries the matching `-dev` packages so the prebuilt binary can
 run at build time (for `aaru`'s `--help` manpage generation).

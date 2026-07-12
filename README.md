@@ -27,8 +27,8 @@ respective project URLs (see below).
 
 The **Fedora** / **EPEL** column headers link to the COPR project, **openSUSE**
 to the OBS project (Leap 16.0 + Tumbleweed) and **Ubuntu** to the Launchpad PPA
-(24.04 noble + 22.04 jammy). For the currently shipping versions and full install
-instructions, see those pages.
+(26.04 resolute + 24.04 noble + 22.04 jammy). For the currently shipping versions
+and full install instructions, see those pages.
 
 ## Drive access
 
@@ -98,8 +98,8 @@ manual `copr-cli build` needed.
 
 The same per-tool watchers also drive the Ubuntu PPA: on an upstream bump they
 advance `ubuntu/<tool>/debian/changelog` in the same commit, then build and
-`dput` the signed source package (noble + jammy) to the Launchpad PPA, which
-compiles the `.deb`s on its own build farm. See
+`dput` the signed source package (resolute + noble + jammy) to the Launchpad PPA,
+which compiles the `.deb`s on its own build farm. See
 [`ubuntu/README.md`](ubuntu/README.md).
 
 Each package is built for `fedora-all-x86_64` and `epel-all-x86_64` — x86_64
@@ -174,10 +174,18 @@ sudo dnf copr enable gmipf/media-preservation
 sudo dnf install redumper discimagecreator aaru aaru5 mpf
 ```
 
-On enterprise-Linux clones the COPR `dnf` plugin lives in `dnf-plugins-core`
-(shipped in the base repos), and these packages' runtime dependencies are all
-in the base/AppStream repos — so EPEL does **not** need to be enabled to
-install them.
+On enterprise Linux, enable EPEL first:
+
+```sh
+sudo dnf install epel-release
+```
+
+`aaru` and `mpf-gui` need `libunwind`, and enterprise Linux ships it in EPEL, not
+in BaseOS/AppStream. Without EPEL those two are unresolvable and the `mpf`
+meta-package fails with them (measured on AlmaLinux 9; the `epel-N` buildroot
+carries EPEL, which is why the packages build regardless). The COPR `dnf` plugin
+itself lives in `dnf-plugins-core` and is in the base repos. Fedora needs no
+extra repository.
 
 ### openSUSE Leap 16.0 and Tumbleweed
 
@@ -193,7 +201,7 @@ sudo zypper install redumper discimagecreator aaru aaru5 mpf
 
 For Tumbleweed, swap `16.0` for `openSUSE_Tumbleweed` in the repo URL.
 
-### Ubuntu 24.04 (noble) and 22.04 (jammy)
+### Ubuntu 26.04 (resolute), 24.04 (noble) and 22.04 (jammy)
 
 ```sh
 sudo add-apt-repository ppa:dreunion61/media-preservation
