@@ -1,3 +1,22 @@
+mpf (3.8.3~20260707133302.e1081655-2) UNRELEASED; urgency=medium
+
+  * Drop cap_sys_rawio from all three MPF binaries (the setcap postinst scripts
+    are gone). It made every file dialog in the GUI abort the process: a binary
+    with file capabilities runs non-dumpable, so /proc/<pid>/root becomes
+    root-owned, xdg-desktop-portal cannot identify the caller and answers
+    "Portal operation not allowed: Unable to open /proc/<pid>/root". The
+    Tmds.DBus exception escapes an async void click handler and kills MPF with
+    SIGABRT. The capability was never needed either: MPF issues no raw SCSI, and
+    redumper / aaru / discimagecreator carry cap_sys_rawio on their own binaries,
+    which the kernel grants at exec no matter who starts them. libcap2-bin is no
+    longer a dependency.
+  * Wrapper now also seeds and heals DefaultOutputPath to an absolute path under
+    the user's home ($HOME/ISO). Upstream defaults it to the relative "ISO",
+    which in a /usr-tree install resolves against the working directory, so dumps
+    landed wherever the app was started from.
+
+ -- gmipf <gmipf64@gmail.com>  Sun, 12 Jul 2026 17:30:00 +0000
+
 mpf (3.8.3~20260707133302.e1081655-1) UNRELEASED; urgency=medium
 
   * Automated rolling-snapshot sync to upstream MPF commit e1081655 (published 20260707133302 UTC).

@@ -1,4 +1,4 @@
-.TH MPF-CHECK 1 "June 2026" "MPF" "User Commands"
+.TH MPF-CHECK 1 "2026-07-12" "MPF 3.8.3" "User Commands"
 .SH NAME
 mpf-check \- generate Redump !submissionInfo.txt from finished optical-media dumps
 .SH SYNOPSIS
@@ -23,15 +23,13 @@ When run with no arguments
 .B mpf-check
 prints its full help text.
 
-A secondary mode performs live copy-protection scans on a drive via
-\fB--path\fR / \fB--scan\fR; this path uses vendor SCSI commands and
-therefore requires
-.B CAP_SYS_RAWIO
-(already set on the shipped binary, so no sudo).
+A secondary mode performs copy-protection scans via
+\fB--path\fR / \fB--scan\fR. It inspects the files on the mounted medium
+and needs no privileges beyond read access to them.
 .SH DRIVE ACCESS
-File capabilities replace
-.B sudo
-for SCSI passthrough. Read access on
+.B mpf-check
+runs unprivileged and carries no file capabilities: it sends no SCSI
+commands of its own. Read access on
 .I /dev/sr*
 is granted automatically via
 .B uaccess
@@ -44,7 +42,6 @@ group:
 .B sudo usermod -aG cdrom $USER
 .RE
 .SH EXAMPLES
-.PP
 Generate submission info next to a finished redumper dump:
 .RS
 .B mpf-check ~/dumps/disc01/
@@ -57,13 +54,13 @@ Scan a drive for copy protection:
 .SH FILES
 .TP
 .I /usr/lib64/mpf-check/MPF.Check
-The actual self-contained .NET binary (cap_sys_rawio=ep).
+The actual self-contained .NET binary.
 .TP
 .I /usr/bin/mpf-check
 Shell wrapper that exec\(aqs the binary above.
 .SH NOTES
 This manpage is handwritten and tracks upstream MPF
-.BR 3.7.1 .
+.BR 3.8.3 .
 If the upstream tool grows new flags or changes its syntax in a future
 release, this page may lag behind the binary; consult
 \fImpf-check --help\fR for the authoritative current option set.

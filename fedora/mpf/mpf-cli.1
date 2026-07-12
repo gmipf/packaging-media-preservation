@@ -1,4 +1,4 @@
-.TH MPF-CLI 1 "June 2026" "MPF" "User Commands"
+.TH MPF-CLI 1 "2026-07-12" "MPF 3.8.3" "User Commands"
 .SH NAME
 mpf-cli \- headless orchestrator for redumper, aaru and discimagecreator disc dumps
 .SH SYNOPSIS
@@ -63,9 +63,18 @@ Make sure at least one of them is installed:
 .B sudo dnf install redumper aaru discimagecreator
 .RE
 .SH DRIVE ACCESS
-.B CAP_SYS_RAWIO
-is preset on the shipped binary so vendor SCSI commands work without
-sudo. Drive-node access on
+.B mpf-cli
+runs unprivileged and carries no file capabilities: it never sends a SCSI
+command itself. The dump is performed by the backend dumper, and
+.BR redumper (1),
+.BR aaru5 (1)
+and
+.BR discimagecreator (1)
+each carry
+.B cap_sys_rawio
+on their own binary \(em the kernel grants file capabilities from the
+executed file, so the dumper is fully privileged no matter who starts it.
+Drive-node access on
 .I /dev/sr*
 is granted automatically via
 .B uaccess
@@ -76,10 +85,25 @@ group:
 .RS
 .B sudo usermod -aG cdrom $USER
 .RE
+.SH OUTPUT PATH
+Upstream MPF defaults
+.B DefaultOutputPath
+to the relative directory
+.IR ISO ,
+which in the portable Windows bundle means "next to the executable". In a
+/usr-tree install there is no such place and a relative path resolves
+against the current working directory, so the packaged wrapper points the
+setting at
+.I ~/ISO
+instead. Change it in
+.I ~/.config/mpf/config.json
+to any
+.B absolute
+path; the wrapper only rewrites the value when it is empty or relative.
 .SH FILES
 .TP
 .I /usr/lib64/mpf-cli/MPF.CLI
-The actual self-contained .NET binary (cap_sys_rawio=ep).
+The actual self-contained .NET binary.
 .TP
 .I /usr/bin/mpf-cli
 Shell wrapper that exec\(aqs the binary above.
@@ -88,7 +112,7 @@ Shell wrapper that exec\(aqs the binary above.
 User configuration.
 .SH NOTES
 This manpage is handwritten and tracks upstream MPF
-.BR 3.7.1 .
+.BR 3.8.3 .
 If the upstream tool grows new flags or changes its syntax in a future
 release, this page may lag behind the binary; consult
 \fImpf-cli --help\fR for the authoritative current option set.

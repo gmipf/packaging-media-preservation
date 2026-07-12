@@ -17,7 +17,7 @@ Version:        %{mpfver}~%{mpfsnap}
 # lives in the changelog. (Stuck at 5 here from pre-fix manual bumps of
 # the 71dafe3d snapshot — already shipped as -5, so left as-is to avoid
 # a downgrade; the next snapshot resets it.)
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        Media Preservation Frontend suite (mpf-check, mpf-cli, mpf-gui)
 
 License:        MIT
@@ -83,9 +83,9 @@ writes a !submissionInfo.txt alongside in the Redump submission format.
 Supported dump sources include Redumper, Aaru, DiscImageCreator, Cleanrip
 and UmdImageCreator.
 
-Optional copy-protection scanning is available via --path/--scan; that
-path uses vendor SCSI commands and requires CAP_SYS_RAWIO, which is
-preset on the shipped binary so no sudo is needed.
+Optional copy-protection scanning is available via --path/--scan; it
+inspects the files on the mounted medium and needs no privileges beyond
+read access to them.
 
 Self-contained .NET 10 binary, repackaged unmodified from the upstream
 rolling release.
@@ -116,7 +116,10 @@ MPF.CLI orchestrates the disc-dumping workflow from a terminal: it drives
 the selected backend (redumper, aaru or discimagecreator) through the
 dump, post-processes the output and writes the submission info.
 
-CAP_SYS_RAWIO is preset on the shipped binary for vendor-SCSI access.
+MPF itself needs no elevated privileges: it never talks to the drive
+directly. The raw SCSI access belongs to the backend dumper, which
+carries the cap_sys_rawio capability on its own binary and receives it
+regardless of who starts it.
 
 The bundled Programs/Creator/ folder from the upstream ZIP is dropped at
 package build time in favor of the system-installed dumpers; mpf-cli
@@ -166,7 +169,11 @@ MPF.Avalonia is the desktop GUI of the MPF suite. It drives the disc-
 dumping workflow with a graphical interface built on Avalonia (.NET
 cross-platform UI toolkit).
 
-CAP_SYS_RAWIO is preset on the shipped binary for vendor-SCSI access.
+The GUI runs unprivileged: it never talks to the drive directly, and the
+backend dumper it spawns carries the cap_sys_rawio capability on its own
+binary. Granting the capability to the GUI itself would break every file
+dialog, because a process with file capabilities is non-dumpable and
+xdg-desktop-portal then cannot identify it.
 
 The bundled Programs/Creator/ folder from the upstream ZIP is dropped at
 package build time in favor of the system-installed dumpers, resolved
@@ -219,21 +226,31 @@ install -m 0755 gui/MPF %{buildroot}%{_libdir}/mpf-gui/MPF.Avalonia
 
 # --- /usr/bin/ wrappers ---
 # The wrappers seed AND heal ~/.config/mpf/config.json so the three
-# dumper-path keys are always present and resolvable. We seed BARE tool
-# names (aaru5, DiscImageCreator.out, redumper) rather than absolute
-# paths: MPF (SabreTools/MPF#979) resolves a bare name through its
+# dumper-path keys and the output path are always present and usable. We
+# seed BARE tool names (aaru5, DiscImageCreator.out, redumper) rather than
+# absolute paths: MPF (SabreTools/MPF#979) resolves a bare name through its
 # runtime directory and $PATH, so the config stays valid no matter where
 # the distro installs the dumpers and keeps working after the user
 # deletes config.json. Upstream MPF otherwise defaults to relative bundle
 # paths ("Programs/Creator/DiscImageCreator.out") that don't exist in a
 # /usr-tree install.
 #
+# The same mismatch applies to DefaultOutputPath, whose upstream default is
+# the RELATIVE "ISO". For the portable Windows bundle that means "an ISO
+# folder next to the executable"; in a /usr-tree install there is no such
+# place, and a relative path resolves against the process's working
+# directory instead -- so dumps land wherever the app happened to be
+# started from, and the Browse dialog opens there. We point it at an
+# absolute directory in the user's home; MPF creates it on first dump.
+#
 # Behavior at every launch:
-#   * config missing/empty  -> write a minimal 3-key bare-name seed
+#   * config missing/empty  -> write a minimal 4-key seed
 #   * config exists         -> reset each Aaru/DIC/Redumper key IFF its
 #                              value no longer resolves (empty, a bare
 #                              name not on $PATH, or a path that no longer
-#                              exists); resolvable user values are kept
+#                              exists), and reset DefaultOutputPath IFF it
+#                              is empty or relative; an absolute path the
+#                              user chose is kept
 # Atomicity: heal writes to a sibling tmp file via mktemp + mv so a
 # crashed jq never leaves a half-written config behind.
 install -d %{buildroot}%{_bindir}
@@ -254,6 +271,10 @@ config="\$config_dir/config.json"
 aaru_p=aaru5
 dic_p=DiscImageCreator.out
 red_p=redumper
+# Without a HOME there is no sane home-relative output directory; leave the
+# key alone rather than rewriting it to a root-owned "/ISO".
+out_p=""
+[ -n "\$HOME" ] && out_p="\$HOME/ISO"
 mkdir -p "\$config_dir" 2>/dev/null
 
 # Does a configured tool value resolve the way MPF (#979) resolves it? A
@@ -267,30 +288,43 @@ resolves() {
     esac
 }
 
+# The output path must be absolute: a relative one resolves against the
+# working directory, which for a /usr-installed app is wherever it was
+# started from. The directory need not exist -- MPF creates it.
+is_abs() {
+    case "\$1" in /*) return 0 ;; *) return 1 ;; esac
+}
+
 if [ ! -s "\$config" ]; then
     cat > "\$config" <<JSON
 {
   "AaruPath": "\$aaru_p",
   "DiscImageCreatorPath": "\$dic_p",
-  "RedumperPath": "\$red_p"
+  "RedumperPath": "\$red_p",
+  "DefaultOutputPath": "\${out_p:-ISO}"
 }
 JSON
 elif command -v jq >/dev/null 2>&1; then
     ca=\$(jq -r '.AaruPath // ""' "\$config" 2>/dev/null)
     cd_=\$(jq -r '.DiscImageCreatorPath // ""' "\$config" 2>/dev/null)
     cr=\$(jq -r '.RedumperPath // ""' "\$config" 2>/dev/null)
-    fa=0; fd=0; fr=0
+    co=\$(jq -r '.DefaultOutputPath // ""' "\$config" 2>/dev/null)
+    fa=0; fd=0; fr=0; fo=0
     resolves "\$ca"  || fa=1
     resolves "\$cd_" || fd=1
     resolves "\$cr"  || fr=1
-    if [ \$((fa + fd + fr)) -gt 0 ]; then
+    [ -n "\$out_p" ] && { is_abs "\$co" || fo=1; }
+    if [ \$((fa + fd + fr + fo)) -gt 0 ]; then
         tmp=\$(mktemp -p "\$config_dir" .config.json.XXXXXX 2>/dev/null)
         if [ -n "\$tmp" ] && jq \\
             --arg ap "\$aaru_p" --arg dp "\$dic_p" --arg rp "\$red_p" \\
-            --argjson fa "\$fa" --argjson fd "\$fd" --argjson fr "\$fr" '
+            --arg op "\$out_p" \\
+            --argjson fa "\$fa" --argjson fd "\$fd" --argjson fr "\$fr" \\
+            --argjson fo "\$fo" '
             (if \$fa == 1 then .AaruPath = \$ap else . end)
             | (if \$fd == 1 then .DiscImageCreatorPath = \$dp else . end)
             | (if \$fr == 1 then .RedumperPath = \$rp else . end)
+            | (if \$fo == 1 then .DefaultOutputPath = \$op else . end)
             ' "\$config" > "\$tmp" 2>/dev/null; then
             mv "\$tmp" "\$config"
         else
@@ -329,21 +363,41 @@ install -m 0644 %{SOURCE6} %{buildroot}%{_mandir}/man1/mpf-gui.1
 %files
 # meta-package: no files, only Requires above
 
+# DO NOT add %%caps(cap_sys_rawio=ep) to the MPF binaries. It is not merely
+# unnecessary, it is actively harmful:
+#
+#   * Unnecessary: MPF never issues a raw SCSI command. Its whole device
+#     interaction is enumerating drives and reading files off the mounted
+#     medium (the copy-protection scanner takes a filesystem *path*). The raw
+#     I/O happens in redumper / aaru / discimagecreator, and those carry the
+#     capability on their own binaries -- the kernel grants file capabilities
+#     from the executed file, so a capability-less MPF still spawns a fully
+#     privileged dumper. Drive nodes are reachable via the uaccess ACL those
+#     packages install.
+#
+#   * Harmful: executing a file with capabilities makes the process
+#     non-dumpable (AT_SECURE), which flips /proc/<pid>/root to root:root.
+#     xdg-desktop-portal reads exactly that path to identify the calling app;
+#     it fails with "Portal operation not allowed: Unable to open
+#     /proc/<pid>/root" and refuses the request. Every file dialog in the GUI
+#     then throws a DBusException out of an async void click handler, which
+#     terminates the process. Measured: same binary, capability set -> portal
+#     denies; capability removed -> portal accepts.
 %files check
 %{_bindir}/mpf-check
-%caps(cap_sys_rawio=ep) %attr(0755,root,root) %{_libdir}/mpf-check/MPF.Check
+%attr(0755,root,root) %{_libdir}/mpf-check/MPF.Check
 %dir %{_libdir}/mpf-check
 %{_mandir}/man1/mpf-check.1*
 
 %files cli
 %{_bindir}/mpf-cli
-%caps(cap_sys_rawio=ep) %attr(0755,root,root) %{_libdir}/mpf-cli/MPF.CLI
+%attr(0755,root,root) %{_libdir}/mpf-cli/MPF.CLI
 %dir %{_libdir}/mpf-cli
 %{_mandir}/man1/mpf-cli.1*
 
 %files gui
 %{_bindir}/mpf-gui
-%caps(cap_sys_rawio=ep) %attr(0755,root,root) %{_libdir}/mpf-gui/MPF.Avalonia
+%attr(0755,root,root) %{_libdir}/mpf-gui/MPF.Avalonia
 %dir %{_libdir}/mpf-gui
 %{_mandir}/man1/mpf-gui.1*
 %{_datadir}/applications/mpf-gui.desktop
@@ -354,6 +408,25 @@ install -m 0644 %{SOURCE6} %{buildroot}%{_mandir}/man1/mpf-gui.1
 %{_datadir}/icons/hicolor/512x512/apps/mpf.png
 
 %changelog
+* Sun Jul 12 2026 gmipf <gmipf64@gmail.com> - 3.8.3~20260707133302.e1081655-2
+- Drop cap_sys_rawio from all three MPF binaries. It made every file dialog
+  in the GUI abort the process: a binary with file capabilities runs
+  non-dumpable, so /proc/<pid>/root becomes root-owned, xdg-desktop-portal
+  cannot identify the caller and answers "Portal operation not allowed:
+  Unable to open /proc/<pid>/root". The Tmds.DBus exception escapes an
+  async void click handler and kills MPF with SIGABRT. Measured on the same
+  binary: capability set -> portal denies, capability removed -> portal
+  accepts. The capability was never needed either -- MPF issues no raw SCSI
+  (its protection scanner takes a filesystem path), and redumper / aaru /
+  discimagecreator carry cap_sys_rawio on their own binaries, which the
+  kernel grants at exec no matter who starts them. The package descriptions
+  and manpages claimed otherwise; corrected.
+- Wrappers now also seed and heal DefaultOutputPath. Upstream defaults it to
+  the relative "ISO", which suits the portable Windows bundle but in a
+  /usr-tree install resolves against the working directory, so dumps landed
+  wherever the app was started from. It is now an absolute path under the
+  user's home ($HOME/ISO); an absolute path the user picked is left alone.
+
 * Tue Jul 07 2026 gmipf <gmipf64@gmail.com> - 3.8.3~20260707133302.e1081655-1
 - Automated rolling-snapshot sync to upstream MPF commit e1081655
   (rolling tag, published 20260707133302 UTC); Release reset to 1.

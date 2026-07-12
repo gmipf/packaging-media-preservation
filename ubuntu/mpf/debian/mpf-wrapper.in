@@ -1,15 +1,27 @@
 #!/bin/sh
 # MPF launcher wrapper. Seeds AND heals ~/.config/mpf/config.json so the three
-# dumper-path keys are always present and resolvable. Bare tool names are
-# seeded (aaru5, DiscImageCreator.out, redumper): MPF resolves a bare name
-# through its runtime directory and $PATH, so the config stays valid wherever
-# the distro installs the dumpers and keeps working after the user deletes
-# config.json. @TARGET@ is substituted per role at package build time.
+# dumper-path keys and the output path are always present and usable. Bare tool
+# names are seeded (aaru5, DiscImageCreator.out, redumper): MPF resolves a bare
+# name through its runtime directory and $PATH, so the config stays valid
+# wherever the distro installs the dumpers and keeps working after the user
+# deletes config.json. @TARGET@ is substituted per role at package build time.
+#
+# The same mismatch applies to DefaultOutputPath, whose upstream default is the
+# RELATIVE "ISO". For the portable Windows bundle that means "an ISO folder next
+# to the executable"; in a /usr-tree install there is no such place, and a
+# relative path resolves against the process's working directory instead -- so
+# dumps land wherever the app happened to be started from, and the Browse dialog
+# opens there. We point it at an absolute directory in the user's home; MPF
+# creates it on the first dump.
 config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/mpf"
 config="$config_dir/config.json"
 aaru_p=aaru5
 dic_p=DiscImageCreator.out
 red_p=redumper
+# Without a HOME there is no sane home-relative output directory; leave the key
+# alone rather than rewriting it to a root-owned "/ISO".
+out_p=""
+[ -n "$HOME" ] && out_p="$HOME/ISO"
 mkdir -p "$config_dir" 2>/dev/null
 
 # Does a configured tool value resolve the way MPF resolves it? A value with a
@@ -22,30 +34,43 @@ resolves() {
     esac
 }
 
+# The output path must be absolute: a relative one resolves against the working
+# directory, which for a /usr-installed app is wherever it was started from. The
+# directory need not exist -- MPF creates it.
+is_abs() {
+    case "$1" in /*) return 0 ;; *) return 1 ;; esac
+}
+
 if [ ! -s "$config" ]; then
     cat > "$config" <<JSON
 {
   "AaruPath": "$aaru_p",
   "DiscImageCreatorPath": "$dic_p",
-  "RedumperPath": "$red_p"
+  "RedumperPath": "$red_p",
+  "DefaultOutputPath": "${out_p:-ISO}"
 }
 JSON
 elif command -v jq >/dev/null 2>&1; then
     ca=$(jq -r '.AaruPath // ""' "$config" 2>/dev/null)
     cd_=$(jq -r '.DiscImageCreatorPath // ""' "$config" 2>/dev/null)
     cr=$(jq -r '.RedumperPath // ""' "$config" 2>/dev/null)
-    fa=0; fd=0; fr=0
+    co=$(jq -r '.DefaultOutputPath // ""' "$config" 2>/dev/null)
+    fa=0; fd=0; fr=0; fo=0
     resolves "$ca"  || fa=1
     resolves "$cd_" || fd=1
     resolves "$cr"  || fr=1
-    if [ $((fa + fd + fr)) -gt 0 ]; then
+    [ -n "$out_p" ] && { is_abs "$co" || fo=1; }
+    if [ $((fa + fd + fr + fo)) -gt 0 ]; then
         tmp=$(mktemp -p "$config_dir" .config.json.XXXXXX 2>/dev/null)
         if [ -n "$tmp" ] && jq \
             --arg ap "$aaru_p" --arg dp "$dic_p" --arg rp "$red_p" \
-            --argjson fa "$fa" --argjson fd "$fd" --argjson fr "$fr" '
+            --arg op "$out_p" \
+            --argjson fa "$fa" --argjson fd "$fd" --argjson fr "$fr" \
+            --argjson fo "$fo" '
             (if $fa == 1 then .AaruPath = $ap else . end)
             | (if $fd == 1 then .DiscImageCreatorPath = $dp else . end)
             | (if $fr == 1 then .RedumperPath = $rp else . end)
+            | (if $fo == 1 then .DefaultOutputPath = $op else . end)
             ' "$config" > "$tmp" 2>/dev/null; then
             mv "$tmp" "$config"
         else
