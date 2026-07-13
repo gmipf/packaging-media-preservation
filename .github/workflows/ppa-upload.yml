@@ -40,9 +40,14 @@ on:
         description: 'ubuntu/<tool> recipe directory (= Debian source package name)'
         required: true
         type: choice
-        options: [redumper, mpf, aaru, aaru5, discimagecreator]
+        options: [redumper, mpf, aaru, aaru5, discimagecreator, redumper-gui]
       series:
-        description: 'Which series to upload (retry a single one after a transient dput failure)'
+        # redumper-gui MUST be uploaded as series=resolute, never `all`: eframe/
+        # egui 0.35 requires rustc 1.92, and the newest VERSIONED toolchain jammy
+        # or noble carries is rustc-1.91 (measured -- there is no rustc-1.92 in
+        # either archive, backports included). Those series cannot build it at
+        # all, so an `all` upload would just queue two guaranteed failures.
+        description: 'Which series to upload (retry one after a transient dput failure). redumper-gui: resolute ONLY.'
         required: false
         default: all
         type: choice
