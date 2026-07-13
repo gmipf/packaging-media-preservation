@@ -1,3 +1,9 @@
+mpf (3.8.3~20260713172204.8602d4dd-1) UNRELEASED; urgency=medium
+
+  * Automated rolling-snapshot sync to upstream MPF commit 8602d4dd (published 20260713172204 UTC).
+
+ -- gmipf <gmipf64@gmail.com>  Mon, 13 Jul 2026 18:37:18 +0000
+
 mpf (3.8.3~20260713042509.813e8305-2) UNRELEASED; urgency=medium
 
   * Ship the launcher icon in all standard hicolor sizes. We had 32/64/128/256/512

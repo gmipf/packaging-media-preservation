@@ -1,5 +1,5 @@
 %global mpfver         3.8.3
-%global mpfsnap        20260713042509.813e8305
+%global mpfsnap        20260713172204.8602d4dd
 %global rolltag        rolling
 
 %global debug_package      %{nil}
@@ -17,7 +17,7 @@ Version:        %{mpfver}~%{mpfsnap}
 # lives in the changelog. (Stuck at 5 here from pre-fix manual bumps of
 # the 71dafe3d snapshot — already shipped as -5, so left as-is to avoid
 # a downgrade; the next snapshot resets it.)
-Release:        2%{?dist}
+Release:        1%{?dist}
 Summary:        Media Preservation Frontend suite (mpf-check, mpf-cli, mpf-gui)
 
 License:        MIT
@@ -424,6 +424,10 @@ install -m 0644 %{SOURCE6} %{buildroot}%{_mandir}/man1/mpf-gui.1
 %{_datadir}/icons/hicolor/*/apps/mpf.png
 
 %changelog
+* Mon Jul 13 2026 gmipf <gmipf64@gmail.com> - 3.8.3~20260713172204.8602d4dd-1
+- Automated rolling-snapshot sync to upstream MPF commit 8602d4dd
+  (rolling tag, published 20260713172204 UTC); Release reset to 1.
+
 * Mon Jul 13 2026 gmipf <gmipf64@gmail.com> - 3.8.3~20260713042509.813e8305-2
 - Ship the launcher icon in all standard hicolor sizes. We had 32/64/128/256/512
   as five pre-rendered PNGs; the sizes a panel or dock actually asks for -- 16,
