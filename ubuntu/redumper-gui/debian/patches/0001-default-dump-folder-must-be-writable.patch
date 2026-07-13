@@ -7,11 +7,12 @@ Description: Default the dump folder to the user's own space where the executabl
  create_dir_all(), so the dump does not stop with "permission denied": it runs
  on and fails later, for a reason that never names the cause.
  .
- Probe whether the executable's own directory is writable, and fall back to the
- user's download folder where it is not. This is what the macOS branch of
- default_output_dir() already does, and for the same reason -- there the
- executable lives inside a read-only .app bundle. Portable builds are unaffected:
- their directory is writable, so they keep the current behaviour.
+ Probe whether the executable's own directory is writable, and fall back to a
+ Dumps folder in the user's home where it is not. The macOS branch of
+ default_output_dir() already does exactly this -- there the executable lives
+ inside a read-only .app bundle -- and it is left untouched, keeping the download
+ folder its users expect. Portable builds are unaffected on either platform:
+ their directory is writable, so the probe passes and nothing moves.
 Author: gmipf <gmipf64@gmail.com>
 Forwarded: not-yet
 Last-Update: 2026-07-13
@@ -26,14 +27,28 @@ Last-Update: 2026-07-13
  
  use super::App;
  use crate::dump::{self, SectorStatus};
-@@ -9,20 +13,52 @@
+@@ -9,20 +13,66 @@
      const DVD_LBA_OFFSET: u64 = 0x30000;
      const BD_LBA_OFFSET: u64 = 0x100000;
  
 +    // Dumps folder in the user's own space, for every case where the directory
 +    // holding the executable is not one the user may write to.
++    //
++    // Which folder that is, is a desktop convention and differs per platform. On
++    // macOS this keeps the download folder, because that is what this program has
++    // always used there and its users expect it. On Linux a dump tool belongs in
++    // the user's home: nothing that ships in a distribution package may write
++    // under /usr, and putting disc images into "Downloads" -- the folder a browser
++    // empties -- is not where anyone looks for them.
 +    fn user_output_dir() -> PathBuf {
-+        dirs::download_dir().unwrap_or_else(|| dirs::home_dir().unwrap_or_else(|| PathBuf::from("."))).join("Dumps")
++        #[cfg(target_os = "macos")]
++        {
++            dirs::download_dir().unwrap_or_else(|| dirs::home_dir().unwrap_or_else(|| PathBuf::from("."))).join("Dumps")
++        }
++        #[cfg(not(target_os = "macos"))]
++        {
++            dirs::home_dir().unwrap_or_else(|| PathBuf::from(".")).join("Dumps")
++        }
 +    }
 +
 +    // Whether the user running us may create files in `dir`. Probes by creating one,

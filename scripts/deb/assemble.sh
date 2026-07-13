@@ -71,12 +71,16 @@ fi
 
 echo ":: fetching upstream $TOOL $TAG (version $VER)"
 case "$TOOL" in
-  redumper)
+  redumper|redumper729)
+    # Same upstream artifact for both, only at a different tag: the rolling
+    # package follows .upstream-tag as the watcher bumps it, the pinned one has
+    # b729 written there for good. The binary is installed under the package's
+    # own name so the two never collide on /usr/bin.
     mkdir -p "$SRC/bin"
     curl -fsSL -o "$WORK/up.zip" \
       "https://github.com/superg/redumper/releases/download/${TAG}/redumper-${TAG}-linux-x64.zip"
     unzip -q "$WORK/up.zip" -d "$WORK"
-    install -m0755 "$WORK/redumper-${TAG}-linux-x64/bin/redumper" "$SRC/bin/redumper"
+    install -m0755 "$WORK/redumper-${TAG}-linux-x64/bin/redumper" "$SRC/bin/${TOOL}"
     curl -fsSL -o "$SRC/LICENSE"   "https://raw.githubusercontent.com/superg/redumper/${TAG}/LICENSE"
     curl -fsSL -o "$SRC/README.md" "https://raw.githubusercontent.com/superg/redumper/${TAG}/README.md"
     ;;

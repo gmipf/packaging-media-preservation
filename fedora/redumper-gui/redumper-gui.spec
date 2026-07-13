@@ -14,7 +14,7 @@
 
 Name:           redumper-gui
 Version:        1.0.1
-Release:        3%{?dist}
+Release:        4%{?dist}
 Summary:        Desktop frontend for the redumper optical-disc dumper
 
 # Upstream ships the plain GPL-3.0 text with no per-file headers and no
@@ -44,10 +44,14 @@ Source2:        redumper-gui.1
 # folder there. Measured on a clean install (mkdir: Permission denied), and
 # dump.rs throws the error away, so the dump does not stop with a plain
 # "permission denied" -- it runs on and fails later for a reason that never
-# names the cause. The patch falls back to the user's download folder when the
-# executable's directory is not writable, exactly as upstream's own macOS
-# branch already does for the .app bundle. Carried identically in the Debian
-# lane (ubuntu/redumper-gui/debian/patches/) and offered upstream.
+# names the cause. The patch falls back to a Dumps folder in the user's HOME
+# when the executable's directory is not writable -- upstream's own macOS branch
+# already does exactly this (the .app bundle is the same predicament), and it is
+# left alone there, keeping the download folder its users expect. Home is the
+# Linux convention for a tool like this, and it is what our mpf package already
+# does (DefaultOutputPath = $HOME/ISO): a browser empties Downloads, and nobody
+# looks for disc images in it. Carried identically in the Debian lane
+# (ubuntu/redumper-gui/debian/patches/) and offered upstream.
 Patch0:         0001-default-dump-folder-must-be-writable.patch
 
 ExclusiveArch:  x86_64
@@ -234,6 +238,14 @@ done
 %{_datadir}/icons/hicolor/*/apps/%{name}.png
 
 %changelog
+* Mon Jul 13 2026 gmipf <gmipf64@gmail.com> - 1.0.1-4
+- Put the fallback dump folder in the user's HOME (~/Dumps), not in ~/Downloads.
+  Home is the Linux convention for a tool like this, and it is what our own mpf
+  package already does (DefaultOutputPath = $HOME/ISO) -- two disc dumpers from
+  one repository should not disagree about where a dump goes. Downloads is the
+  folder a browser empties; nobody looks for disc images there. Upstream's macOS
+  branch keeps the download folder it has always used, untouched.
+
 * Mon Jul 13 2026 gmipf <gmipf64@gmail.com> - 1.0.1-3
 - Patch the default dump folder so a packaged install can actually dump. It
   pointed at a Dumps subfolder beside the executable -- /usr/lib64/redumper-gui
@@ -242,9 +254,9 @@ done
   create_dir_all(), so pressing DUMP did not stop with "permission denied"; the
   dump ran on and failed later for a reason that never named the cause. The
   patch keeps that folder wherever it IS writable (upstream's portable build)
-  and otherwise falls back to the user's download folder -- which is what
-  upstream's own macOS branch has always done, the .app bundle being the very
-  same predicament. Offered upstream.
+  and otherwise falls back to a folder the user owns -- which is what upstream's
+  own macOS branch has always done, the .app bundle being the very same
+  predicament. Offered upstream.
 
 * Mon Jul 13 2026 gmipf <gmipf64@gmail.com> - 1.0.1-2
 - Ship the launcher icon in all standard hicolor sizes (16-512), rendered at

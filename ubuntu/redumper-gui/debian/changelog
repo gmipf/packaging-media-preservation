@@ -1,3 +1,15 @@
+redumper-gui (1.0.1-3) UNRELEASED; urgency=medium
+
+  * Put the fallback dump folder in the user's HOME (~/Dumps), not in
+    ~/Downloads. Home is the Linux convention for a tool like this, and it is
+    what our own mpf package already does (DefaultOutputPath = $HOME/ISO) -- two
+    disc dumpers from one repository should not disagree about where a dump
+    goes. Downloads is the folder a browser empties; nobody looks for disc
+    images there. Upstream's macOS branch keeps the download folder it has
+    always used, untouched.
+
+ -- gmipf <gmipf64@gmail.com>  Mon, 13 Jul 2026 21:30:00 +0200
+
 redumper-gui (1.0.1-2) UNRELEASED; urgency=medium
 
   * Patch the default dump folder so a packaged install can actually dump

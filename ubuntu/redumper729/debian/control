@@ -1,0 +1,36 @@
+Source: redumper729
+Section: utils
+Priority: optional
+Maintainer: gmipf <gmipf64@gmail.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.2
+Homepage: https://github.com/superg/redumper
+Rules-Requires-Root: no
+Vcs-Git: https://github.com/gmipf/packaging-media-preservation.git
+Vcs-Browser: https://github.com/gmipf/packaging-media-preservation
+
+Package: redumper729
+Architecture: amd64
+# No ${shlibs:Depends}: the upstream linux-x64 binary is fully statically
+# linked (dh_shlibdeps finds no shared-library dependencies at all).
+Depends: ${misc:Depends}, libcap2-bin
+Description: redumper b729, the build pinned by redumper-gui
+ redumper is a low-level byte-perfect disc dumper for CD, DVD, HD-DVD and
+ Blu-ray, used by the Redump and No-Intro preservation projects.
+ .
+ This package ships upstream build b729 as /usr/bin/redumper729. It exists so
+ that tools which are version-coupled to a specific redumper build get exactly
+ the build they were tested against, no matter which version the rolling
+ redumper package currently carries: redumper-gui's upstream bundles b729 and
+ states plainly that changing it may not be supported, and it invokes redumper
+ as a sibling of its own executable -- which a distribution cannot honour by
+ shipping a second /usr/bin/redumper.
+ .
+ It installs alongside the rolling redumper package without conflicting: the
+ binary is named after the build, so no files overlap. For interactive use
+ prefer that one -- it tracks upstream and carries the redumper(1) manpage.
+ This is a compatibility build, not a replacement.
+ .
+ On install the binary is given the cap_sys_rawio file capability so vendor
+ SCSI passthrough commands work without sudo; drive node access still requires
+ a local desktop seat (uaccess) or membership of the cdrom group.

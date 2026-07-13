@@ -1,0 +1,21 @@
+redumper729 (729-1) UNRELEASED; urgency=medium
+
+  * Initial package. Pinned-build compatibility package carrying upstream
+    redumper b729 as /usr/bin/redumper729, for consumers coupled to that exact
+    build. redumper-gui is the first: its upstream bundles b729 and states that
+    other versions may not be supported, and it invokes redumper as a sibling of
+    its own executable -- which a distribution cannot honour by shipping a
+    second /usr/bin/redumper.
+  * This package was missing from the PPA, and redumper-gui Depends on it. The
+    consequence was not a warning anywhere: redumper-gui uploaded, built and
+    published on resolute, and was simply not installable -- measured with
+    `apt-get install -s redumper-gui` in a clean 26.04 container, which answers
+    "Depends: redumper729 but none of the choices are installable: [no choices]".
+    Launchpad builds a source package against the archive but never asks whether
+    the result can be INSTALLED from it, so a missing runtime dependency stays
+    green all the way through.
+  * Co-installable with the rolling redumper package: the build number is in the
+    binary name, so no files overlap. No manpage on purpose -- the rolling
+    package carries redumper(1); this is a compatibility build.
+
+ -- gmipf <gmipf64@gmail.com>  Mon, 13 Jul 2026 21:45:00 +0200
