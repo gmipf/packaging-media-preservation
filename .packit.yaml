@@ -33,13 +33,22 @@ packages:
       - fedora/mpf/
     specfile_path: mpf.spec
     upstream_project_url: https://github.com/SabreTools/MPF
-    # No get-current-version action — watch-mpf-rolling.yml rewrites the
-    # `%global mpfver` and `%global mpfsnap` lines whenever the upstream
-    # rolling SHA changes, so rpmspec returns the correct version.
-    # spectool -g fetches all three Source* zips (check + cli + gui);
-    # SRPM packs them all. We return the Check zip as the primary archive
-    # because Packit only needs one stdout line to anchor the archive set.
+    # spectool -g fetches all three Source* zips (check + cli + gui); SRPM packs
+    # them all. We return the Check zip as the primary archive because Packit
+    # only needs one stdout line to anchor the archive set.
     actions:
+      # MANDATORY. This block used to say "no get-current-version needed --
+      # watch-mpf-rolling.yml rewrites %global mpfver, so rpmspec returns the
+      # right version". That was a trap: Packit does not read the spec. With no
+      # such action it derives the version from the newest GIT TAG in THIS repo.
+      # For years there were none, so it silently fell back to something sane.
+      # On 2026-07-13 `gh release create redumper-gui-1.0.1` (publishing the
+      # vendored tarball) created the first tag ever -- and every package lacking
+      # this action immediately started building as version `redumper.gui.1.0.1`.
+      # mpf shipped as mpf-redumper.gui.1.0.1-2 (COPR 10713586). One tag poisons
+      # every package that does not pin its version explicitly.
+      get-current-version:
+        - bash -c "rpmspec -q --queryformat '%{version}\n' mpf.spec | head -1"
       create-archive:
         - bash -c "spectool -g mpf.spec 1>&2"
         - bash -c "ls -1 MPF.Check_net10.0_linux-x64_release.zip"
@@ -58,6 +67,10 @@ packages:
     # and watch-dic-releases.yml re-pins it on every new master commit.
     # The DiscImageCreator-*.tar.gz glob still matches the SHA-named archive.
     actions:
+      # Mandatory — see the mpf block: without it Packit takes the version from
+      # the newest git tag in this repo, not from the spec.
+      get-current-version:
+        - bash -c "rpmspec -q --queryformat '%{version}\n' discimagecreator.spec | head -1"
       create-archive:
         - bash -c "spectool -g discimagecreator.spec 1>&2"
         - bash -c "ls -1 DiscImageCreator-*.tar.gz | head -1"
@@ -72,6 +85,10 @@ packages:
     # (prebuilt linux_amd64 binary + signed source) and the SRPM packs
     # them both.
     actions:
+      # Mandatory — see the mpf block: without it Packit takes the version from
+      # the newest git tag in this repo, not from the spec.
+      get-current-version:
+        - bash -c "rpmspec -q --queryformat '%{version}\n' aaru.spec | head -1"
       create-archive:
         - bash -c "spectool -g aaru.spec 1>&2"
         - bash -c "ls -1 aaru-*-alpha.19_linux_amd64.tar.xz | head -1"
@@ -88,6 +105,10 @@ packages:
     specfile_path: aaru5.spec
     upstream_project_url: https://github.com/aaru-dps/Aaru
     actions:
+      # Mandatory — see the mpf block: without it Packit takes the version from
+      # the newest git tag in this repo, not from the spec.
+      get-current-version:
+        - bash -c "rpmspec -q --queryformat '%{version}\n' aaru5.spec | head -1"
       create-archive:
         - bash -c "spectool -g aaru5.spec 1>&2"
         - bash -c "ls -1 aaru-*_linux_amd64.tar.xz | head -1"
