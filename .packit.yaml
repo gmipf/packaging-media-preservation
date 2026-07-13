@@ -92,6 +92,36 @@ packages:
         - bash -c "spectool -g aaru5.spec 1>&2"
         - bash -c "ls -1 aaru-*_linux_amd64.tar.xz | head -1"
 
+  # Pinned-build compatibility package: upstream redumper b729 as
+  # /usr/bin/redumper729, co-installable with the rolling `redumper`.
+  # redumper-gui is coupled to exactly this build (upstream bundles b729 and
+  # says other versions may be unsupported), and a distro cannot ship a second
+  # /usr/bin/redumper. No watcher on purpose — a PIN that moves is not a pin.
+  redumper729:
+    paths:
+      - fedora/redumper729/
+    specfile_path: redumper729.spec
+    upstream_project_url: https://github.com/superg/redumper
+    actions:
+      create-archive:
+        - bash -c "spectool -g redumper729.spec 1>&2"
+        - bash -c "ls -1 redumper-b729-linux-x64.zip"
+
+  # Source0 is the VENDORED tarball published as a release asset on THIS repo
+  # (scripts/rust-vendor-tarball.sh), not an upstream archive: Rust needs its
+  # crates at build time and the COPR chroot has no network. Source1/2 are
+  # local files and therefore FLAT basenames — Packit stages local sources into
+  # the srcdir root, so a subdirectory in the Source: line would not resolve.
+  redumper-gui:
+    paths:
+      - fedora/redumper-gui/
+    specfile_path: redumper-gui.spec
+    upstream_project_url: https://github.com/Deterous/Redumper-GUI
+    actions:
+      create-archive:
+        - bash -c "spectool -g redumper-gui.spec 1>&2"
+        - bash -c "ls -1 redumper-gui-*-vendored.tar.xz | head -1"
+
 jobs:
   # Per-package commit jobs, each pinned to its OWN trigger branch
   # (build-<tool>). Two mechanisms together keep `dnf` clients from ever
@@ -216,6 +246,37 @@ jobs:
     trigger: commit
     branch: ^build-aaru5$
     packages: [aaru5]
+    update_release: false
+    owner: gmipf
+    project: media-preservation
+    targets:
+      - fedora-all-x86_64
+      - epel-all-x86_64
+
+  # redumper729: pinned build, manual only (no watcher — see the package block).
+  # The ^...$ anchors matter more here than anywhere: `build-redumper` without
+  # them would also match `build-redumper729` AND `build-redumper-gui`, and the
+  # rolling redumper would get rebuilt under an unchanged NEVRA — exactly the
+  # aaru/aaru5 incident of 2026-07-11.
+  - job: copr_build
+    trigger: commit
+    branch: ^build-redumper729$
+    packages: [redumper729]
+    update_release: false
+    owner: gmipf
+    project: media-preservation
+    targets:
+      - fedora-all-x86_64
+      - epel-all-x86_64
+
+  # redumper-gui: Rust/egui frontend. MSRV 1.92 (from eframe/egui 0.35, measured)
+  # is satisfied on Fedora 43+ (1.96) and on EL 8/9/10 (1.92 — exactly the floor,
+  # zero headroom), so fedora-all + epel-all both build. Debian 12 and the older
+  # Ubuntu LTS releases cannot and are not targeted anywhere.
+  - job: copr_build
+    trigger: commit
+    branch: ^build-redumper-gui$
+    packages: [redumper-gui]
     update_release: false
     owner: gmipf
     project: media-preservation

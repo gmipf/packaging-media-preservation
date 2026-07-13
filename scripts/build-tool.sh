@@ -44,7 +44,13 @@ case "$TOOL" in
   dic)      PKG=discimagecreator;  SPEC=fedora/discimagecreator/discimagecreator.spec;  BR=build-dic ;;
   aaru)     PKG=aaru;              SPEC=fedora/aaru/aaru.spec;                           BR=build-aaru ;;
   aaru5)    PKG=aaru5;             SPEC=fedora/aaru5/aaru5.spec;                         BR=build-aaru5 ;;
-  *) echo "usage: $0 <redumper|mpf|dic|aaru|aaru5>" >&2; exit 2 ;;
+  # Pinned redumper build + the GUI coupled to it. Note the branch names are
+  # NOT prefixes of build-redumper in the regex sense — .packit.yaml anchors
+  # every branch with ^...$, which is what keeps a push here from also firing
+  # the rolling redumper job.
+  redumper729)  PKG=redumper729;   SPEC=fedora/redumper729/redumper729.spec;             BR=build-redumper729 ;;
+  redumper-gui) PKG=redumper-gui;  SPEC=fedora/redumper-gui/redumper-gui.spec;           BR=build-redumper-gui ;;
+  *) echo "usage: $0 <redumper|mpf|dic|aaru|aaru5|redumper729|redumper-gui>" >&2; exit 2 ;;
 esac
 
 ROOT=$(git rev-parse --show-toplevel)
