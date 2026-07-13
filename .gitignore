@@ -1,2 +1,9 @@
 # Local Debian/Ubuntu test-build artifacts (scripts/deb-build.sh output).
 .deb-out/
+
+# Vendored Rust source tarballs (scripts/rust-vendor-tarball.sh output, ~16 MB).
+# Build artifacts: they are published as GitHub release assets and every lane
+# pulls them from there by URL -- this repo holds the recipe, never the payload.
+# The script is reproducible, so the tarball can be rebuilt byte-for-byte from
+# the upstream tag whenever it is needed.
+*-vendored.tar.xz

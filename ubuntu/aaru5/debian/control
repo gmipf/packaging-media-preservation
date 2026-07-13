@@ -2,7 +2,21 @@ Source: aaru5
 Section: utils
 Priority: optional
 Maintainer: gmipf <gmipf64@gmail.com>
-Build-Depends: debhelper-compat (= 13)
+# The manpage is GENERATED at build time by running the shipped binary's --help
+# (debian/rules -> debian/aaru5-manpage.sh), so whatever the binary needs in
+# order to start must be here, not only in Depends.
+#
+# The NativeAOT ELF's DT_NEEDED lists nothing exotic (libc, libstdc++, libz),
+# but it dlopens libicui18n/libicuuc at run time — measured with `strings`, and
+# invisible to every dependency scanner: the same trap as with the GUI packages.
+# libicu-dev pulls whichever libicu<N> the series carries, so this stays
+# series-agnostic (the runtime package name is soname-versioned and would not).
+#
+# gawk: the generator's parser uses awk, and Debian/Ubuntu point /usr/bin/awk at
+# mawk by default; installing gawk moves the alternative.
+Build-Depends: debhelper-compat (= 13),
+               gawk,
+               libicu-dev
 Standards-Version: 4.6.2
 Homepage: https://github.com/aaru-dps/Aaru
 Rules-Requires-Root: no

@@ -19,12 +19,19 @@ Source0:        %{url}/releases/download/b%{version}/redumper-b%{version}-linux-
 Source1:        https://raw.githubusercontent.com/superg/redumper/b%{version}/LICENSE
 Source2:        https://raw.githubusercontent.com/superg/redumper/b%{version}/README.md
 
-# Handwritten manpage (upstream provides none). The version tag is stamped
-# into the .TH header at build time from %%{version} (see %%build), so it can
-# never drift from the shipped binary. We deliberately do NOT use help2man
-# here: redumper's --help is a bare option dump, while this page carries
-# curated Linux drive-access / device-node / examples guidance that help2man
-# would strip out.
+# Handwritten manpage (upstream provides none), installed VERBATIM. It carries a
+# FIXED version marker naming the build its prose was written against (b724) --
+# it is deliberately NOT stamped with %%{version}. Stamping the shipped release
+# into a hand-written page is a forgery: the header would keep claiming currency
+# release after release while the prose quietly aged, and the page even admitted
+# as much two paragraphs further down. A fixed marker lets the reader see that
+# their binary is newer than the text. (Generated pages are the opposite case --
+# there content and version move together, so stamping is honest; that is why
+# aaru's generated page stamps and this one does not.)
+#
+# We also deliberately do NOT use help2man: redumper's --help is a bare option
+# dump, while this page carries curated Linux drive-access / device-node /
+# examples guidance that help2man would strip out.
 Source3:        redumper.1
 
 ExclusiveArch:  x86_64
@@ -44,13 +51,8 @@ vendor SCSI passthrough commands work without sudo.
 unzip -q %{SOURCE0}
 
 %build
-# Self-contained statically linked binary; nothing to compile.
-
-# Stamp the upstream tag + build date into the handwritten manpage so its
-# header always matches the shipped binary (no manual version drift).
-sed -e 's/@TAG@/b%{version}/g' \
-    -e "s/@DATE@/$(date +%Y-%m-%d)/" \
-    %{SOURCE3} > redumper.1
+# Self-contained statically linked binary; nothing to compile, and the manpage
+# is installed verbatim (see Source3) rather than stamped.
 
 %install
 install -d %{buildroot}%{_bindir}
@@ -59,8 +61,7 @@ install -m 0755 redumper-b%{version}-linux-x64/bin/redumper %{buildroot}%{_bindi
 install -p -m 0644 %{SOURCE1} LICENSE
 install -p -m 0644 %{SOURCE2} README.md
 
-install -d %{buildroot}%{_mandir}/man1
-install -m 0644 redumper.1 %{buildroot}%{_mandir}/man1/redumper.1
+install -D -m 0644 %{SOURCE3} %{buildroot}%{_mandir}/man1/redumper.1
 
 %files
 %license LICENSE
@@ -71,6 +72,19 @@ install -m 0644 redumper.1 %{buildroot}%{_mandir}/man1/redumper.1
 %changelog
 * Sun Jul 12 2026 gmipf <gmipf64@gmail.com> - 732-1
 - Automated sync to upstream redumper release b732; Release reset to 1.
+- Stop stamping the shipped release into the handwritten redumper(1) manpage.
+  The .TH header now carries a FIXED marker naming the build the prose was
+  actually written against (b724); the page is installed verbatim.
+- This reverts the mechanism added in 726-2, which was backwards. The prose is
+  maintained by hand and does not move when the package does, so stamping
+  %%{version} into the header made every build claim the page documented the
+  binary it shipped with -- while the page's own NOTES section admitted, two
+  paragraphs down, that it might be stale. A header that always names the
+  current build cannot show staleness; a fixed marker can, and now does.
+- The rule this settles: a HANDWRITTEN page gets a fixed marker (which version
+  the text describes), a GENERATED page gets the shipped version stamped in
+  (content and version move together there, so it is honest). aaru's page is
+  generated at build time from --help and keeps stamping.
 
 * Sat Jul 11 2026 gmipf <gmipf64@gmail.com> - 731-1
 - Automated sync to upstream redumper release b731; Release reset to 1.

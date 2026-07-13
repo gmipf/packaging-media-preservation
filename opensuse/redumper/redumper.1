@@ -1,4 +1,4 @@
-.TH REDUMPER 1 "@DATE@" "redumper @TAG@" "User Commands"
+.TH REDUMPER 1 "2026-06-15" "redumper b724" "User Commands"
 .SH NAME
 redumper \- low-level byte-perfect optical disc dumper
 .SH SYNOPSIS
@@ -141,20 +141,26 @@ preset.
 Upstream documentation \(em includes the full GENERIC drive evaluation
 guide, dump-state details and the complete command reference.
 .SH NOTES
-This manpage is handwritten as part of the Fedora packaging \(em
-upstream
+This manpage is handwritten as part of the packaging \(em upstream
 .B redumper
-ships no manpage. The version tag in the header line is stamped at
-package build time from the shipped binary's release, so it always
-names the exact build it accompanies (currently
-.BR @TAG@ ).
-The prose itself is maintained by hand. If you observe commands or
-options here that no longer match the
-actual binary's
+ships no manpage.
+.PP
+The version in the header is
+.B deliberately static:
+it names the build this text was written against
+.RB ( b724 ),
+not the build you have installed. It is not stamped at package build time,
+and that is on purpose \(em the prose is maintained by hand and does not
+move when the package does, so a header that always named the shipped
+release would let an aging page keep claiming currency. A fixed marker
+lets you see at a glance that your binary is newer than this text.
+.PP
+So if the header names an older build than the one you installed, read this
+page with that in mind. Where it disagrees with the binary's own
 .B --help
-output, the upstream README (which is shipped under
-.IR /usr/share/doc/redumper/README.md )
-is authoritative; this manpage may simply be stale.
+output or with the upstream README (shipped at
+.IR /usr/share/doc/redumper/README.md ),
+those are authoritative and this page is simply behind.
 .SH SEE ALSO
 .BR discimagecreator (1)
 .PP

@@ -1,26 +1,24 @@
 #!/usr/bin/make -f
 #
 # redumper — repackage of the upstream statically-linked linux-x64 binary.
-# Nothing is compiled here; the only "build" step is stamping the manpage.
-
-# Upstream release number (the b<N> tag), derived from the Debian version by
-# dropping the ~series suffix and the -revision.  e.g. 726-1~noble1 -> 726
-UPSTREAM_VERSION := $(shell dpkg-parsechangelog -SVersion | sed -e 's/~.*//' -e 's/-[^-]*$$//')
-
-# Reproducible manpage date: the changelog timestamp (via SOURCE_DATE_EPOCH),
-# never the build wall-clock, so rebuilds stay byte-identical.
-MAN_DATE := $(shell LC_ALL=C date -u -d "@$(or $(SOURCE_DATE_EPOCH),$(shell date +%s))" +%F)
+# Nothing is compiled here, and nothing is generated: debian/redumper.1 is a
+# hand-written page shipped verbatim.
+#
+# It used to be stamped at build time (@TAG@/@DATE@ substituted from the
+# changelog version), which was backwards. The prose is maintained by hand and
+# does not move when the package does, so a header naming the shipped release
+# made every build claim the page documented the binary it came with — while the
+# page's own NOTES admitted it might be stale. The .TH header now carries a FIXED
+# marker naming the build the text was actually written against (b724), which is
+# what lets a reader see their binary is newer. Generated pages are the opposite
+# case and do stamp: see aaru, whose page is produced from --help at build time.
 
 %:
 	dh $@
 
 # The upstream binary is prebuilt and statically linked — there is nothing to
-# configure, compile or test. Replace the build step with manpage stamping so
-# the .TH header always matches the shipped binary's release tag.
+# configure, compile or test.
 override_dh_auto_build:
-	sed -e 's/@TAG@/b$(UPSTREAM_VERSION)/g' \
-	    -e 's/@DATE@/$(MAN_DATE)/g' \
-	    debian/redumper.1.in > debian/redumper.1
 
 override_dh_auto_test:
 

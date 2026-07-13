@@ -14,7 +14,7 @@
 
 Name:           redumper-gui
 Version:        1.0.1
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        Desktop frontend for the redumper optical-disc dumper
 
 # Upstream ships the plain GPL-3.0 text with no per-file headers and no
@@ -58,6 +58,10 @@ BuildRequires:  cargo
 # zstd-sys compiles the bundled C and x86-64 assembly sources of libzstd.
 BuildRequires:  gcc
 BuildRequires:  desktop-file-utils
+# Renders the hicolor icon sizes from upstream's single 512x512 PNG (see
+# %%install). Resolvable on every chroot we build -- verified on fedora-43,
+# epel-8 and epel-10; on EL it comes from EPEL, which the buildroot has.
+BuildRequires:  ImageMagick
 
 # The pinned dumper -- a hard dependency: without it the GUI has nothing to
 # drive. Not the rolling `redumper` package, deliberately (see rdpin above).
@@ -150,13 +154,41 @@ install -D -m 0644 %{SOURCE2} %{buildroot}%{_mandir}/man1/%{name}.1
 
 desktop-file-install --dir=%{buildroot}%{_datadir}/applications %{SOURCE1}
 
-# Upstream ships a single 512x512 PNG (embedded in the binary for the window
-# icon); install it under hicolor, where desktop environments scale it down.
+# Upstream ships exactly ONE raster icon: assets/icon/icon.png at 512x512 (the
+# .ico next to it is Windows-only and carries just 16px and 24px). Shipping only
+# the 512 and letting the desktop downscale it is what we did first, and it is
+# wrong for THIS icon: it is a finely detailed disc sector -- thin grid lines and
+# hairline spokes -- and a naive on-the-fly downscale to a 24px panel slot turns
+# that into mush. Render the standard hicolor sizes here instead, once, with a
+# proper Lanczos filter.
+#
+# Generated from the upstream asset rather than checked into this repo as
+# pre-rendered PNGs: nothing is duplicated, and the packaged icon therefore
+# cannot drift from the one upstream actually ships.
+#
+# ImageMagick 7 renamed the CLI to `magick` and deprecated `convert`; EL8 still
+# carries ImageMagick 6, which has only `convert`. Pick whichever exists in the
+# buildroot rather than assuming a version.
+if command -v magick >/dev/null 2>&1; then IM=magick; else IM=convert; fi
+for px in 16 22 24 32 48 64 128 256; do
+    install -d %{buildroot}%{_datadir}/icons/hicolor/${px}x${px}/apps
+    $IM assets/icon/icon.png -filter Lanczos -resize ${px}x${px} \
+        %{buildroot}%{_datadir}/icons/hicolor/${px}x${px}/apps/%{name}.png
+done
+# The 512 is the upstream file itself, installed byte-for-byte (no resample).
 install -D -m 0644 assets/icon/icon.png \
     %{buildroot}%{_datadir}/icons/hicolor/512x512/apps/%{name}.png
 
 %check
 desktop-file-validate %{buildroot}%{_datadir}/applications/%{name}.desktop
+
+# Every size the desktop will look for must actually be there -- a hicolor dir
+# that exists but is empty is worse than none. Fail the build, don't ship a
+# launcher with a missing icon.
+for px in 16 22 24 32 48 64 128 256 512; do
+    test -s %{buildroot}%{_datadir}/icons/hicolor/${px}x${px}/apps/%{name}.png \
+        || { echo "icon ${px}x${px} missing or empty"; exit 1; }
+done
 
 # DO NOT add %%caps(cap_sys_rawio=ep) here. A dumping frontend looks like it
 # ought to have raw drive access, but it must not:
@@ -185,9 +217,19 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/%{name}.desktop
 %{_bindir}/%{name}
 %{_mandir}/man1/%{name}.1*
 %{_datadir}/applications/%{name}.desktop
-%{_datadir}/icons/hicolor/512x512/apps/%{name}.png
+%{_datadir}/icons/hicolor/*/apps/%{name}.png
 
 %changelog
+* Mon Jul 13 2026 gmipf <gmipf64@gmail.com> - 1.0.1-2
+- Ship the launcher icon in all standard hicolor sizes (16-512), rendered at
+  build time from upstream's single 512x512 PNG with a Lanczos filter. Before
+  this only the 512 was installed and every desktop had to downscale it itself
+  for panels and docks -- and this icon is a finely detailed disc sector, so a
+  naive downscale to 24px turned it to mush. Generated rather than pre-rendered
+  into this repo, so the packaged icon cannot drift from upstream's.
+- %%check now fails the build if any icon size is missing or empty: a launcher
+  with no icon is not something to discover after shipping.
+
 * Sun Jul 12 2026 gmipf <gmipf64@gmail.com> - 1.0.1-1
 - Initial build of Redumper GUI v1.0.1 (Rust / egui), suggested by its author
   in the VGPC preservation community.

@@ -23,9 +23,14 @@ Source0:        %{url}/releases/download/b%{version}/redumper-b%{version}-linux-
 Source1:        https://raw.githubusercontent.com/superg/redumper/b%{version}/LICENSE
 Source2:        https://raw.githubusercontent.com/superg/redumper/b%{version}/README.md
 
-# Handwritten manpage (upstream provides none). The version tag is stamped
-# into the .TH header at build time from %%{version} (see %%build), so it can
-# never drift from the shipped binary. Local source, left alone by the service.
+# Handwritten manpage (upstream provides none), installed VERBATIM. It carries a
+# FIXED marker naming the build its prose was written against (b724) and is
+# deliberately NOT stamped with %%{version}: the text is maintained by hand and
+# does not move when the package does, so a header that always named the shipped
+# release would let an aging page keep claiming currency. A fixed marker lets the
+# reader see their binary is newer. (Generated pages are the opposite case and do
+# stamp -- see aaru, whose page is produced from --help at build time.)
+# Local source, left alone by the service.
 Source3:        redumper.1
 
 ExclusiveArch:  x86_64
@@ -54,13 +59,8 @@ work without sudo.
 unzip -q %{SOURCE0}
 
 %build
-# Self-contained statically linked binary; nothing to compile.
-
-# Stamp the upstream tag + build date into the handwritten manpage so its
-# header always matches the shipped binary (no manual version drift).
-sed -e 's/@TAG@/b%{version}/g' \
-    -e "s/@DATE@/$(date +%Y-%m-%d)/" \
-    %{SOURCE3} > redumper.1
+# Self-contained statically linked binary; nothing to compile, and the manpage
+# is installed verbatim (see Source3) rather than stamped.
 
 %install
 install -d %{buildroot}%{_bindir}
@@ -69,8 +69,7 @@ install -m 0755 redumper-b%{version}-linux-x64/bin/redumper %{buildroot}%{_bindi
 install -p -m 0644 %{SOURCE1} LICENSE
 install -p -m 0644 %{SOURCE2} README.md
 
-install -d %{buildroot}%{_mandir}/man1
-install -m 0644 redumper.1 %{buildroot}%{_mandir}/man1/redumper.1
+install -D -m 0644 %{SOURCE3} %{buildroot}%{_mandir}/man1/redumper.1
 
 # Permissions framework profile: grant cap_sys_rawio for sudo-less SCSI
 # passthrough (Plextor read method D8, Kreon commands, ...). The capability

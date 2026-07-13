@@ -25,62 +25,6 @@ release, installed under its own name so it can sit next to the rolling
 the v6 alpha has an incompatible command interface and does not work in
 MPF. In MPF, set the Aaru executable path to
 .IR /usr/bin/aaru5 .
-.SH OPTIONS
-These global options precede the command name.
-.TP
-.BR \-v ", " \-\-verbose
-Show verbose output.
-.TP
-.BR \-d ", " \-\-debug
-Show debug output from plugins.
-.TP
-.B \-\-pause
-Pause before exiting.
-.TP
-.B \-\-version
-Show version information and exit.
-.TP
-.BR \-? ", " \-h ", " \-\-help
-Show help and usage information. Append it to any command
-.RB ( "aaru5 \fICOMMAND\fB \-\-help" )
-for that command's own options and sub-commands.
-.SH COMMANDS
-.TP
-.BR database ", " db
-Manage the device and statistics database.
-.TP
-.BR dev ", " device
-Talk to devices (dump, scan, report, list).
-.TP
-.BR fi ", " filesystem ", " fs
-Manage filesystems (info, list, extract, options).
-.TP
-.BR i ", " image
-Manage images (info, verify, checksum, convert, entropy, decode, print).
-.TP
-.BR m ", " media
-Manage media inserted in devices (dump, info, scan).
-.TP
-.B configure
-Configure user settings and statistics (interactive).
-.TP
-.B formats
-List all supported disc images, partition schemes and filesystems.
-.TP
-.B list\-encodings
-List all supported text encodings and code pages.
-.TP
-.B list\-namespaces
-List all namespaces supported by read-only filesystems.
-.TP
-.B remote
-Test the connection to an Aaru Remote Server
-.RI ( host
-argument).
-.PP
-Each command has its own sub-commands and options; run
-.B aaru5 \fICOMMAND\fB \-\-help
-for the full, version-exact reference from the installed binary.
 .SH DRIVE ACCESS
 .B aaru5
 ships with the
@@ -129,6 +73,17 @@ by default. This package ships
 to add that tag, so logind grants the local-seat user an ACL on the node and
 floppies dump with no group and no root. Headless sessions have no seat and
 therefore no ACL; dump as root there.
+.SH "COMMAND REFERENCE"
+The complete command and option reference below is the help text of the
+.B aaru5
+binary shipped in this package, reproduced verbatim from its
+.B \-\-help
+output. It is regenerated from that binary at package build time, so it
+always matches the installed version and cannot go stale; run
+.B aaru5 \fICOMMAND\fB \-\-help
+for the same text interactively.
+.PP
+@AARU5_COMMAND_REFERENCE@
 .SH FILES
 .TP
 .I /usr/bin/aaru5
@@ -136,7 +91,7 @@ Symlink to the real binary; the kernel follows it for
 .B cap_sys_rawio
 inheritance on exec.
 .TP
-.I /usr/lib/aaru5/
+.I /usr/lib64/aaru5/
 Real NativeAOT binary
 .RI ( aaru )
 and its bundled native SQLite provider
@@ -173,11 +128,13 @@ and hit a schema mismatch, point one of them at a private
 or
 .B XDG_DATA_HOME .
 .PP
-This manpage is maintained by hand as part of the distribution packaging;
-upstream provides none. The command overview above is a summary \(em the
-authoritative, version-exact reference is the binary's own
+Upstream provides no manpage. The prose sections of this page are written by
+the packager; the COMMAND REFERENCE section is not \(em it is generated at
+package build time by walking the shipped binary's own
 .B \-\-help
-output.
+tree, so it cannot drift from the version you have installed. That is also why
+the version in the header is stamped from the binary instead of being a fixed
+marker: for a generated page, content and version really do move together.
 .SH SEE ALSO
 .BR aaru (1),
 .BR redumper (1),
@@ -190,9 +147,8 @@ Upstream documentation, bug tracker and release notes:
 Upstream lead: Natalia Portillo
 .RB ( https://github.com/claunia ).
 .PP
-Distribution packaging maintained as part of the media-preservation
-packaging repository
-.I gmipf/packaging-media-preservation .
+Fedora packaging maintained as part of the COPR repository
+.I gmipf/media-preservation .
 .SH LICENSE
 The
 .B aaru
@@ -205,5 +161,5 @@ LGPL-2.1-or-later (selected library components)
 MIT (third-party vendored components)
 .PP
 Each component retains its individual license; the license texts shipped
-with the package are under
-.IR /usr/share/doc/aaru5/ .
+with the binary are under
+.IR /usr/share/licenses/aaru5/ .

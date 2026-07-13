@@ -1,15 +1,28 @@
 #!/usr/bin/env bash
 #
-# deb-build.sh — local test build of a tool's Ubuntu package, in a clean
-# series-exact Podman container (the Debian analogue of `mock` on the RPM
-# side). Proves the recipe builds BEFORE anything touches Launchpad.
+# deb-build.sh — local test build of a tool's .deb, in a clean series-exact
+# Podman container (the Debian analogue of `mock` on the RPM side). Proves the
+# recipe builds BEFORE anything touches Launchpad or OBS.
 #
-# For a Launchpad PPA the published .debs are built by Launchpad itself from a
-# signed *source* package; this script builds locally only to catch failures
-# without the slow upload round-trip. The signed source upload is a separate
-# step (needs the Launchpad account + GPG key) — see ubuntu/README.md.
+# Two consumers, two publishers:
+#   Ubuntu (noble, jammy)      -> Launchpad PPA, which builds the published
+#                                 .debs itself from a signed *source* package.
+#   Debian (bookworm, trixie)  -> OBS, which Launchpad cannot serve: a PPA only
+#                                 ever builds Ubuntu series, and an Ubuntu .deb
+#                                 does not install cleanly on Debian anyway (the
+#                                 ICU runtime package is soname-versioned:
+#                                 libicu70 on jammy vs libicu72 on bookworm).
+# Either way this script only builds locally, to catch failures without the slow
+# upload round-trip. The signed source upload is a separate step (needs the
+# Launchpad account + GPG key) — see ubuntu/README.md.
 #
-# Usage:  scripts/deb-build.sh <tool> [series]   (series: noble|jammy, default noble)
+# The recipes under ubuntu/<tool>/debian/ are deliberately series-agnostic and
+# are reused for Debian unchanged: the ICU dependency is resolved from what
+# libicu-dev pulled into the build root (see each rules file's ${dep:icu}), not
+# from a hardcoded per-series table.
+#
+# Usage:  scripts/deb-build.sh <tool> [series]
+#         series: noble|jammy|bookworm|trixie   (default noble)
 #
 # Needs network (pulls the base image, apt, fetches upstream release assets) —
 # run it outside the command sandbox.
@@ -19,9 +32,11 @@ TOOL=${1:?usage: deb-build.sh <tool> [series]}
 SERIES=${2:-noble}
 
 case "$SERIES" in
-  noble) BASE=docker.io/library/ubuntu:24.04 ;;
-  jammy) BASE=docker.io/library/ubuntu:22.04 ;;
-  *) echo "unknown series '$SERIES' (expected noble|jammy)" >&2; exit 2 ;;
+  noble)    BASE=docker.io/library/ubuntu:24.04 ;;
+  jammy)    BASE=docker.io/library/ubuntu:22.04 ;;
+  bookworm) BASE=docker.io/library/debian:12 ;;
+  trixie)   BASE=docker.io/library/debian:13 ;;
+  *) echo "unknown series '$SERIES' (expected noble|jammy|bookworm|trixie)" >&2; exit 2 ;;
 esac
 
 ROOT=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)
