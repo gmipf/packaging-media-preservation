@@ -120,6 +120,20 @@ case "$TOOL" in
     mv "$SRC/gui/MPF" "$SRC/gui/MPF.Avalonia"
     chmod 0755 "$SRC/MPF.Check" "$SRC/cli/MPF.CLI" "$SRC/gui/MPF.Avalonia"
     ;;
+  redumper-gui)
+    # The .orig tarball IS the vendored tarball published as a release asset on
+    # the PACKAGING repo — not an upstream archive. Rust needs every crate present
+    # at build time and the Launchpad farm has no network, so the crates have to
+    # travel inside the source package. scripts/rust-vendor-tarball.sh builds it
+    # (upstream tag + pinned Cargo.lock + crates filtered to x86_64-linux); COPR
+    # and OBS consume the very same file, so all three lanes build byte-identical
+    # sources. It already unpacks to redumper-gui-<ver>/, which is exactly $SRC.
+    curl -fsSL -o "$WORK/vendored.tar.xz" \
+      "https://github.com/gmipf/packaging-media-preservation/releases/download/${TOOL}-${VER}/${TOOL}-${VER}-vendored.tar.xz"
+    tar -xJf "$WORK/vendored.tar.xz" -C "$WORK"
+    [ -f "$SRC/Cargo.toml" ] || {
+      echo "vendored tarball did not unpack to ${TOOL}-${VER}/" >&2; exit 1; }
+    ;;
   discimagecreator)
     # Source build (NOT a repackage — the one tool we compile): four GitHub
     # archive tarballs merged into one tree, exactly as fedora's %setup -a 1/2/3.

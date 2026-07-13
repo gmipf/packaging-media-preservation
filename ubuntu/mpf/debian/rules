@@ -16,6 +16,12 @@ override_dh_strip:
 
 override_dh_dwz:
 
+# ImageMagick 7 renamed the CLI to `magick` and drops `convert`; ImageMagick 6
+# has only `convert`. Both are in play across our targets (jammy/noble and
+# Debian 12 carry IM6; Debian 13 and Ubuntu 26.04 carry IM7), so resolve the
+# name in the build root instead of hardcoding either one.
+IM := $(shell command -v magick >/dev/null 2>&1 && echo magick || echo convert)
+
 # Generate the three /usr/bin wrappers from the shared template (seed/heal the
 # dumper paths in ~/.config/mpf/config.json) and lay down the GUI desktop entry
 # and hicolor icons — all packaging artifacts, absent from the upstream zips.
@@ -30,8 +36,24 @@ execute_after_dh_install:
 	sed 's|@TARGET@|/usr/lib/mpf-gui/MPF.Avalonia|' debian/mpf-wrapper.in > debian/mpf-gui/usr/bin/mpf-gui
 	chmod 0755 debian/mpf-gui/usr/bin/mpf-gui
 	install -D -m0644 debian/mpf-gui.desktop debian/mpf-gui/usr/share/applications/mpf-gui.desktop
-	for sz in 32 64 128 256 512; do \
-	    install -D -m0644 debian/mpf-$$sz.png debian/mpf-gui/usr/share/icons/hicolor/$${sz}x$${sz}/apps/mpf.png; \
+# Icons: we used to ship 32/64/128/256/512 only, as five pre-rendered PNGs in
+# debian/. The sizes a panel or dock actually reaches for -- 16, 22, 24, 48 --
+# were missing, so the desktop downscaled the 32 (or the 512) on the fly for
+# every taskbar slot. Now ONE master (debian/mpf-512.png) is kept and the rest
+# is rendered here with a proper Lanczos filter. Five files kept in lockstep are
+# five chances to update four of them; the dropped ones were plain downscales
+# anyway (RMSE < 0.02 against a fresh resample -- measured before removing them).
+	for sz in 16 22 24 32 48 64 128 256; do \
+	    install -d debian/mpf-gui/usr/share/icons/hicolor/$${sz}x$${sz}/apps; \
+	    $(IM) debian/mpf-512.png -filter Lanczos -resize $${sz}x$${sz} \
+	        debian/mpf-gui/usr/share/icons/hicolor/$${sz}x$${sz}/apps/mpf.png; \
+	done
+	install -D -m0644 debian/mpf-512.png debian/mpf-gui/usr/share/icons/hicolor/512x512/apps/mpf.png
+# A hicolor dir that exists but holds no icon is worse than none -- the launcher
+# silently comes up blank. Fail the build instead of shipping that.
+	for sz in 16 22 24 32 48 64 128 256 512; do \
+	    test -s debian/mpf-gui/usr/share/icons/hicolor/$${sz}x$${sz}/apps/mpf.png \
+	        || { echo "icon $${sz}x$${sz} missing or empty"; exit 1; }; \
 	done
 
 # The ICU runtime package carries its soname in its name (libicu74 noble /

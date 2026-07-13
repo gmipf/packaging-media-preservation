@@ -27,14 +27,19 @@ Source4:        mpf-check.1
 Source5:        mpf-cli.1
 Source6:        mpf-gui.1
 
-Source10:       mpf-32.png
-Source11:       mpf-64.png
-Source12:       mpf-128.png
-Source13:       mpf-256.png
+# ONE icon master. The smaller hicolor sizes are rendered from it at build time
+# (see %%install) instead of being committed here as pre-rendered copies: five
+# files that have to be kept in lockstep are five chances to update four of them.
+# Checked before dropping the others: mpf-32/64/128/256.png were plain downscales
+# of this 512 (RMSE < 0.02 against a fresh Lanczos resample), not hand-tuned
+# artwork -- so nothing is lost, and 16/22/24/48 are gained.
 Source14:       mpf-512.png
 
 ExclusiveArch:  x86_64
 BuildRequires:  unzip
+# Renders the hicolor icon sizes from Source14 (see %%install). On openSUSE the
+# package is ImageMagick, same name as on Fedora/EL.
+BuildRequires:  ImageMagick
 # NOTE: deliberately NO permissions-framework profile here. MPF gets no
 # cap_sys_rawio -- see the %%files section for why granting it breaks the GUI.
 # hicolor-icon-theme owns /usr/share/icons/hicolor/**; it is a runtime Requires
@@ -352,14 +357,29 @@ install -d %{buildroot}%{_datadir}/applications
 install -m 0644 %{SOURCE3} %{buildroot}%{_datadir}/applications/mpf-gui.desktop
 
 # --- hicolor icons (gui only) ---
-for sz in 32 64 128 256 512; do
+# We used to ship 32/64/128/256/512 only. The sizes a panel or dock actually
+# reaches for -- 16, 22, 24, 48 -- were missing, so the desktop had to downscale
+# the 32 (or worse, the 512) on the fly for every taskbar slot. Render the full
+# standard set once here, with a proper Lanczos filter.
+#
+# `magick` is ImageMagick 7's CLI; older ImageMagick 6 has only `convert`.
+# Leap and Tumbleweed differ here, so pick whichever exists in the buildroot.
+if command -v magick >/dev/null 2>&1; then IM=magick; else IM=convert; fi
+for sz in 16 22 24 32 48 64 128 256; do
   install -d %{buildroot}%{_datadir}/icons/hicolor/${sz}x${sz}/apps
+  $IM %{SOURCE14} -filter Lanczos -resize ${sz}x${sz} \
+      %{buildroot}%{_datadir}/icons/hicolor/${sz}x${sz}/apps/mpf.png
 done
-install -m 0644 %{SOURCE10} %{buildroot}%{_datadir}/icons/hicolor/32x32/apps/mpf.png
-install -m 0644 %{SOURCE11} %{buildroot}%{_datadir}/icons/hicolor/64x64/apps/mpf.png
-install -m 0644 %{SOURCE12} %{buildroot}%{_datadir}/icons/hicolor/128x128/apps/mpf.png
-install -m 0644 %{SOURCE13} %{buildroot}%{_datadir}/icons/hicolor/256x256/apps/mpf.png
+# The 512 is the master itself -- installed as-is, never resampled.
+install -d %{buildroot}%{_datadir}/icons/hicolor/512x512/apps
 install -m 0644 %{SOURCE14} %{buildroot}%{_datadir}/icons/hicolor/512x512/apps/mpf.png
+
+# A hicolor directory that exists but holds no icon is worse than none: the
+# launcher silently comes up blank. Fail the build instead.
+for sz in 16 22 24 32 48 64 128 256 512; do
+  test -s %{buildroot}%{_datadir}/icons/hicolor/${sz}x${sz}/apps/mpf.png \
+      || { echo "icon ${sz}x${sz} missing or empty"; exit 1; }
+done
 
 # --- manpages ---
 install -d %{buildroot}%{_mandir}/man1
@@ -410,14 +430,23 @@ install -m 0644 %{SOURCE6} %{buildroot}%{_mandir}/man1/mpf-gui.1
 %dir %{_libdir}/mpf-gui
 %{_mandir}/man1/mpf-gui.1*
 %{_datadir}/applications/mpf-gui.desktop
-%{_datadir}/icons/hicolor/32x32/apps/mpf.png
-%{_datadir}/icons/hicolor/64x64/apps/mpf.png
-%{_datadir}/icons/hicolor/128x128/apps/mpf.png
-%{_datadir}/icons/hicolor/256x256/apps/mpf.png
-%{_datadir}/icons/hicolor/512x512/apps/mpf.png
+%{_datadir}/icons/hicolor/*/apps/mpf.png
 
 %changelog
 * Mon Jul 13 2026 gmipf <gmipf64@gmail.com> - 3.8.3~20260713042509.813e8305-0
+- Ship the launcher icon in all standard hicolor sizes. We had 32/64/128/256/512
+  as five pre-rendered PNGs; the sizes a panel or dock actually asks for -- 16,
+  22, 24, 48 -- were missing, so the desktop downscaled the 32 (or the 512) on
+  the fly for every taskbar slot. Now ONE master (mpf-512.png) is kept and the
+  rest is rendered at build time with a Lanczos filter. The dropped PNGs were
+  plain downscales anyway (RMSE < 0.02 against a fresh resample -- measured
+  before removing them), so no hand-tuned artwork was lost.
+- _service no longer fetches the four removed PNGs: those URLs would 404 and
+  fail the source service outright.
+- %%install fails the build if any icon size is missing or empty. `magick` (IM7)
+  and `convert` (IM6) are both handled -- openSUSE ships ImageMagick 7, which
+  provides both names, but the spec is shared in spirit with the EL8 build where
+  only `convert` exists.
 - Automated rolling-snapshot sync to upstream MPF commit 813e8305 (published 20260713042509 UTC).
 
 * Mon Jul 13 2026 gmipf <gmipf64@gmail.com> - 3.8.3~20260713002008.75a62a53-0

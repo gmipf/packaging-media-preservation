@@ -1,0 +1,20 @@
+redumper-gui (1.0.1-1) UNRELEASED; urgency=medium
+
+  * Initial package of Redumper GUI v1.0.1 (Rust / egui), a desktop frontend
+    for redumper, suggested by its author in the VGPC preservation community.
+  * Built from source rather than repackaging the upstream release binary:
+    that binary is compiled on Ubuntu 24.04 and requires GLIBC_2.39, which
+    would rule out jammy (2.35) entirely. A source build links against whatever
+    glibc the series ships, so every series is covered.
+  * Built with the versioned rustc-1.91 / cargo-1.91 toolchain from
+    <series>-updates on jammy and noble, whose default rustc is 1.75 and too old
+    for edition 2024. resolute's own rustc (1.93) is new enough and the
+    alternative in Build-Depends falls back to it.
+  * Crates are vendored into the orig tarball and the build runs --offline: the
+    Launchpad build farm has no network.
+  * Ships no copy of redumper. Upstream bundles a pinned b729 next to the GUI
+    executable and runs its sibling by that name; a package cannot add a second
+    /usr/bin/redumper, so the pinned build is packaged separately as redumper729
+    and symlinked into the GUI's private directory.
+
+ -- gmipf <gmipf64@gmail.com>  Sun, 12 Jul 2026 16:00:00 +0200

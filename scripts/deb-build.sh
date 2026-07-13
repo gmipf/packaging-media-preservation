@@ -32,11 +32,14 @@ TOOL=${1:?usage: deb-build.sh <tool> [series]}
 SERIES=${2:-noble}
 
 case "$SERIES" in
+  # resolute is the ONLY series that can build redumper-gui: its rustc is 1.93,
+  # and eframe/egui 0.35 needs 1.92 (jammy/noble top out at rustc-1.91).
+  resolute) BASE=docker.io/library/ubuntu:26.04 ;;
   noble)    BASE=docker.io/library/ubuntu:24.04 ;;
   jammy)    BASE=docker.io/library/ubuntu:22.04 ;;
   bookworm) BASE=docker.io/library/debian:12 ;;
   trixie)   BASE=docker.io/library/debian:13 ;;
-  *) echo "unknown series '$SERIES' (expected noble|jammy|bookworm|trixie)" >&2; exit 2 ;;
+  *) echo "unknown series '$SERIES' (expected resolute|noble|jammy|bookworm|trixie)" >&2; exit 2 ;;
 esac
 
 ROOT=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)

@@ -1,0 +1,106 @@
+#!/usr/bin/make -f
+#
+# redumper-gui — a real Rust source build. Mirrors fedora/redumper-gui's spec.
+
+#
+# The crates travel inside the orig tarball (vendor/ plus a pinned Cargo.lock,
+# produced by scripts/rust-vendor-tarball.sh) and .cargo/config.toml redirects
+# crates-io at them, because the Launchpad build farm has no network — exactly
+# like the COPR chroot. The build must therefore never try to resolve anything.
+
+# No versioned-toolchain PATH trick here: eframe/egui 0.35 needs rustc 1.92, and
+# the newest versioned rustc Ubuntu ships is 1.91 (jammy/noble) — so those series
+# cannot build this package at all and are not offered. resolute's own rustc is
+# 1.93 and Build-Depends pins >= 1.92, so the archive toolchain is used directly.
+
+# Keep cargo's caches inside the build tree: the build user's HOME is not
+# writable under sbuild, and nothing here should outlive the build anyway.
+export CARGO_HOME := $(CURDIR)/debian/cargo-home
+export CARGO_NET_OFFLINE := true
+
+DESTDIR := debian/redumper-gui
+GUIDIR  := /usr/lib/redumper-gui
+
+# The redumper build this GUI is tested against. Upstream pins it in its own CI
+# (REDUMPER_VERSION: b729) and bundles it; we depend on the redumper729 package
+# instead and link it in below. Keep in lockstep with debian/control's Depends
+# and with %global rdpin in fedora/redumper-gui/redumper-gui.spec.
+RDPIN := 729
+
+# ImageMagick 7 renamed the CLI to `magick` and drops `convert`; ImageMagick 6
+# has only `convert`. Ubuntu 26.04 (the sole series that can build this, see the
+# MSRV note above) carries IM7, but Debian 13 via OBS will too and Debian 12 has
+# IM6 — resolve the name in the build root instead of hardcoding either one.
+IM := $(shell command -v magick >/dev/null 2>&1 && echo magick || echo convert)
+
+%:
+	dh $@
+
+# dh_clean deletes *.orig by default — it assumes they are leftovers from a
+# failed patch. The vendored crate tree legitimately contains Cargo.toml.orig
+# files (cargo vendor writes them), and cargo verifies every one of them against
+# .cargo-checksum.json. Letting dh_clean remove them breaks the offline build
+# with "failed to calculate checksum of: vendor/<crate>/Cargo.toml.orig" — which
+# reads like a corrupt tarball and is nothing of the sort.
+override_dh_clean:
+	dh_clean -X.orig
+
+override_dh_auto_build:
+	cargo build --release --offline
+
+override_dh_auto_test:
+
+# Cargo's release profile already sets strip = true, so there are no symbols to
+# extract and an automatic -dbgsym package would be empty.
+override_dh_strip:
+	dh_strip --no-automatic-dbgsym
+
+override_dh_dwz:
+
+override_dh_auto_install:
+	# The real binary goes into a private directory and /usr/bin gets a SYMLINK,
+	# not a wrapper script. That is load-bearing: the GUI finds its helpers via
+	# std::env::current_exe(), which on Linux reads /proc/self/exe and therefore
+	# resolves the symlink — so a process started as /usr/bin/redumper-gui still
+	# sees itself in $(GUIDIR) and looks for its siblings there, which is where
+	# we put them. A shell wrapper would leave it looking in /usr/bin.
+	install -D -m0755 target/release/redumper-gui $(DESTDIR)$(GUIDIR)/redumper-gui
+	install -d $(DESTDIR)/usr/bin
+	ln -s ../lib/redumper-gui/redumper-gui $(DESTDIR)/usr/bin/redumper-gui
+
+	# The two siblings, under the exact filenames the GUI expects. It runs
+	# dirname(current_exe())/redumper and .../MPF.Check with no PATH fallback
+	# (a packaging PR upstream proposes one). The MPF.Check link dangles until
+	# mpf-check is installed — the GUI tests for exactly that with .exists().
+	ln -s /usr/bin/redumper$(RDPIN)            $(DESTDIR)$(GUIDIR)/redumper
+	ln -s /usr/lib/mpf-check/MPF.Check         $(DESTDIR)$(GUIDIR)/MPF.Check
+
+	# The manpage is installed verbatim, carrying the fixed version marker its
+	# author wrote into it — deliberately NOT stamped with the packaged version.
+	# The prose is hand-written and does not move when the package does; stamping
+	# the shipped release into the header would let an aging page keep claiming
+	# currency. A fixed marker lets the reader see the page predates their binary.
+	install -D -m0644 debian/redumper-gui.desktop \
+	    $(DESTDIR)/usr/share/applications/redumper-gui.desktop
+
+	# Upstream ships exactly ONE raster icon: assets/icon/icon.png at 512x512 (the
+	# .ico beside it is Windows-only). Installing just that and leaving the desktop
+	# to downscale it is a bad deal for THIS icon: it is a finely detailed disc
+	# sector — thin grid lines, hairline spokes — and a naive on-the-fly downscale
+	# into a 24px panel slot smears it. Render the standard hicolor sizes here with
+	# a proper Lanczos filter, straight from the upstream asset, so nothing is
+	# duplicated in this repo and the packaged icon cannot drift from upstream's.
+	for px in 16 22 24 32 48 64 128 256; do \
+	    install -d $(DESTDIR)/usr/share/icons/hicolor/$${px}x$${px}/apps; \
+	    $(IM) assets/icon/icon.png -filter Lanczos -resize $${px}x$${px} \
+	        $(DESTDIR)/usr/share/icons/hicolor/$${px}x$${px}/apps/redumper-gui.png; \
+	done
+	# The 512 is upstream's file itself — installed byte-for-byte, never resampled.
+	install -D -m0644 assets/icon/icon.png \
+	    $(DESTDIR)/usr/share/icons/hicolor/512x512/apps/redumper-gui.png
+	# A hicolor dir that exists but holds no icon is worse than none: the launcher
+	# silently comes up blank. Fail the build rather than ship that.
+	for px in 16 22 24 32 48 64 128 256 512; do \
+	    test -s $(DESTDIR)/usr/share/icons/hicolor/$${px}x$${px}/apps/redumper-gui.png \
+	        || { echo "icon $${px}x$${px} missing or empty"; exit 1; }; \
+	done

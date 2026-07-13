@@ -19,6 +19,8 @@ RUN apt-get update \
         curl ca-certificates unzip xz-utils libcap2-bin \
         gawk libicu-dev libkrb5-dev libssl-dev zlib1g-dev libunwind-dev \
         meson ninja-build pkg-config libarchive-dev \
+        imagemagick \
+ && (apt-get install -y --no-install-recommends rustc cargo || true) \
  && rm -rf /var/lib/apt/lists/*
 # The gawk + .NET-runtime -dev block is only needed by the self-contained .NET
 # tools (aaru v6, mpf): their prebuilt binary is run at build time to generate
@@ -29,3 +31,20 @@ RUN apt-get update \
 # libarchive-dev block is the discimagecreator source-build toolchain (its only
 # actual-compile tool; libssl-dev/zlib1g-dev above are shared with it). redumper
 # / aaru5 use none of these; a shared image is simpler than per-tool ones.
+#
+# imagemagick renders the hicolor icon sizes for the two GUI packages (mpf-gui,
+# redumper-gui) from a single 512x512 master. Note the CLI name differs by
+# series -- IM6 has only `convert`, IM7 only `magick` -- which each debian/rules
+# resolves itself; the PACKAGE name is `imagemagick` everywhere.
+#
+# rustc/cargo build redumper-gui, which is RESOLUTE-ONLY: eframe/egui 0.35 needs
+# rustc >= 1.92 and only 26.04 ships that (1.93). The install is tolerated to
+# fail (`|| true`) so the older series still produce a usable image -- they carry
+# rustc 1.75 and cannot build that package anyway, and dpkg-checkbuilddeps will
+# say so plainly if anyone tries.
+#
+# This list must carry every Build-Depends our recipes declare: a real buildd
+# (Launchpad / OBS) installs them from the source package, but this image is
+# fixed, so a new Build-Depends that is missing here fails as
+# "dpkg-checkbuilddeps: Unmet build dependencies" -- a builder problem that
+# reads exactly like a recipe problem.

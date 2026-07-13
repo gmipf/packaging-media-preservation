@@ -1,0 +1,79 @@
+Source: redumper-gui
+Section: utils
+Priority: optional
+Maintainer: gmipf <gmipf64@gmail.com>
+# A real source build (Rust), like discimagecreator and unlike the repackaged
+# prebuilt binaries in this PPA.
+#
+# THIS PACKAGE IS RESOLUTE-ONLY, and that is not a choice. eframe/egui 0.35 --
+# a direct dependency, pinned in upstream's Cargo.toml -- requires rustc 1.92.
+# Ubuntu's default rustc is 1.75 on both jammy and noble, and the newest
+# VERSIONED toolchain either series carries is rustc-1.91 (measured; there is no
+# rustc-1.92 anywhere in the archive, backports included). No resolver can go
+# below a direct dependency's own MSRV, so those two series simply cannot build
+# this tool. resolute ships rustc 1.93 and builds it fine.
+#
+# scripts/deb-upload.sh must therefore not offer redumper-gui for jammy/noble,
+# and README.md states the gap outright rather than letting it look like an
+# oversight. Revisit when a series with rustc >= 1.92 appears.
+Build-Depends: debhelper-compat (= 13),
+               cargo (>= 1.92),
+               rustc (>= 1.92),
+               gcc,
+               imagemagick
+Standards-Version: 4.6.2
+Homepage: https://github.com/Deterous/Redumper-GUI
+Rules-Requires-Root: no
+Vcs-Git: https://github.com/gmipf/packaging-media-preservation.git
+Vcs-Browser: https://github.com/gmipf/packaging-media-preservation
+
+Package: redumper-gui
+Architecture: amd64
+# Every GUI library is dlopen'd at run time (winit for X11/Wayland, glutin for
+# GL/EGL), so none of them appears in the binary's DT_NEEDED and ${shlibs:Depends}
+# finds exactly zero of them. They are listed by hand, read out of the built
+# binary's embedded loader strings — the same trap as with the .NET GUI in mpf.
+#
+# redumper729 is the pinned dumper this GUI is tested against (see debian/rules
+# and the package description); it is a hard dependency, not a suggestion.
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+         redumper729,
+         libgl1,
+         libegl1,
+         libx11-6,
+         libx11-xcb1,
+         libxi6,
+         libxcursor1,
+         libxrender1,
+         libxkbcommon0,
+         libxkbcommon-x11-0,
+         libwayland-client0,
+         libwayland-egl1,
+         libdbus-1-3
+# MPF post-processing is optional: the GUI looks for an MPF.Check next to its own
+# executable and skips the step when it is not there. We install a symlink for it
+# that simply dangles until mpf-check is installed — which is precisely the
+# condition the GUI tests.
+Recommends: mpf-check
+Description: desktop frontend for the redumper optical-disc dumper
+ Redumper GUI is a graphical frontend for redumper, the low-level disc dumper
+ used by the Redump preservation project. It lists the optical drives on the
+ system, runs the dump, streams redumper's log into the window, and afterwards
+ compresses the logs into a submission-ready ZIP.
+ .
+ Unlike the upstream release archive, this package ships no copy of redumper.
+ Upstream bundles a pinned build next to the GUI executable and runs its
+ sibling by that name; a distribution cannot add a second /usr/bin/redumper, so
+ the pinned build is packaged separately as redumper729 and symlinked into the
+ GUI's private directory. The rolling redumper package installs alongside it
+ for command-line use; the two do not conflict.
+ .
+ If mpf-check is installed, the GUI runs MPF.Check on the finished dump to
+ generate Redump submission info. Without it the dump still completes and that
+ step is skipped.
+ .
+ Both X11 and Wayland are supported natively. No root and no group membership
+ are needed at a local desktop seat: systemd-logind puts a uaccess ACL on the
+ drive node, and the dumper binary carries cap_sys_rawio for vendor SCSI
+ passthrough.

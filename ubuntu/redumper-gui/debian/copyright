@@ -1,0 +1,56 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: Redumper GUI
+Upstream-Contact: Deterous <https://github.com/Deterous>
+Source: https://github.com/Deterous/Redumper-GUI
+Comment: The orig tarball is upstream's tagged source with a pinned Cargo.lock
+ and its dependency crates vendored into vendor/ (see
+ scripts/rust-vendor-tarball.sh), because the Launchpad build farm has no
+ network. The vendored crates carry their own licenses in
+ vendor/<crate>/LICENSE*; they are build inputs, and the resulting binary is
+ statically linked against them.
+
+Files: *
+Copyright: 2026 Deterous
+License: GPL-3.0-only
+Comment: Upstream ships the plain GPL-3.0 text with no per-file headers and no
+ license field in Cargo.toml, so nothing states "or any later version".
+ Packaged as the narrower GPL-3.0-only; asking upstream to declare the license
+ in Cargo.toml is part of the packaging PR.
+
+Files: debian/*
+Copyright: 2026 gmipf <gmipf64@gmail.com>
+License: MIT
+
+License: GPL-3.0-only
+ This program is free software: you can redistribute it and/or modify it under
+ the terms of the GNU General Public License version 3 as published by the Free
+ Software Foundation.
+ .
+ This program is distributed in the hope that it will be useful, but WITHOUT ANY
+ WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+ PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ .
+ You should have received a copy of the GNU General Public License along with
+ this program. If not, see <https://www.gnu.org/licenses/>.
+ .
+ On Debian systems, the complete text of the GNU General Public License version
+ 3 can be found in /usr/share/common-licenses/GPL-3.
+
+License: MIT
+ Permission is hereby granted, free of charge, to any person obtaining a copy of
+ this software and associated documentation files (the "Software"), to deal in
+ the Software without restriction, including without limitation the rights to
+ use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+ of the Software, and to permit persons to whom the Software is furnished to do
+ so, subject to the following conditions:
+ .
+ The above copyright notice and this permission notice shall be included in all
+ copies or substantial portions of the Software.
+ .
+ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ SOFTWARE.
