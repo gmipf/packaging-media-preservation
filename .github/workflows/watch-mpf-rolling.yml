@@ -111,7 +111,22 @@ jobs:
           # canonical and builds nothing (no job watches main).
           # Manual single build:  scripts/build-tool.sh mpf  (Weg B+ guard
           # auto-bumps Release; never hand-push main:build-mpf unguarded)
-          git push origin HEAD:main
+          # main can move under us: another watcher, or a human pushing while this
+          # run was in flight. On 2026-07-13 that killed the mpf watcher outright
+          # ("! [rejected] ... (fetch first)") and the version bump then sat
+          # unpublished until the next scheduled run -- silently, because a red
+          # watcher looks like every other red run nobody reads. Rebase onto the
+          # new tip and retry instead. Same shape as the dput retry in
+          # ppa-upload.yml: try, fix the cause, try again, and fail LOUDLY only
+          # if it still will not go.
+          pushed=
+          for attempt in 1 2 3; do
+            if git push origin HEAD:main; then pushed=1; break; fi
+            echo "::warning::push to main rejected (attempt $attempt) -- rebasing onto the new tip"
+            git fetch -q origin main
+            git rebase origin/main
+          done
+          [ -n "$pushed" ] || { echo "::error::could not push to main after 3 attempts"; exit 1; }
           git checkout -q -b trigger-tmp
           printf '# build-mpf — MPF (Fedora/COPR trigger branch)\n\nAuto-managed **trigger branch** for the `mpf` package: a push here fires\nthe mpf COPR build via Packit, nothing else rebuilds. Canonical source is\n`main` (do not edit here). Packaging: `fedora/mpf/`.\n' > README.md
           git add README.md
