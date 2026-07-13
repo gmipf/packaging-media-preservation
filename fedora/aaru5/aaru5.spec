@@ -126,6 +126,18 @@ tar -xJf %{SOURCE0}
 # than failing the build.
 sh %{SOURCE3} ./aaru %{SOURCE1} %{version} > aaru5.1
 
+# ...and here we make sure that rescue path can never ship unnoticed. On OBS it
+# fired SILENTLY (2026-07-13): the build went green while the packaged manpage
+# carried no command reference at all, because Aaru read XDG_CONFIG_HOME instead
+# of HOME, missed the generator's seeded GDPR settings, and died in its consent
+# wizard for want of a TTY. Nobody inspects a green build. So: the page MUST
+# contain the generated sub-command sections, or the build fails here.
+grep -q '^\.SS aaru5 device' aaru5.1 || {
+    echo "aaru5.1 has no generated command reference -- the generator fell back."
+    echo "The build root could not run the binary; see its WARNINGs above."
+    exit 1
+}
+
 %install
 install -D -m 0755 aaru            %{buildroot}%{aarudir}/aaru
 install -D -m 0755 libe_sqlite3.so %{buildroot}%{aarudir}/libe_sqlite3.so

@@ -57,6 +57,22 @@ cat > "$GENHOME/.config/Aaru.xml" <<'XML'
 </DicSettings>
 XML
 
+# Setting HOME is NOT enough. Aaru resolves its settings path through
+# XDG_CONFIG_HOME and only falls back to $HOME/.config when that is unset. If the
+# build environment exports XDG_CONFIG_HOME -- and OBS does -- Aaru looks THERE,
+# never sees the seeded Aaru.xml above, opens its interactive GDPR consent wizard,
+# and dies in Console.ReadKey with SIGABRT because a builder has no TTY:
+#
+#   Unhandled exception. System.InvalidOperationException: Cannot read keys when
+#   either application does not have a console or when console input has been
+#   redirected.  at Aaru.Commands.ConfigureCommand.DoConfigure(...)
+#
+# The probe below then took that for "the binary does not run here" and silently
+# fell back to the curated page -- a GREEN build shipping a manpage with no
+# command reference at all (measured on OBS, openSUSE Tumbleweed, 2026-07-13).
+# Point XDG at our seeded config explicitly, so the environment cannot decide.
+export XDG_CONFIG_HOME="$GENHOME/.config"
+
 # LC_ALL=C pins the .NET UI culture to the invariant (English) resources, so the
 # section headers we parse on and the emitted text are the same on every build
 # host regardless of its locale. TERM=dumb plus redirected stdout keeps the
@@ -145,6 +161,12 @@ walk() {
 # .NET 5 binary was never linked against. If it will not start we still emit the
 # curated page, with a short note instead of the generated reference, rather than
 # failing the whole build.
+#
+# ...but say so LOUDLY. This fallback fired silently on OBS (2026-07-13) and the
+# build stayed green while shipping a manpage with NO command reference at all.
+# A rescue path that hides the rescue is worse than no rescue: nobody looks at a
+# green build. The spec now also greps the result and fails if the reference is
+# missing, so this can never ship unnoticed again.
 REFFILE=$WORKDIR/cmdref.roff
 if HOME=$GENHOME LC_ALL=C LANG=C TERM=dumb "$AARU" --version >/dev/null 2>&1; then
     walk > "$REFFILE"
@@ -152,6 +174,10 @@ if HOME=$GENHOME LC_ALL=C LANG=C TERM=dumb "$AARU" --version >/dev/null 2>&1; th
     VERSION=$(HOME=$GENHOME LC_ALL=C LANG=C TERM=dumb "$AARU" --version 2>/dev/null \
               | sed -e 's/+.*//' -e 's/[[:space:]]*$//' || true)
 else
+    echo "aaru5-manpage.sh: WARNING: the binary would not start in this build root." >&2
+    echo "aaru5-manpage.sh: WARNING: shipping the curated page WITHOUT a command reference." >&2
+    echo "aaru5-manpage.sh: WARNING: rerun the probe by hand to see why:" >&2
+    echo "aaru5-manpage.sh:   HOME=<tmp> XDG_CONFIG_HOME=<tmp>/.config $AARU --version" >&2
     cat > "$REFFILE" <<'ROFF'
 The per\-command reference is not embedded in this build of the manpage:
 the prebuilt

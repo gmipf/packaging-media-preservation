@@ -30,6 +30,14 @@ UPSTREAM_VERSION := $(shell dpkg-parsechangelog -SVersion | sed -e 's/-[^-]*$$//
 override_dh_auto_build:
 	sh debian/aaru5-manpage.sh ./aaru debian/aaru5.1.in $(UPSTREAM_VERSION) \
 	    > debian/aaru5.1
+# The generator has a rescue path (curated page, no command reference) for build
+# roots where the binary will not start. Make sure it can never ship unnoticed:
+# on OBS it fired SILENTLY and the build stayed green with a manpage that had no
+# reference at all. Nobody inspects a green build.
+	grep -q '^\.SS aaru5 device' debian/aaru5.1 || { \
+	    echo "aaru5.1 has no generated command reference -- the generator fell back."; \
+	    echo "The build root could not run the binary; see its WARNINGs above."; \
+	    exit 1; }
 
 override_dh_auto_test:
 
