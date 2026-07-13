@@ -103,6 +103,13 @@ packages:
     specfile_path: redumper729.spec
     upstream_project_url: https://github.com/superg/redumper
     actions:
+      # MANDATORY, not cosmetic. Without it Packit derives the version from the
+      # ARCHIVE NAME and rewrites Version: with it -- measured 2026-07-13, COPR
+      # build 10712779 shipped as `redumper729-redumper.gui.1.0.1-1` instead of
+      # `redumper729-729-1`. The spec is the source of truth for the version;
+      # read it from there. (The rolling `redumper` block has had this all along.)
+      get-current-version:
+        - bash -c "rpmspec -q --queryformat '%{version}\n' redumper729.spec | head -1"
       create-archive:
         - bash -c "spectool -g redumper729.spec 1>&2"
         - bash -c "ls -1 redumper-b729-linux-x64.zip"
@@ -118,6 +125,12 @@ packages:
     specfile_path: redumper-gui.spec
     upstream_project_url: https://github.com/Deterous/Redumper-GUI
     actions:
+      # See redumper729 above -- same trap, and this package is where it bit:
+      # the archive is named redumper-gui-1.0.1-vendored.tar.xz, from which
+      # Packit inferred the version `redumper.gui.1.0.1` and stamped it into
+      # BOTH new packages. Always read the version from the spec.
+      get-current-version:
+        - bash -c "rpmspec -q --queryformat '%{version}\n' redumper-gui.spec | head -1"
       create-archive:
         - bash -c "spectool -g redumper-gui.spec 1>&2"
         - bash -c "ls -1 redumper-gui-*-vendored.tar.xz | head -1"
