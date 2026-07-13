@@ -47,8 +47,13 @@ LP_PPA=${LP_PPA:-media-preservation}
 if [ "$REV" != "1" ]; then
   ORIG="$WORK/${TOOL}_${VER}.orig.tar.xz"
   echo ":: revision $REV -- reusing the orig Launchpad already stores"
+  # The stored file is the same whichever series' upload we take it from -- but
+  # it exists only under a series this tool was actually uploaded to. Ask for the
+  # series being built first: redumper-gui lives ONLY on resolute (jammy and
+  # noble top out at rustc-1.91, below eframe's 1.92 floor), so a list naming
+  # neither found nothing at all, and its first packaging-only revision died here.
   got=
-  for s in noble jammy; do
+  for s in "$SERIES" resolute noble jammy; do
     url="https://launchpad.net/~${LP_OWNER}/+archive/ubuntu/${LP_PPA}/+sourcefiles/${TOOL}/${VER}-1~${s}1/${TOOL}_${VER}.orig.tar.xz"
     if curl -fsSL -o "$ORIG" "$url"; then got=$s; break; fi
   done

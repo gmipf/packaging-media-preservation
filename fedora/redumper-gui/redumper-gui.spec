@@ -14,7 +14,7 @@
 
 Name:           redumper-gui
 Version:        1.0.1
-Release:        2%{?dist}
+Release:        3%{?dist}
 Summary:        Desktop frontend for the redumper optical-disc dumper
 
 # Upstream ships the plain GPL-3.0 text with no per-file headers and no
@@ -37,6 +37,18 @@ URL:            https://github.com/Deterous/Redumper-GUI
 Source0:        https://github.com/gmipf/packaging-media-preservation/releases/download/%{name}-%{version}/%{name}-%{version}-vendored.tar.xz
 Source1:        redumper-gui.desktop
 Source2:        redumper-gui.1
+
+# Upstream puts the default dump folder next to the executable, which is right
+# for the portable build it ships and wrong for every packaged one: here the
+# executable sits in %%{guidir}, owned by root, and the user cannot create the
+# folder there. Measured on a clean install (mkdir: Permission denied), and
+# dump.rs throws the error away, so the dump does not stop with a plain
+# "permission denied" -- it runs on and fails later for a reason that never
+# names the cause. The patch falls back to the user's download folder when the
+# executable's directory is not writable, exactly as upstream's own macOS
+# branch already does for the .app bundle. Carried identically in the Debian
+# lane (ubuntu/redumper-gui/debian/patches/) and offered upstream.
+Patch0:         0001-default-dump-folder-must-be-writable.patch
 
 ExclusiveArch:  x86_64
 
@@ -116,7 +128,9 @@ release binary is compiled on Ubuntu 24.04 and requires glibc 2.39, which
 rules out EL8, EL9 and Ubuntu 22.04.
 
 %prep
-%autosetup -n %{name}-%{version}
+# -p1 is not the default: without it %%autosetup calls patch with no -p at all,
+# which leaves the a/ b/ prefixes in place and fails with "No file to patch".
+%autosetup -n %{name}-%{version} -p1
 
 %build
 # Crates come from the vendored tree in the tarball (.cargo/config.toml
@@ -220,6 +234,18 @@ done
 %{_datadir}/icons/hicolor/*/apps/%{name}.png
 
 %changelog
+* Mon Jul 13 2026 gmipf <gmipf64@gmail.com> - 1.0.1-3
+- Patch the default dump folder so a packaged install can actually dump. It
+  pointed at a Dumps subfolder beside the executable -- /usr/lib64/redumper-gui
+  /Dumps here, owned by root: measured on a clean install, the user cannot
+  create it (mkdir: Permission denied). Worse, dump.rs discards the error from
+  create_dir_all(), so pressing DUMP did not stop with "permission denied"; the
+  dump ran on and failed later for a reason that never named the cause. The
+  patch keeps that folder wherever it IS writable (upstream's portable build)
+  and otherwise falls back to the user's download folder -- which is what
+  upstream's own macOS branch has always done, the .app bundle being the very
+  same predicament. Offered upstream.
+
 * Mon Jul 13 2026 gmipf <gmipf64@gmail.com> - 1.0.1-2
 - Ship the launcher icon in all standard hicolor sizes (16-512), rendered at
   build time from upstream's single 512x512 PNG with a Lanczos filter. Before
