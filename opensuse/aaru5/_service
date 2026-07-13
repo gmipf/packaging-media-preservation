@@ -26,9 +26,20 @@
     <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/aaru5/aaru5-rpmlintrc</param>
     <param name="filename">aaru5-rpmlintrc</param>
   </service>
+  <!-- The manpage is GENERATED at build time now: aaru5-manpage.sh walks the
+       shipped binary's own --help tree (33 sub-commands) and fills aaru5.1.in.
+       The old hand-written aaru5.1 is gone, so fetching it would 404 and fail
+       the whole service.
+       NOTE: this file lives IN OBS -- the GitHub trigger only RUNS it, it does
+       not replace it (a runservice token cannot commit). Any change here has to
+       be pushed with `osc commit`, or OBS keeps executing the old version. -->
   <service name="download_url">
-    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/aaru5/aaru5.1</param>
-    <param name="filename">aaru5.1</param>
+    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/aaru5/aaru5.1.in</param>
+    <param name="filename">aaru5.1.in</param>
+  </service>
+  <service name="download_url">
+    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/aaru5/aaru5-manpage.sh</param>
+    <param name="filename">aaru5-manpage.sh</param>
   </service>
   <service name="download_url">
     <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/aaru5/aaru5.spec</param>
