@@ -91,6 +91,24 @@ osc results "$OBS_PROJECT" 2>&1 | sed -n '1,12p' | sed 's/^/  /'
 # the system dumpers. That is only honest while the system dumper IS the build MPF
 # bundles. Read what MPF bundles TODAY from its own publish script -- never from a
 # note someone wrote once.
+#
+# TWO of the three backends are checked, and that is deliberate:
+#
+#   redumper  checked. redumper moves fast, and a frontend CAN be coupled to a
+#             specific build -- redumper-gui's upstream says so in as many words.
+#   Aaru      checked. MPF supports only the latest STABLE Aaru; the rolling `aaru`
+#             is a 6.0 alpha with a different command line and does not run in MPF
+#             at all. That is why the pinned `aaru5` package exists.
+#   DIC       NOT checked, ON PURPOSE. DiscImageCreator is never pinned for a
+#             frontend: its command-line surface is effectively frozen -- what still
+#             lands upstream is bugfixes and new disc types, not features that could
+#             break a frontend. So we ship it as a rolling snapshot and are allowed
+#             to be AHEAD of the build MPF bundles. Do not "fix" this by adding DIC
+#             to the comparison; its absence is the answer, not an oversight.
+#
+# The general rule: a pin is justified by what UPSTREAM says, not by what a consumer
+# happens to bundle. MPF says nothing and has no version check of any kind -- so it
+# gets this watchdog instead of a pinned package.
 hr "MPF-Bundle vs. unsere Pakete"
 NIX=$(curl -fsSL https://raw.githubusercontent.com/SabreTools/MPF/master/publish-nix.sh 2>/dev/null)
 if [ -z "$NIX" ]; then
