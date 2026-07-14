@@ -256,8 +256,9 @@ fi
 #   * debtransform takes the version from the .dsc, and if debian/changelog says
 #     something else it silently REWRITES the changelog to match (measured). A
 #     stale .dsc therefore ships the wrong version under a green build.
-#   * _service names the .orig tarball by version in its Launchpad URL. Stale ->
-#     OBS keeps building the previous upstream payload, also green.
+#   * die .dsc BENENNT die Upstream-Archive (Debtransform-Tar/-Files). Nennt sie
+#     andere als die Spec, baut OBS das .deb aus anderen Bytes als die RPM --
+#     beide gruen, beide "dieselbe" Version, verschiedener Inhalt.
 #   * debian.tar.gz is a binary blob. Edit debian/rules and forget to regenerate,
 #     and OBS builds the OLD rules. Nothing anywhere says so.
 #
@@ -272,14 +273,23 @@ for dsc in "$REPO"/opensuse/*/*.dsc; do
 
     want=$(dpkg-parsechangelog -l "$cl" -SVersion)
     have=$(sed -n 's/^Version: //p' "$dsc")
-    upst=${want%-*}
 
     [ "$want" = "$have" ] || {
         printf '  \033[31m%-18s .dsc sagt %s, changelog sagt %s\033[0m\n' "$tool" "$have" "$want"
         DEB_DRIFT=1; }
 
-    grep -q "${tool}_${upst}\.orig\.tar\.xz" "$REPO/opensuse/$tool/_service" || {
-        printf '  \033[31m%-18s _service zeigt nicht auf den Orig von %s\033[0m\n' "$tool" "$upst"
+    # Die Spec ist die Quelle der Wahrheit: download_files laedt GENAU ihre
+    # Source:-URLs. Nennt die .dsc etwas anderes, sucht debtransform eine Datei,
+    # die niemand geladen hat -- oder schlimmer: eine ALTE, die noch herumliegt.
+    spec_src=$(rpmspec -P "$REPO/fedora/$tool/$tool.spec" 2>/dev/null \
+        | sed -n 's/^Source[0-9]*:[[:space:]]*//p' | grep -E '^[a-z]+://' \
+        | sed 's|.*#/||; s|.*/||' | sort | tr '\n' ' ')
+    dsc_src=$( { sed -n 's/^Debtransform-Tar: //p' "$dsc"
+                 sed -n 's/^Debtransform-Files: //p' "$dsc" | tr ' ' '\n'; } \
+        | grep -v '^$' | sort | tr '\n' ' ')
+    [ "$spec_src" = "$dsc_src" ] || {
+        printf '  \033[31m%-18s .dsc nennt andere Upstream-Quellen als die Spec\033[0m\n' "$tool"
+        printf '                     Spec: %s\n                     .dsc: %s\n' "$spec_src" "$dsc_src"
         DEB_DRIFT=1; }
 
     tmp=$(mktemp); trap 'rm -f "$tmp"' RETURN

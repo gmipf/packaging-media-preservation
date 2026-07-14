@@ -16,6 +16,17 @@ UPSTREAM_VERSION := $(shell dpkg-parsechangelog -SVersion | sed -e 's/-[^-]*$$//
 # self-healing — if the prebuilt binary cannot start on this builder it emits
 # the curated page with a short note instead of failing the build. The upstream
 # version is passed as the .TH fallback for that degraded case.
+# %prep, in Debian's clothes: the binary tarball is the .orig, and the SOURCE
+# tarball (icons, the .desktop entry, the aaruformat MIME xml) comes in through
+# the .dsc's Debtransform-Files -- the .dsc's answer to an RPM spec's Source1:.
+# Unpacking it here is what lets this lane build straight from upstream instead
+# of from a merged tarball we would have to assemble and host ourselves.
+#
+# Nothing is downloaded here and nothing may be: the build root has no network.
+execute_before_dh_auto_build:
+	mkdir -p src
+	tar -xJf aaru-src-*.tar.xz -C src
+
 override_dh_auto_build:
 	sh debian/aaru-manpage.sh ./aaru debian/aaru.1.in "$(UPSTREAM_VERSION)" > debian/aaru.1
 

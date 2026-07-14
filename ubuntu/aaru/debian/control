@@ -2,6 +2,9 @@ Source: aaru
 Section: utils
 Priority: optional
 Maintainer: gmipf <gmipf64@gmail.com>
+# xz-utils: debian/rules unpacks upstream's source tarball (icons, .desktop, the
+# aaruformat MIME xml). It reaches the source tree through the .dsc's
+# Debtransform-Files rather than in a merged tarball we assemble ourselves.
 Build-Depends: debhelper-compat (= 13),
                gawk,
                imagemagick,
@@ -9,7 +12,8 @@ Build-Depends: debhelper-compat (= 13),
                libkrb5-dev,
                libssl-dev,
                zlib1g-dev,
-               libunwind-dev
+               libunwind-dev,
+               xz-utils
 Standards-Version: 4.6.2
 Homepage: https://github.com/aaru-dps/Aaru
 Rules-Requires-Root: no

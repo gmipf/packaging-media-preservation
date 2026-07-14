@@ -8,6 +8,28 @@
 %:
 	dh $@
 
+# %prep, in Debian's clothes.
+#
+# The three upstream release archives arrive in the source tree exactly as
+# upstream publishes them: MPF.Check is the .orig tarball, the CLI and GUI zips
+# come in through the .dsc's Debtransform-Files (which is what Source1:/Source2:
+# are to an RPM spec). Unpacking them HERE is what lets this lane build straight
+# from upstream, with no tarball assembled and re-hosted by us in between.
+#
+# Nothing is downloaded here and nothing may be: the build root has no network,
+# on OBS just as in a COPR chroot.
+execute_before_dh_auto_build:
+	mkdir -p cli gui
+	unzip -q -o MPF.CLI_net10.0_linux-x64_release.zip -d cli
+	unzip -q -o MPF.Avalonia_net10.0_linux-x64_release.zip -d gui
+	# Upstream bundles its own dumpers under Programs/. They go: these packages
+	# point MPF at the system-installed ones (see the Recommends in control), and
+	# shipping a second, unmanaged copy is exactly what we are here to avoid.
+	rm -rf cli/Programs gui/Programs
+	# Upstream names the GUI binary MPF; ours is MPF.Avalonia, matching the RPM.
+	test ! -e gui/MPF || mv gui/MPF gui/MPF.Avalonia
+	chmod 0755 MPF.Check cli/MPF.CLI gui/MPF.Avalonia
+
 override_dh_auto_test:
 
 # Do not strip the self-contained single-file .NET binaries — stripping would

@@ -5,9 +5,13 @@ Maintainer: gmipf <gmipf64@gmail.com>
 # imagemagick: renders the hicolor icon sizes from the single 512x512 master in
 # debian/ (see debian/rules). The package name is the same on every series; only
 # the CLI name differs (IM6 `convert` vs IM7 `magick`), which rules resolves.
+# unzip: debian/rules unpacks the CLI and GUI release zips upstream publishes.
+# They reach the source tree through the .dsc's Debtransform-Files instead of a
+# merged tarball we would have to assemble and host, so the unpacking is ours.
 Build-Depends: debhelper-compat (= 13),
                libicu-dev,
-               imagemagick
+               imagemagick,
+               unzip
 Standards-Version: 4.6.2
 Homepage: https://github.com/SabreTools/MPF
 Rules-Requires-Root: no

@@ -11,7 +11,8 @@
 # -dbgsym package is produced.
 
 # Helper-tool versions — the extracted <name>-<ver>/ dirs the makefiles live in.
-# Kept in lockstep with the same three constants in scripts/deb/assemble.sh.
+# The same three constants live in the spec; the archives themselves are named by
+# the spec's Source1:/Source2:/Source3: and reach us through the .dsc.
 ECCEDCVER    := 20240901
 DVDAUTHVER   := 1.4
 UNSCRAMBLVER := 0.5.5
@@ -20,6 +21,20 @@ DESTDIR := debian/discimagecreator
 
 %:
 	dh $@ --buildsystem=meson
+
+# %prep, in Debian's clothes: DiscImageCreator itself is the .orig tarball, and
+# its three sibling projects arrive as upstream's own GitHub archives through the
+# .dsc's Debtransform-Files (what Source1:/Source2:/Source3: are to the spec).
+# Unpacking them here is what lets this lane build straight from upstream rather
+# than from a merged tarball we assemble and host ourselves. Each archive brings
+# its own <name>-<ver>/ top directory, which is exactly what the seds below and
+# the makefiles expect.
+#
+# Nothing is downloaded here and nothing may be: the build root has no network.
+execute_before_dh_auto_configure:
+	tar -xzf EccEdc-$(ECCEDCVER).tar.gz
+	tar -xzf DVDAuth-$(DVDAUTHVER).tar.gz
+	tar -xzf unscrambler-$(UNSCRAMBLVER).tar.gz
 
 # Port fedora's %prep source fix-ups. These edit files outside debian/, so they
 # run at BINARY-build time (dpkg-source has already captured the pristine tree

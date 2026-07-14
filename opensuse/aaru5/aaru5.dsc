@@ -7,5 +7,5 @@ Maintainer: gmipf <gmipf64@gmail.com>
 Homepage: https://github.com/aaru-dps/Aaru
 Standards-Version: 4.6.2
 Build-Depends: debhelper-compat (= 13), gawk, libicu-dev
-Debtransform-Tar: aaru5-5.4.2.tar.xz
+Debtransform-Tar: aaru-5.4.2_linux_amd64.tar.xz
 Debtransform-Files-Tar: debian.tar.gz

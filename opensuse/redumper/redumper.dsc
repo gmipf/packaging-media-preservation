@@ -7,5 +7,6 @@ Maintainer: gmipf <gmipf64@gmail.com>
 Homepage: https://github.com/superg/redumper
 Standards-Version: 4.6.2
 Build-Depends: debhelper-compat (= 13)
-Debtransform-Tar: redumper-732.tar.xz
+Debtransform-Tar: redumper-b732-linux-x64.zip
+Debtransform-Files: LICENSE README.md
 Debtransform-Files-Tar: debian.tar.gz
