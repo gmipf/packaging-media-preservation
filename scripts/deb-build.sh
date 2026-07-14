@@ -43,8 +43,19 @@ case "$SERIES" in
 esac
 
 ROOT=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)
-IMG="mp-deb-builder:${SERIES}"
 OUT="$ROOT/.deb-out/${TOOL}-${SERIES}"
+
+# The image tag carries a hash of the Containerfile, so editing it produces a
+# DIFFERENT tag and the image is rebuilt. This used to be a plain
+# `mp-deb-builder:<series>` guarded by `podman image exists`, which meant a
+# Containerfile that gained a Build-Depends never reached an image someone had
+# already built: the recipe then failed with "dpkg-checkbuilddeps: Unmet build
+# dependencies: imagemagick" -- a stale BUILDER reading exactly like a broken
+# RECIPE. (Measured, on the very build this comment was written for. The
+# Containerfile even warned about the failure mode; it just could not see its
+# own staleness.)
+CF_HASH=$(sha256sum "$ROOT/scripts/deb/Containerfile" | cut -c1-12)
+IMG="mp-deb-builder:${SERIES}-${CF_HASH}"
 
 if ! podman image exists "$IMG"; then
   echo ":: building builder image $IMG (from $BASE)"

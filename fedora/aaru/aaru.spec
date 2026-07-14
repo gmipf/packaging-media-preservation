@@ -25,7 +25,7 @@ Name:           aaru
 # history was wiped (copr-cli delete-package) before this build, so
 # nothing previously published needs to be sort-overridden.
 Version:        %{aaruver}~%{aaruprerel}
-Release:        7%{?dist}
+Release:        8%{?dist}
 Summary:        Data preservation suite for optical, magnetic and solid-state media
 
 License:        GPL-3.0-or-later AND LGPL-2.1-or-later AND MIT
@@ -55,6 +55,10 @@ BuildRequires:  tar
 BuildRequires:  xz
 # Provides %%{_udevrulesdir}.
 BuildRequires:  systemd-rpm-macros
+# Renders the small hicolor sizes upstream does not ship (see %%install).
+# Resolvable on every chroot we build -- on EL it comes from EPEL, which the
+# buildroot has.
+BuildRequires:  ImageMagick
 # The aaru(1) manpage is generated at %build time by running the shipped
 # binary's `--help` (see %build), so the binary's native runtime deps
 # must be present in the build root as well, not just at install time.
@@ -182,12 +186,43 @@ install -D -m 0644 src/Aaru/aaruformat.xml \
 install -D -m 0644 src/Aaru/aaru.desktop \
     %{buildroot}%{_datadir}/applications/aaru.desktop
 
-# Icons — five hicolor sizes shipped upstream
+# --- Icons ---
+#
+# Upstream ships five sizes: 32, 64, 128, 256, 512. Those are installed
+# BYTE-FOR-BYTE below -- they are upstream's own files and may be hand-tuned; we
+# do not second-guess them by re-rendering what already exists.
+#
+# What upstream does NOT ship is 16, 22, 24 and 48 -- precisely the sizes a
+# desktop reaches for most: panel, dock, menu and the file-manager list view.
+# Missing them, the theme has to downscale the 32 (or, worse, the 512) on the fly
+# into a 16px slot, every time it draws one. Render them once here instead, with
+# a proper Lanczos filter, from src/icons/aaru.png: upstream's 862x862 master,
+# the largest and least resampled source in the tarball (measured, not assumed --
+# it is bigger than the 512 he ships).
+#
+# ImageMagick 7 renamed the CLI to `magick` and deprecated `convert`; EL8 still
+# carries ImageMagick 6, which has only `convert`. Pick whichever exists in the
+# buildroot rather than assuming a version.
+if command -v magick >/dev/null 2>&1; then IM=magick; else IM=convert; fi
+for sz in 16 22 24 48; do
+    install -d %{buildroot}%{_datadir}/icons/hicolor/${sz}x${sz}/apps
+    $IM src/icons/aaru.png -filter Lanczos -resize ${sz}x${sz} \
+        %{buildroot}%{_datadir}/icons/hicolor/${sz}x${sz}/apps/aaru.png
+done
+
+# Upstream's own sizes, untouched.
 install -D -m 0644 src/icons/32x32/aaru.png    %{buildroot}%{_datadir}/icons/hicolor/32x32/apps/aaru.png
 install -D -m 0644 src/icons/64x64/aaru.png    %{buildroot}%{_datadir}/icons/hicolor/64x64/apps/aaru.png
 install -D -m 0644 src/icons/128x128/aaru.png  %{buildroot}%{_datadir}/icons/hicolor/128x128/apps/aaru.png
 install -D -m 0644 src/icons/256x256/aaru.png  %{buildroot}%{_datadir}/icons/hicolor/256x256/apps/aaru.png
 install -D -m 0644 src/icons/512x512/aaru.png  %{buildroot}%{_datadir}/icons/hicolor/512x512/apps/aaru.png
+
+# A hicolor directory that exists but holds no icon is worse than none: the
+# launcher silently comes up blank. Fail the build instead of shipping that.
+for sz in 16 22 24 32 48 64 128 256 512; do
+    test -s %{buildroot}%{_datadir}/icons/hicolor/${sz}x${sz}/apps/aaru.png \
+        || { echo "icon ${sz}x${sz} missing or empty"; exit 1; }
+done
 
 # Manpage (generated from the binary at %build time — see above)
 install -D -m 0644 aaru.1 %{buildroot}%{_mandir}/man1/aaru.1
@@ -228,15 +263,22 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
 %{_bindir}/aaru
 %{_datadir}/mime/packages/aaruformat.xml
 %{_datadir}/applications/aaru.desktop
-%{_datadir}/icons/hicolor/32x32/apps/aaru.png
-%{_datadir}/icons/hicolor/64x64/apps/aaru.png
-%{_datadir}/icons/hicolor/128x128/apps/aaru.png
-%{_datadir}/icons/hicolor/256x256/apps/aaru.png
-%{_datadir}/icons/hicolor/512x512/apps/aaru.png
+%{_datadir}/icons/hicolor/*/apps/aaru.png
 %{_mandir}/man1/aaru.1*
 %{_udevrulesdir}/70-aaru-floppy.rules
 
 %changelog
+* Tue Jul 14 2026 gmipf <gmipf64@gmail.com> - 6.0.0~alpha.19-8
+- Ship the launcher icon in the four small hicolor sizes upstream does not
+  provide (16, 22, 24, 48), rendered at build time from upstream's 862x862
+  master with a Lanczos filter. Those four are the sizes a desktop actually
+  draws most -- panel, dock, menu, file-manager list -- and without them the
+  theme had to downscale the 32 (or the 512) on the fly for every one of them.
+  Upstream's own five sizes (32-512) are still installed byte-for-byte: they are
+  his files and may be hand-tuned, so nothing re-renders what already exists.
+- %%install now fails the build if any of the nine sizes is missing or empty. A
+  launcher with no icon is not something to find out about after shipping.
+
 * Sat Jul 11 2026 gmipf <gmipf64@gmail.com> - 6.0.0~alpha.19-7
 - Apply the udev rule in %%post to drives that are ALREADY connected. The file
   trigger in systemd-udev only reloads the rule set, and only at the end of the

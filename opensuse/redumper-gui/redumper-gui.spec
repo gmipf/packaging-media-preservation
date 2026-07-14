@@ -80,6 +80,22 @@ BuildRequires:  ImageMagick
 # opensuse/README.md).
 BuildRequires:  hicolor-icon-theme
 
+# Both of these are here to make the two symlinks in %%install RESOLVE at build
+# time. openSUSE's brp-25-symlink (from brp-check-suse) FAILS the build on a
+# symlink whose target exists "neither in build root nor in installed system" --
+# Fedora ships the identical dangling symlinks with no complaint. Measured: the
+# first OBS build died on exactly this, for both links.
+#
+# redumper729 is a hard runtime Requires anyway (below), so this changes nothing
+# about the shipped package. mpf-check is deliberately only a weak Recommends at
+# runtime -- the GUI tests whether MPF.Check sits next to it and skips the step if
+# it does not -- but the LINK still has to resolve while rpm inspects the build
+# root, so the package has to be there for the build and only for the build. That
+# asymmetry is intentional, not an oversight: on a user's machine without
+# mpf-check the link dangles, which is precisely the state the GUI checks for.
+BuildRequires:  redumper%{rdpin}
+BuildRequires:  mpf-check
+
 # The pinned dumper -- a hard dependency: without it the GUI has nothing to
 # drive. Not the rolling `redumper` package, deliberately (see rdpin above).
 Requires:       redumper%{rdpin}

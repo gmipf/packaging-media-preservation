@@ -35,8 +35,33 @@ override_dh_gencontrol:
 	echo "dep:icu=$$(dpkg-query -W -f='$${Package}\n' 'libicu[0-9]*' 2>/dev/null | grep -E '^libicu[0-9]+$$' | sort -V | tail -n1)" >> debian/aaru.substvars
 	dh_gencontrol
 
-# The udev rule is a packaging artifact (not in the upstream tarballs), so it
-# lives in debian/ and is installed after dh_install has laid down the payload.
+# Two things dh_install cannot do, both handled once it has laid down the payload:
+#
+#   1. The udev rule is a packaging artifact (not in the upstream tarballs), so it
+#      lives in debian/ and is copied in here.
+#
+#   2. dh_install can only COPY files that exist; it cannot generate any. Upstream
+#      ships icons at 32, 64, 128, 256 and 512 (listed in debian/aaru.install and
+#      installed byte-for-byte) but NOT at 16, 22, 24 or 48 — precisely the sizes
+#      a desktop draws most: panel, dock, menu and the file-manager list view.
+#      Without them the theme downscales the 32, or worse the 512, on the fly into
+#      a 16px slot every single time. Render them once here from src/icons/aaru.png
+#      — upstream's 862x862 master, the largest and least resampled source in the
+#      tarball.
+#
+#      ImageMagick 7 renamed the CLI to `magick` and deprecated `convert`; the
+#      older series carry only `convert`. Pick whichever exists rather than
+#      assuming a version.
 execute_after_dh_install:
 	install -D -m0644 debian/70-aaru-floppy.rules \
 	    debian/aaru/usr/lib/udev/rules.d/70-aaru-floppy.rules
+	if command -v magick >/dev/null 2>&1; then IM=magick; else IM=convert; fi; \
+	for sz in 16 22 24 48; do \
+	    install -d debian/aaru/usr/share/icons/hicolor/$${sz}x$${sz}/apps; \
+	    $$IM src/icons/aaru.png -filter Lanczos -resize $${sz}x$${sz} \
+	        debian/aaru/usr/share/icons/hicolor/$${sz}x$${sz}/apps/aaru.png; \
+	done
+	for sz in 16 22 24 32 48 64 128 256 512; do \
+	    test -s debian/aaru/usr/share/icons/hicolor/$${sz}x$${sz}/apps/aaru.png \
+	        || { echo "icon $${sz}x$${sz} missing or empty"; exit 1; }; \
+	done

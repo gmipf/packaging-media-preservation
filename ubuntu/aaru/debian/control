@@ -4,6 +4,7 @@ Priority: optional
 Maintainer: gmipf <gmipf64@gmail.com>
 Build-Depends: debhelper-compat (= 13),
                gawk,
+               imagemagick,
                libicu-dev,
                libkrb5-dev,
                libssl-dev,

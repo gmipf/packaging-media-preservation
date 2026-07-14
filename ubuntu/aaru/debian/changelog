@@ -1,3 +1,17 @@
+aaru (6.0.0~alpha.19-4) UNRELEASED; urgency=medium
+
+  * Ship the launcher icon in the four small hicolor sizes upstream does not
+    provide (16, 22, 24, 48), rendered at build time from upstream's 862x862
+    master with a Lanczos filter. Those four are the sizes a desktop actually
+    draws most -- panel, dock, menu, file-manager list -- and without them the
+    theme had to downscale the 32, or the 512, on the fly for every one of them.
+    Upstream's own five sizes (32-512) are still installed byte-for-byte: they
+    are his files and may be hand-tuned, so nothing re-renders what exists.
+  * Fail the build if any of the nine icon sizes ends up missing or empty. A
+    launcher with no icon is not something to find out about after shipping.
+
+ -- gmipf <gmipf64@gmail.com>  Tue, 14 Jul 2026 02:30:00 +0000
+
 aaru (6.0.0~alpha.19-3) UNRELEASED; urgency=medium
 
   * Apply the shipped udev rule in postinst to drives that are ALREADY
