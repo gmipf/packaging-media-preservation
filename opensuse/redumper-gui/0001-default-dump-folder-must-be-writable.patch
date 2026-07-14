@@ -1,0 +1,103 @@
+Description: Default the dump folder to the user's own space where the executable is not writable
+ Upstream defaults the output folder to a "Dumps" subdirectory beside the
+ executable. That fits a portable build, unpacked by the user into a directory
+ the user owns. A distribution package instead installs the executable into a
+ root-owned system directory -- /usr/lib64/redumper-gui here -- where creating
+ that folder fails with EACCES. src/dump.rs discards the error from
+ create_dir_all(), so the dump does not stop with "permission denied": it runs
+ on and fails later, for a reason that never names the cause.
+ .
+ Probe whether the executable's own directory is writable, and fall back to a
+ Dumps folder in the user's home where it is not. The macOS branch of
+ default_output_dir() already does exactly this -- there the executable lives
+ inside a read-only .app bundle -- and it is left untouched, keeping the download
+ folder its users expect. Portable builds are unaffected on either platform:
+ their directory is writable, so the probe passes and nothing moves.
+Author: gmipf <gmipf64@gmail.com>
+Forwarded: not-yet
+Last-Update: 2026-07-13
+--- a/src/app/logic.rs
++++ b/src/app/logic.rs
+@@ -1,4 +1,8 @@
++#[cfg(not(target_os = "macos"))]
++use std::path::Path;
+ use std::path::PathBuf;
++#[cfg(not(target_os = "macos"))]
++use std::sync::OnceLock;
+ 
+ use super::App;
+ use crate::dump::{self, SectorStatus};
+@@ -9,20 +13,66 @@
+     const DVD_LBA_OFFSET: u64 = 0x30000;
+     const BD_LBA_OFFSET: u64 = 0x100000;
+ 
++    // Dumps folder in the user's own space, for every case where the directory
++    // holding the executable is not one the user may write to.
++    //
++    // Which folder that is, is a desktop convention and differs per platform. On
++    // macOS this keeps the download folder, because that is what this program has
++    // always used there and its users expect it. On Linux a dump tool belongs in
++    // the user's home: nothing that ships in a distribution package may write
++    // under /usr, and putting disc images into "Downloads" -- the folder a browser
++    // empties -- is not where anyone looks for them.
++    fn user_output_dir() -> PathBuf {
++        #[cfg(target_os = "macos")]
++        {
++            dirs::download_dir().unwrap_or_else(|| dirs::home_dir().unwrap_or_else(|| PathBuf::from("."))).join("Dumps")
++        }
++        #[cfg(not(target_os = "macos"))]
++        {
++            dirs::home_dir().unwrap_or_else(|| PathBuf::from(".")).join("Dumps")
++        }
++    }
++
++    // Whether the user running us may create files in `dir`. Probes by creating one,
++    // so ownership, ACLs and read-only mounts all count -- reading the mode bits would
++    // answer a different question.
++    #[cfg(not(target_os = "macos"))]
++    fn dir_is_writable(dir: &Path) -> bool {
++        let probe = dir.join(".redumper-gui-write-test");
++        match std::fs::OpenOptions::new().write(true).create_new(true).open(&probe) {
++            Ok(_) => {
++                let _ = std::fs::remove_file(&probe);
++                true
++            }
++            Err(_) => false,
++        }
++    }
++
+     fn default_output_dir() -> PathBuf {
+         #[cfg(target_os = "macos")]
+         {
+             // macOS executable is within .app file, default to Documents/Dumps instead
+-            dirs::download_dir().unwrap_or_else(|| dirs::home_dir().unwrap_or_else(|| PathBuf::from("."))).join("Dumps")
++            Self::user_output_dir()
+         }
+         #[cfg(not(target_os = "macos"))]
+         {
+-            // Default to Dumps subfolder next to executable
+-            std::env::current_exe()
+-                .ok()
+-                .and_then(|p| p.parent().map(|d| d.to_path_buf()))
+-                .unwrap_or_else(|| PathBuf::from("."))
+-                .join("Dumps")
++            // Default to a Dumps subfolder next to the executable -- but only where the
++            // user can actually write, which is what a portable, unpacked build gives us.
++            // Installed from a distribution package the executable lives in a root-owned
++            // system directory instead (/usr/lib64/redumper-gui on Fedora), and there
++            // creating the folder fails with EACCES. dump.rs discards that error, so the
++            // dump does not stop with "permission denied": it runs on and fails later for
++            // a reason that never names the cause. That is the same predicament the macOS
++            // branch above already answers for the .app bundle, so answer it the same way.
++            //
++            // Probed once and remembered: effective_output_dir() runs on every frame.
++            static DEFAULT: OnceLock<PathBuf> = OnceLock::new();
++            DEFAULT
++                .get_or_init(|| match std::env::current_exe().ok().and_then(|p| p.parent().map(Path::to_path_buf)) {
++                    Some(dir) if Self::dir_is_writable(&dir) => dir.join("Dumps"),
++                    _ => Self::user_output_dir(),
++                })
++                .clone()
+         }
+     }
+ 

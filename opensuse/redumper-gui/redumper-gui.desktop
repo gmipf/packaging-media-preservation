@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Redumper GUI
+GenericName=Optical Disc Dumper
+Exec=redumper-gui
+Terminal=false
+Type=Application
+Icon=redumper-gui
+Comment=Dump optical discs for redump submission with redumper
+Categories=Utility;FileTools;Filesystem;
+Keywords=redumper;disc;dump;preservation;cd;dvd;blu-ray;redump;

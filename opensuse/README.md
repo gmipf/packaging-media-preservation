@@ -5,7 +5,7 @@ RPM packaging for the media-preservation tools, published on the
 openSUSE counterpart to the Fedora/EPEL `fedora/` lane (COPR) and the Ubuntu
 `ubuntu/` lane (Launchpad PPA).
 
-> **Status: LIVE on OBS.** All five tools are published from
+> **Status: LIVE on OBS.** All seven packages are published from
 > **[`home:gmipf:media-preservation`](https://build.opensuse.org/project/show/home:gmipf:media-preservation)**
 > and build for **openSUSE Leap 16.0** and **Tumbleweed** (x86_64) — including the
 > `discimagecreator` meson source build, which clears the hermetic-build gate (no
@@ -27,7 +27,7 @@ openSUSE counterpart to the Fedora/EPEL `fedora/` lane (COPR) and the Ubuntu
 ```sh
 sudo zypper addrepo https://download.opensuse.org/repositories/home:gmipf:media-preservation/16.0/home:gmipf:media-preservation.repo
 sudo zypper refresh
-sudo zypper install redumper discimagecreator aaru aaru5 mpf
+sudo zypper install redumper discimagecreator aaru aaru5 mpf redumper-gui
 ```
 
 For Tumbleweed, swap `16.0` for `openSUSE_Tumbleweed` in the repo URL.
@@ -227,8 +227,13 @@ Three properties make this safe:
   an unchanged recipe reproduces byte-identical files, so `verifymd5` does not move
   and nothing rebuilds. (Only the expanded `srcmd5` changes, which is service
   metadata and does not trigger builds.) That is why the workflow simply refreshes
-  **all five** packages on every run instead of routing per tool: it cannot cause a
-  spurious rebuild, and no tool can be forgotten.
+  **every** package on every run instead of routing per tool: it cannot cause a
+  spurious rebuild, and no tool can be forgotten. The list is read from the repo —
+  every `opensuse/<tool>/` that has a `_service` — and never hardcoded. It *was* a
+  literal list of five names once, and that is exactly how `redumper-gui` and
+  `redumper729` sat outside this lane for a week without anything saying so.
+  A trigger for a package that does not exist on OBS yet now fails the run loudly,
+  which is the intended reading of "you added a recipe but never ran `osc mkpac`".
 - **Watcher pushes cannot self-trigger.** GitHub deliberately does not start
   workflows from commits made with the default `GITHUB_TOKEN`, so the watchers call
   `obs-trigger` explicitly. A `push` trigger on `opensuse/**` additionally covers
@@ -246,19 +251,29 @@ single `download_files` for the upstream assets.
 | Tool             | Kind                              | Recipe files | Notes |
 |------------------|-----------------------------------|--------------|-------|
 | redumper         | static binary                     | 3            | no shlib deps; stamped manpage |
+| redumper729      | static binary, **pinned build**   | 2            | b729 as `/usr/bin/redumper729`; no manpage, by design |
+| redumper-gui     | **source build** (Rust / egui)    | 4            | vendored crates; 9 icon sizes; **no capability**, by design |
 | aaru5            | NativeAOT binary + sidecar `.so`  | 4            | auto ELF deps; static manpage; udev |
 | aaru             | self-contained .NET (single-file) | 5            | two tarballs; manpage from `--help`; udev; icons/MIME/desktop |
 | mpf              | self-contained .NET × 3           | 11           | `mpf` meta + `mpf-check`/`mpf-cli`/`mpf-gui`; caps per subpackage; 5 icons |
 | discimagecreator | **source build** (meson)          | 4            | four archives via `#/rename`; helper makefiles; two caps binaries; udev |
 
-Every tool grants its `cap_sys_rawio` capability through the **permissions
-framework** (see *Permissions framework & rpmlint*) instead of `%caps`. `aaru`,
-`mpf` (all three subpackages) and `discimagecreator` map their .NET / Ninja
-names to openSUSE under the `%if 0%{?suse_version}` branches already present in
-the Fedora specs; those branches' BuildRequires were confirmed to resolve on
+Every tool that *talks to a drive* grants its `cap_sys_rawio` capability through
+the **permissions framework** (see *Permissions framework & rpmlint*) instead of
+`%caps`. `redumper-gui` is the deliberate exception and gets **no capability at
+all**: it never touches the drive, it runs `redumper729`, and the kernel grants
+file capabilities from the *executed file* — so the dumper is privileged no matter
+who starts it. Giving the GUI one would be actively harmful: a process that
+executes a file with capabilities is non-dumpable, `xdg-desktop-portal` refuses to
+identify it, and **every file dialog dies**. That is not theory — it is exactly
+what shipping `cap_sys_rawio` on `MPF.Avalonia` did to `mpf-gui`.
+
+`aaru`, `mpf` (all three subpackages) and `discimagecreator` map their .NET /
+Ninja names to openSUSE under the `%if 0%{?suse_version}` branches already present
+in the Fedora specs; those branches' BuildRequires were confirmed to resolve on
 Leap 16.0 (`aaru`'s `libicu` / `krb5` / `libopenssl3` / `libz1` /
 `libunwind.so.8`, `dic`'s `ninja` / `pkgconfig(libarchive|openssl|zlib)`) and
-all five specs built with `rpmbuild -ba`.
+every spec was built with `rpmbuild -ba` on both targets before being pushed.
 
 `discimagecreator` is the only **source build** and the hermetic-build gate:
 its `debian`-free meson compile plus three helper makefiles complete with no

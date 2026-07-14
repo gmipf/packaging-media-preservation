@@ -12,8 +12,15 @@ name: obs-trigger
 # source revision — and therefore a rebuild — ONLY if the generated sources really
 # changed: the rebuild-relevant hash (verifymd5) is content-based, so triggering a
 # package whose recipe did not move is a free no-op (verified on a probe project).
-# That is why we simply refresh all five packages instead of routing per tool: it
+# That is why we simply refresh EVERY package instead of routing per tool: it
 # cannot cause a spurious rebuild, and no tool can be forgotten.
+#
+# The package list is READ FROM THE REPO (every opensuse/<tool>/ that has a
+# _service), never hardcoded. It used to be a literal list of five names, and that
+# is precisely how redumper-gui and redumper729 came to be missing from this lane
+# for a week: a new package is added under opensuse/, everything looks green, and
+# nothing anywhere says the trigger never learned about it. A list you have to
+# remember to update is a list that will be wrong.
 #
 # Why a token and not `osc`: an OBS token can ONLY do the operation it was created
 # for — here `runservice`. It cannot commit, upload or delete anything. The only
@@ -35,12 +42,15 @@ on:
     paths:
       - 'opensuse/**'
 
-permissions: {}
+permissions:
+  contents: read
 
 jobs:
   trigger:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
       - name: Ask OBS to re-run the source services
         env:
           OBS_TOKEN: ${{ secrets.OBS_TOKEN }}
@@ -54,8 +64,14 @@ jobs:
             exit 0
           fi
 
+          # Every opensuse/<tool>/ that carries a _service is a package on OBS.
+          pkgs=$(find opensuse -mindepth 2 -maxdepth 2 -name _service \
+                 -printf '%h\n' | xargs -r -n1 basename | sort)
+          [ -n "$pkgs" ] || { echo "::error::no opensuse/*/_service found"; exit 1; }
+          echo "Packages: $(echo $pkgs)"
+
           rc=0
-          for pkg in redumper aaru aaru5 mpf discimagecreator; do
+          for pkg in $pkgs; do
             code=$(curl -sS -o /tmp/obs-trigger.out -w '%{http_code}' -X POST \
               -H "Authorization: Token $OBS_TOKEN" \
               "https://api.opensuse.org/trigger/runservice?project=${PROJECT}&package=${pkg}")

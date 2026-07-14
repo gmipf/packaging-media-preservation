@@ -18,7 +18,7 @@
 
 Name:           redumper%{rdbuild}
 Version:        %{rdbuild}
-Release:        1%{?dist}
+Release:        0
 Summary:        redumper b%{rdbuild}, the build pinned by redumper-gui
 
 License:        GPL-3.0-only
@@ -26,12 +26,34 @@ URL:            https://github.com/superg/redumper
 
 # Repackage of the upstream prebuilt linux-x64 release ZIP -- the exact same
 # artifact the rolling `redumper` package repackages, only at a pinned tag.
+# The binary inside is a single statically linked ELF (clang + libc++ +
+# -static), built by upstream's own CI. Identical artifact to the Fedora/COPR
+# and Ubuntu/PPA lanes.
+#
+# OBS build roots are hermetic (no network), so these URLs are NOT fetched at
+# build time -- the _service (download_files) downloads them by basename and
+# they are committed as package sources. rpmbuild then resolves each Source:
+# to its basename in SOURCES.
 Source0:        %{url}/releases/download/b%{rdbuild}/redumper-b%{rdbuild}-linux-x64.zip
 Source1:        https://raw.githubusercontent.com/superg/redumper/b%{rdbuild}/LICENSE
 Source2:        https://raw.githubusercontent.com/superg/redumper/b%{rdbuild}/README.md
 
 ExclusiveArch:  x86_64
 BuildRequires:  unzip
+
+# openSUSE grants file capabilities through the permissions framework
+# (permctl/chkstat), not a bare %%caps entry -- the post-build permissions
+# check rejects capabilities set outside it. We ship a permissions.d profile
+# and apply/verify it via the standard scriptlet macros, exactly as the
+# rolling redumper package does.
+BuildRequires:  permissions
+Requires(post): permissions
+Requires(verify): permissions
+
+# Deliberately NO manpage. The rolling `redumper` package carries redumper(1),
+# and its text describes the command-line tool, not this build number. Shipping
+# a second copy under a different name would either duplicate that page or
+# invite it to drift. This package exists for consumers, not for reading.
 
 # Co-installable with the rolling `redumper` by construction: the binary is
 # /usr/bin/redumper%%{rdbuild}, never /usr/bin/redumper. No Conflicts needed.
@@ -53,7 +75,8 @@ For interactive use prefer that one -- it tracks upstream and carries the
 redumper(1) manpage; this package is a compatibility build, not a
 replacement.
 
-cap_sys_rawio is set on the binary so vendor SCSI passthrough commands work
+This package grants the binary the cap_sys_rawio file capability (via the
+openSUSE permissions framework) so vendor SCSI passthrough commands work
 without sudo, exactly as in the rolling package.
 
 %prep
@@ -71,19 +94,39 @@ install -m 0755 redumper-b%{rdbuild}-linux-x64/bin/redumper \
 install -p -m 0644 %{SOURCE1} LICENSE
 install -p -m 0644 %{SOURCE2} README.md
 
+# Permissions framework profile: grant cap_sys_rawio for sudo-less SCSI
+# passthrough (Plextor read method D8, Kreon commands, ...). The capability
+# lives on the continuation line beginning with " +capabilities".
+install -d %{buildroot}%{_datadir}/permissions/permissions.d
+cat > %{buildroot}%{_datadir}/permissions/permissions.d/redumper%{rdbuild} <<'EOF'
+# redumper needs raw SCSI passthrough for vendor drive commands.
+/usr/bin/redumper729 root:root 0755
+ +capabilities cap_sys_rawio=ep
+EOF
+
+%post
+%set_permissions %{_bindir}/redumper%{rdbuild}
+
+%verifyscript
+%verify_permissions -e %{_bindir}/redumper%{rdbuild}
+
 %files
 %license LICENSE
 %doc README.md
-%caps(cap_sys_rawio=ep) %{_bindir}/redumper%{rdbuild}
+%{_bindir}/redumper%{rdbuild}
+%{_datadir}/permissions/permissions.d/redumper%{rdbuild}
 
 %changelog
-* Sun Jul 12 2026 gmipf <gmipf64@gmail.com> - 729-1
-- Initial build. Pinned-build compatibility package carrying upstream
-  redumper b729 as /usr/bin/redumper729, for consumers that are coupled to
-  that exact build. redumper-gui is the first: its upstream bundles b729 and
-  states that other versions may not be supported, and it invokes redumper as
-  a sibling of its own executable -- which a distribution package cannot honor
-  by shipping a second /usr/bin/redumper.
-- Co-installable with the rolling `redumper` package (currently b731); no file
-  overlaps, so a user can have the newest redumper on PATH and still run the
-  GUI against the build it was tested with.
+* Tue Jul 14 2026 gmipf <gmipf64@gmail.com> - 729-0
+- Initial openSUSE (OBS) packaging. Pinned-build compatibility package carrying
+  upstream redumper b729 as /usr/bin/redumper729, for consumers coupled to that
+  exact build. redumper-gui is the first: its upstream bundles b729 and states
+  that other versions may not be supported, and it invokes redumper as a sibling
+  of its own executable -- which a distribution package cannot honor by shipping
+  a second /usr/bin/redumper.
+- Co-installable with the rolling `redumper` package; no file overlaps, so a user
+  can have the newest redumper on PATH and still run the GUI against the build it
+  was tested with.
+- cap_sys_rawio granted through the openSUSE permissions framework
+  (permissions.d profile + %%set_permissions / %%verify_permissions), the
+  distro-native equivalent of the Fedora spec's %%caps entry.

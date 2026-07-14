@@ -14,7 +14,7 @@
 
 Name:           redumper-gui
 Version:        1.0.1
-Release:        4%{?dist}
+Release:        0
 Summary:        Desktop frontend for the redumper optical-disc dumper
 
 # Upstream ships the plain GPL-3.0 text with no per-file headers and no
@@ -27,13 +27,16 @@ URL:            https://github.com/Deterous/Redumper-GUI
 # Source0 is a REPACKAGED tarball, not the upstream release archive:
 # upstream's release archive ships a prebuilt binary (glibc 2.39, so it is
 # unusable on EL8/EL9 and jammy), and Rust needs its dependency crates
-# present at build time while the COPR chroot and the Launchpad builders
-# have no network. scripts/rust-vendor-tarball.sh therefore takes the
-# upstream git tag, pins a Cargo.lock, vendors the crates filtered to
-# x86_64-linux (cargo-vendor-filterer, which drops the windows-* trees:
-# 546 MB -> 178 MB) and publishes the result as a release asset on this
+# present at build time while the OBS build root, the COPR chroot and the
+# Launchpad builders all have no network. scripts/rust-vendor-tarball.sh
+# therefore takes the upstream git tag, pins a Cargo.lock, vendors the crates
+# filtered to x86_64-linux (cargo-vendor-filterer, which drops the windows-*
+# trees: 546 MB -> 178 MB) and publishes the result as a release asset on this
 # packaging repo. Every lane -- COPR, OBS and the PPA -- consumes that one
 # file, so all three build from byte-identical sources.
+#
+# Fetched by the _service (download_files) and committed as a package source,
+# because the OBS build root is hermetic.
 Source0:        https://github.com/gmipf/packaging-media-preservation/releases/download/%{name}-%{version}/%{name}-%{version}-vendored.tar.xz
 Source1:        redumper-gui.desktop
 Source2:        redumper-gui.1
@@ -50,8 +53,8 @@ Source2:        redumper-gui.1
 # left alone there, keeping the download folder its users expect. Home is the
 # Linux convention for a tool like this, and it is what our mpf package already
 # does (DefaultOutputPath = $HOME/ISO): a browser empties Downloads, and nobody
-# looks for disc images in it. Carried identically in the Debian lane
-# (ubuntu/redumper-gui/debian/patches/) and offered upstream.
+# looks for disc images in it. Byte-identical to the copy in the Fedora and
+# Debian lanes, and offered upstream.
 Patch0:         0001-default-dump-folder-must-be-writable.patch
 
 ExclusiveArch:  x86_64
@@ -59,25 +62,23 @@ ExclusiveArch:  x86_64
 # The real MSRV is 1.92, NOT the 1.85 that `edition = "2024"` alone implies:
 # eframe/egui 0.35 pull it up. Measured, not inferred -- and upstream declares no
 # `rust-version` in Cargo.toml, so nothing states this except the build breaking
-# (asked for the declaration in Deterous/Redumper-GUI#2).
-#
-# 1.92 is what rules the target list, and it is tight on EL:
-#   Fedora 43+                      1.96   ok
-#   EL 8 / 9 / 10                   1.92   ok -- EXACTLY the floor, zero headroom
-#   Leap 16.0 / Tumbleweed          1.96   ok
-#   Debian 13 (trixie)              1.85   -> needs rustc 1.94 from trixie-backports
-#   Debian 12                       1.63   OUT (backports carries no rustc at all)
-#   Ubuntu 22.04 / 24.04            1.75   OUT (rustc-1.91 is the newest available)
-#   Ubuntu 26.04                    1.93   ok
+# (asked for the declaration in Deterous/Redumper-GUI#2). Both openSUSE targets
+# clear it with room to spare: Leap 16.0 and Tumbleweed both carry rustc 1.96.
 BuildRequires:  rust >= 1.92
 BuildRequires:  cargo
 # zstd-sys compiles the bundled C and x86-64 assembly sources of libzstd.
 BuildRequires:  gcc
 BuildRequires:  desktop-file-utils
 # Renders the hicolor icon sizes from upstream's single 512x512 PNG (see
-# %%install). Resolvable on every chroot we build -- verified on fedora-43,
-# epel-8 and epel-10; on EL it comes from EPEL, which the buildroot has.
+# %%install). ImageMagick 7 on both openSUSE targets, so `magick` is the CLI.
 BuildRequires:  ImageMagick
+# NOT redundant with the Requires below. openSUSE's 50-check-filelist post-build
+# check FAILS the build on any directory no installed package owns, where Fedora
+# merely warns -- so the hicolor directory tree has to exist in the BUILD ROOT,
+# not just on the user's machine. This is the exact bug the openSUSE lane already
+# surfaced in aaru and mpf, which Fedora had silently tolerated (see
+# opensuse/README.md).
+BuildRequires:  hicolor-icon-theme
 
 # The pinned dumper -- a hard dependency: without it the GUI has nothing to
 # drive. Not the rolling `redumper` package, deliberately (see rdpin above).
@@ -92,8 +93,13 @@ Recommends:     mpf-check
 # GUI libraries are dlopen'd at run time (winit for X11/Wayland, glutin for
 # GL/EGL), so they never appear in the binary's DT_NEEDED and rpm's automatic
 # dependency extraction cannot see a single one of them -- the same trap as
-# with mpf-gui. Declared by soname, which resolves on Fedora, EL and openSUSE
-# alike without per-distro package-name conditionals.
+# with mpf-gui. Declared by SONAME, never by package name: the Fedora spellings
+# (mesa-libGL, libX11) do not exist on openSUSE, and a Requires that resolves to
+# nothing makes the package uninstallable. Each of these was checked against the
+# Leap 16.0 and Tumbleweed repodata and is a real 64-bit Provides -- from
+# libglvnd (libGL/libEGL), libX11-6, libX11-xcb1, libXi6, libXcursor1,
+# libXrender1, libxkbcommon0, libxkbcommon-x11-0, libwayland-client0,
+# libwayland-egl1 and libdbus-1-3.
 Requires:       libGL.so.1()(64bit)
 Requires:       libEGL.so.1()(64bit)
 Requires:       libX11.so.6()(64bit)
@@ -128,8 +134,7 @@ that step is skipped.
 Both X11 and Wayland are supported natively.
 
 Built from source against the distribution's Rust toolchain -- the upstream
-release binary is compiled on Ubuntu 24.04 and requires glibc 2.39, which
-rules out EL8, EL9 and Ubuntu 22.04.
+release binary is compiled on Ubuntu 24.04 and requires glibc 2.39.
 
 %prep
 # -p1 is not the default: without it %%autosetup calls patch with no -p at all,
@@ -139,7 +144,8 @@ rules out EL8, EL9 and Ubuntu 22.04.
 %build
 # Crates come from the vendored tree in the tarball (.cargo/config.toml
 # redirects crates-io at it), so the build must never reach for the network:
-# neither the COPR chroot nor the Launchpad builders have any.
+# the OBS build root is hermetic, and neither the COPR chroot nor the Launchpad
+# builders have any network either.
 export CARGO_NET_OFFLINE=true
 cargo build --release --offline
 
@@ -184,9 +190,9 @@ desktop-file-install --dir=%{buildroot}%{_datadir}/applications %{SOURCE1}
 # pre-rendered PNGs: nothing is duplicated, and the packaged icon therefore
 # cannot drift from the one upstream actually ships.
 #
-# ImageMagick 7 renamed the CLI to `magick` and deprecated `convert`; EL8 still
-# carries ImageMagick 6, which has only `convert`. Pick whichever exists in the
-# buildroot rather than assuming a version.
+# Both openSUSE targets carry ImageMagick 7, whose CLI is `magick` (`convert` is
+# deprecated there). The probe is kept so this spec stays interchangeable with
+# the Fedora one, which must also serve EL8's ImageMagick 6.
 if command -v magick >/dev/null 2>&1; then IM=magick; else IM=convert; fi
 for px in 16 22 24 32 48 64 128 256; do
     install -d %{buildroot}%{_datadir}/icons/hicolor/${px}x${px}/apps
@@ -208,8 +214,9 @@ for px in 16 22 24 32 48 64 128 256 512; do
         || { echo "icon ${px}x${px} missing or empty"; exit 1; }
 done
 
-# DO NOT add %%caps(cap_sys_rawio=ep) here. A dumping frontend looks like it
-# ought to have raw drive access, but it must not:
+# DO NOT grant cap_sys_rawio here -- not through %%caps, and not through a
+# permissions.d profile either. A dumping frontend looks like it ought to have
+# raw drive access, but it must not:
 #
 #   * Unnecessary: the GUI never talks to the drive. It runs redumper, and
 #     redumper%%{rdpin} carries the capability on its own binary -- the kernel
@@ -221,9 +228,11 @@ done
 #     xdg-desktop-portal reads exactly that path to identify the calling app,
 #     fails, and refuses with "Portal operation not allowed" -- so every file
 #     dialog blows up. Not theory: that is precisely what shipping
-#     cap_sys_rawio on MPF.Avalonia did to mpf-gui (fixed in
-#     mpf-3.8.3~20260707133302.e1081655-2). Measured on one and the same
+#     cap_sys_rawio on MPF.Avalonia did to mpf-gui. Measured on one and the same
 #     binary: capability set -> portal denies; capability removed -> accepts.
+#
+# This is also why this package needs no rpmlintrc: with no permissions.d
+# profile there is no permissions-file-unauthorized finding to demote.
 %files
 %license LICENSE
 %doc README.md
@@ -238,50 +247,26 @@ done
 %{_datadir}/icons/hicolor/*/apps/%{name}.png
 
 %changelog
-* Mon Jul 13 2026 gmipf <gmipf64@gmail.com> - 1.0.1-4
-- Put the fallback dump folder in the user's HOME (~/Dumps), not in ~/Downloads.
-  Home is the Linux convention for a tool like this, and it is what our own mpf
-  package already does (DefaultOutputPath = $HOME/ISO) -- two disc dumpers from
-  one repository should not disagree about where a dump goes. Downloads is the
-  folder a browser empties; nobody looks for disc images there. Upstream's macOS
-  branch keeps the download folder it has always used, untouched.
-
-* Mon Jul 13 2026 gmipf <gmipf64@gmail.com> - 1.0.1-3
-- Patch the default dump folder so a packaged install can actually dump. It
-  pointed at a Dumps subfolder beside the executable -- /usr/lib64/redumper-gui
-  /Dumps here, owned by root: measured on a clean install, the user cannot
-  create it (mkdir: Permission denied). Worse, dump.rs discards the error from
-  create_dir_all(), so pressing DUMP did not stop with "permission denied"; the
-  dump ran on and failed later for a reason that never named the cause. The
-  patch keeps that folder wherever it IS writable (upstream's portable build)
-  and otherwise falls back to a folder the user owns -- which is what upstream's
-  own macOS branch has always done, the .app bundle being the very same
-  predicament. Offered upstream.
-
-* Mon Jul 13 2026 gmipf <gmipf64@gmail.com> - 1.0.1-2
-- Ship the launcher icon in all standard hicolor sizes (16-512), rendered at
-  build time from upstream's single 512x512 PNG with a Lanczos filter. Before
-  this only the 512 was installed and every desktop had to downscale it itself
-  for panels and docks -- and this icon is a finely detailed disc sector, so a
-  naive downscale to 24px turned it to mush. Generated rather than pre-rendered
-  into this repo, so the packaged icon cannot drift from upstream's.
-- %%check now fails the build if any icon size is missing or empty: a launcher
-  with no icon is not something to discover after shipping.
-
-* Sun Jul 12 2026 gmipf <gmipf64@gmail.com> - 1.0.1-1
-- Initial build of Redumper GUI v1.0.1 (Rust / egui), suggested by its author
-  in the VGPC preservation community.
-- Built from source rather than repackaging the upstream release binary: that
-  binary is compiled on Ubuntu 24.04 and needs GLIBC_2.39, which would have
-  left out EL8, EL9 and Ubuntu 22.04. Building from source covers every target
-  instead -- Rust 1.85+ (edition 2024) is available on all of them.
-- Crates are vendored into the source tarball and the build runs --offline,
-  because neither the COPR chroot nor the Launchpad build farm has network.
+* Tue Jul 14 2026 gmipf <gmipf64@gmail.com> - 1.0.1-0
+- Initial openSUSE (OBS) packaging of Redumper GUI v1.0.1 (Rust / egui).
+- Built from source against the distribution's Rust toolchain, from the same
+  vendored crate tarball the Fedora and Ubuntu lanes consume, so all three build
+  byte-identical sources. Leap 16.0 and Tumbleweed both carry rustc 1.96, well
+  clear of the real 1.92 floor that eframe/egui 0.35 imposes.
 - Does not bundle redumper. Upstream's archives ship a pinned b729 next to the
-  GUI executable and the GUI runs its sibling by that name; a package cannot
-  add a second /usr/bin/redumper, so the pinned build is packaged separately as
-  redumper729 and symlinked into the GUI's private directory. Same for
-  MPF.Check, whose symlink dangles harmlessly until mpf-check is installed --
-  the GUI tests for exactly that.
+  GUI executable and the GUI runs its sibling by that name; a package cannot add
+  a second /usr/bin/redumper, so the pinned build is packaged separately as
+  redumper729 and symlinked into the GUI's private directory. Same for MPF.Check,
+  whose symlink dangles harmlessly until mpf-check is installed -- the GUI tests
+  for exactly that.
+- Carries the same default-dump-folder patch as the other two lanes: upstream
+  puts the dump folder next to the executable, which in a packaged install is a
+  root-owned system directory the user cannot write to.
 - All GUI libraries are dlopen'd (winit, glutin) and thus invisible to rpm's
-  automatic dependency extraction; declared by soname by hand.
+  automatic dependency extraction; declared by soname by hand, and every one of
+  them verified to be a real Provides on both openSUSE targets -- a hard Requires
+  that resolves to nothing would make the package uninstallable while the build
+  stayed green.
+- No capability on this binary, by design: the dumper it drives carries it, and a
+  file capability would make the process non-dumpable and kill every file dialog
+  through xdg-desktop-portal.

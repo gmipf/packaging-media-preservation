@@ -1,0 +1,81 @@
+.TH REDUMPER-GUI 1 "2026-07-12" "redumper-gui v1.0.1" "User Commands"
+.SH NAME
+redumper-gui \- desktop frontend for the redumper optical-disc dumper
+.SH SYNOPSIS
+.B redumper-gui
+.SH DESCRIPTION
+.B redumper-gui
+is a graphical frontend for
+.BR redumper (1),
+the low-level disc dumper used by the Redump preservation project. It
+enumerates the optical drives on the system, runs a dump, streams
+redumper's log into the window, and afterwards compresses the log files
+and packs them into a submission-ready ZIP.
+.PP
+It takes no command-line options; everything is configured in the window.
+.SH DUMPER VERSION
+The GUI is coupled to a specific redumper build: upstream bundles one and
+states that other versions may not be supported. This package therefore
+depends on
+.BR redumper729 ,
+a compatibility package carrying exactly that build, and invokes it
+directly \(em not whatever
+.B redumper
+happens to be on
+.BR PATH .
+The rolling
+.B redumper
+package can be installed at the same time and is the one to use on the
+command line; the two do not conflict.
+.SH MPF POST-PROCESSING
+If the
+.B mpf-check
+package is installed, the GUI runs MPF.Check on the finished dump to
+produce Redump submission info. It is a weak dependency: without it the
+dump still completes and the post-processing step is simply skipped.
+.SH DRIVE ACCESS
+No root and no group membership are needed at a local desktop seat:
+.BR systemd\-logind (8)
+puts a
+.B uaccess
+ACL on the optical device node for the logged-in user, and the dumper
+binary carries the
+.B cap_sys_rawio
+file capability for vendor SCSI passthrough. Headless, SSH and cron
+sessions have no seat and therefore no ACL \(em they need the
+.B cdrom
+group or root.
+.SH FILES
+.TP
+.I ~/.config/redumper-gui/
+Window layout and settings, written by the GUI.
+.TP
+.I redumper
+Inside the GUI's private program directory: a symlink to the pinned dumper
+the GUI executes. A second symlink,
+.IR MPF.Check ,
+points at the MPF validator and dangles harmlessly while
+.B mpf-check
+is not installed.
+.SH SEE ALSO
+.BR redumper (1),
+.BR mpf-check (1),
+.BR mpf-gui (1)
+.SH NOTES
+This manpage is written and maintained by the packager; upstream ships none,
+and the GUI takes no command-line options, so there is no
+.B \-\-help
+output a generator could work from.
+.PP
+The version in the header is therefore
+.B deliberately static:
+it records the release this text was written against
+.RB ( v1.0.1 ),
+not the version you have installed. Stamping the shipped version into a
+hand-written page would be a forgery \(em the header would keep claiming
+currency while the prose quietly aged. If your installed
+.B redumper-gui
+is newer than the version named above, treat this page as possibly behind.
+.SH AUTHOR
+Redumper GUI is written by Deterous
+.RB ( https://github.com/Deterous/Redumper-GUI ).

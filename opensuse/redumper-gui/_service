@@ -1,0 +1,42 @@
+<services>
+  <!-- OBS pulls EVERYTHING itself; `_service` is the only file committed to OBS.
+       Same shape as every other tool in this lane — see opensuse/README.md.
+
+       1. download_url fetches each recipe file (spec, manpage, .desktop and the
+          PATCH) straight from `main` of the packaging repo, so git stays the
+          single source of truth. A patch is a local source like any other: it is
+          NOT named in a Source: URL, so download_files would never fetch it —
+          it has to be listed here explicitly or the build fails at %prep.
+       2. download_files then reads the *generated* spec and downloads the upstream
+          asset named in its Source0 URL: the vendored crate tarball published as a
+          release asset on this packaging repo. The OBS build root is hermetic, so
+          every crate has to be inside that tarball before the build starts, and
+          the build runs cargo in offline mode.
+          (Written without the usual double-dash flag spelling on purpose: XML
+          forbids a double hyphen inside a comment, and OBS rejects the whole
+          _service file for it.)
+
+       The services run SERVER-SIDE (no mode= attribute), so a scoped `runservice`
+       token can refresh the package (.github/workflows/obs-trigger.yml). An OBS
+       token can never commit — which is precisely why the recipe has to be fetched
+       by OBS rather than pushed to it. -->
+  <service name="download_url">
+    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/redumper-gui/redumper-gui.spec</param>
+    <param name="filename">redumper-gui.spec</param>
+  </service>
+  <service name="download_url">
+    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/redumper-gui/redumper-gui.1</param>
+    <param name="filename">redumper-gui.1</param>
+  </service>
+  <service name="download_url">
+    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/redumper-gui/redumper-gui.desktop</param>
+    <param name="filename">redumper-gui.desktop</param>
+  </service>
+  <service name="download_url">
+    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/redumper-gui/0001-default-dump-folder-must-be-writable.patch</param>
+    <param name="filename">0001-default-dump-folder-must-be-writable.patch</param>
+  </service>
+  <!-- upstream asset (the vendored crate tarball), taken from the Source: URL of
+       the spec above -->
+  <service name="download_files"/>
+</services>

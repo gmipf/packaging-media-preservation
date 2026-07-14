@@ -74,14 +74,26 @@ hr "OBS — ${OBS_PROJECT}"
 osc results "$OBS_PROJECT" 2>&1 | sed -n '1,12p' | sed 's/^/  /'
 
 # --- silent failure #2: red runs nobody looked at -----------------------------
-hr "Fehlgeschlagene Workflow-Laeufe (letzte 40)"
-RED=$(gh run list --limit 40 \
-        --json workflowName,conclusion,createdAt,databaseId 2>/dev/null \
-      | jq -r '.[] | select(.conclusion == "failure")
-               | "  \(.createdAt[0:16])  \(.workflowName)  (run \(.databaseId))"')
+# Only a failure that no later green run of the SAME workflow has superseded is
+# worth showing. Listing every failure ever means a long-fixed one stays red for
+# good, and a permanent red is one you learn to look past -- which is the exact
+# blindness this script exists to prevent. Superseded ones are counted, not
+# swallowed: a filter that hides its own work is the same bug wearing green.
+hr "Workflow-Laeufe (letzte 40)"
+RUNS=$(gh run list --limit 40 \
+        --json workflowName,conclusion,createdAt,databaseId 2>/dev/null)
+RED=$(jq -r '[.[] | select(.conclusion == "success" or .conclusion == "failure")]
+             | group_by(.workflowName)
+             | map(sort_by(.createdAt) | last)
+             | .[] | select(.conclusion == "failure")
+             | "  \(.createdAt[0:16])  \(.workflowName)  (run \(.databaseId))"' <<<"$RUNS")
+HEALED=$(jq -r '[.[] | select(.conclusion == "failure")] | length' <<<"$RUNS")
 if [ -n "$RED" ]; then
     printf '\033[31m%s\033[0m\n' "$RED"
     echo "  -> Grund lesen: gh run view <id> --log-failed"
 else
-    echo "  keine"
+    echo "  keine offenen (letzter Lauf jedes Workflows ist gruen)"
+fi
+if [ "${HEALED:-0}" -gt 0 ]; then
+    echo "  (${HEALED} rote Laeufe im Fenster, seither von einem gruenen Lauf abgeloest)"
 fi
