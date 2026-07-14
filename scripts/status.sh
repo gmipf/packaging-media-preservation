@@ -214,3 +214,50 @@ fi
 if [ "${HEALED:-0}" -gt 0 ]; then
     echo "  (${HEALED} rote Laeufe im Fenster, seither von einem gruenen Lauf abgeloest)"
 fi
+
+# --- silent failure #4: the Debian lane's generated files drift apart ----------
+# Each Debian-delivered tool carries THREE generated files (opensuse/<tool>/):
+# the .dsc, debian.tar.gz and the deb block of _service. They are generated from
+# ONE source -- ubuntu/<tool>/debian/ -- and nothing forces them to stay in step.
+#
+# Drift here does not fail the build, it CORRUPTS it quietly:
+#
+#   * debtransform takes the version from the .dsc, and if debian/changelog says
+#     something else it silently REWRITES the changelog to match (measured). A
+#     stale .dsc therefore ships the wrong version under a green build.
+#   * _service names the .orig tarball by version in its Launchpad URL. Stale ->
+#     OBS keeps building the previous upstream payload, also green.
+#   * debian.tar.gz is a binary blob. Edit debian/rules and forget to regenerate,
+#     and OBS builds the OLD rules. Nothing anywhere says so.
+#
+# So compare against the recipe, and for the blob regenerate it and compare BYTES
+# (gen-deb.sh is deterministic precisely so this check can exist).
+hr "Debian-Lane — generierte Dateien vs. Rezept"
+DEB_DRIFT=0
+for dsc in "$REPO"/opensuse/*/*.dsc; do
+    tool=$(basename "$(dirname "$dsc")")
+    cl="$REPO/ubuntu/$tool/debian/changelog"
+    [ -f "$cl" ] || { echo "  $tool: .dsc ohne Rezept in ubuntu/ -- Waise?"; DEB_DRIFT=1; continue; }
+
+    want=$(dpkg-parsechangelog -l "$cl" -SVersion)
+    have=$(sed -n 's/^Version: //p' "$dsc")
+    upst=${want%-*}
+
+    [ "$want" = "$have" ] || {
+        printf '  \033[31m%-18s .dsc sagt %s, changelog sagt %s\033[0m\n' "$tool" "$have" "$want"
+        DEB_DRIFT=1; }
+
+    grep -q "${tool}_${upst}\.orig\.tar\.xz" "$REPO/opensuse/$tool/_service" || {
+        printf '  \033[31m%-18s _service zeigt nicht auf den Orig von %s\033[0m\n' "$tool" "$upst"
+        DEB_DRIFT=1; }
+
+    tmp=$(mktemp); trap 'rm -f "$tmp"' RETURN
+    tar -C "$REPO/ubuntu/$tool" --sort=name --owner=0 --group=0 --numeric-owner \
+        --mtime=@0 --format=gnu --exclude=debian/changelog -cf - debian \
+      | gzip -n9 > "$tmp"
+    cmp -s "$tmp" "$REPO/opensuse/$tool/debian.tar.gz" || {
+        printf '  \033[31m%-18s debian.tar.gz VERALTET -- scripts/obs/gen-deb.sh %s\033[0m\n' "$tool" "$tool"
+        DEB_DRIFT=1; }
+    rm -f "$tmp"
+done
+[ "$DEB_DRIFT" = 0 ] && echo "  alle .dsc / debian.tar.gz / _service passen zum Rezept"

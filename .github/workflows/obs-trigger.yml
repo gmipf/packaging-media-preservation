@@ -31,6 +31,20 @@ name: obs-trigger
 #   osc token --create --operation runservice     # unbound: OBS rejects project-wide tokens
 #   -> store the printed string as the repository secret OBS_TOKEN
 
+# THE DEBIAN PACKAGES HAVE A PRECONDITION, AND IT IS TIMED
+#
+# Their .orig tarball is not fetched from upstream — it has to be ASSEMBLED (aaru
+# merges two upstream tarballs, mpf three binaries) and no OBS source service can
+# do that; OBS can only download. The PPA lane assembles it anyway, and Launchpad
+# stores one immutable copy per upstream version, so `_service` points there.
+#
+# Which means a version can only be built on Debian once its orig is IN Launchpad.
+# Trigger OBS before that and download_url gets a 404: the service run fails and
+# the package silently keeps building the previous version. So we wait for exactly
+# the URLs OBS is about to fetch — read out of `_service` itself, never guessed —
+# and only then trigger. The upload lands in the librarian at ACCEPTANCE, well
+# before Launchpad builds anything, so this is a wait of minutes, not hours.
+
 on:
   workflow_call:
   workflow_dispatch:
@@ -41,6 +55,9 @@ on:
     branches: [main]
     paths:
       - 'opensuse/**'
+      # The deb side of a package is generated from its Ubuntu recipe, so a
+      # changelog bump under ubuntu/ moves opensuse/<tool>/{_service,*.dsc} too.
+      - 'ubuntu/**'
 
 permissions:
   contents: read
@@ -50,6 +67,38 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Wait until Launchpad has the .orig tarballs OBS is about to fetch
+        run: |
+          set -euo pipefail
+
+          # The URLs come out of _service, so this checks the very file OBS will
+          # request. Deriving them here instead would let the two drift apart —
+          # and a check that tests something else than the real thing is worse
+          # than no check, because it reports green.
+          urls=$(grep -ho 'https://launchpad\.net/[^<]*\.orig\.tar\.xz' \
+                 opensuse/*/_service | sort -u)
+          [ -n "$urls" ] || { echo "no Launchpad origs referenced — nothing to wait for"; exit 0; }
+
+          missing="$urls"
+          for attempt in $(seq 1 30); do          # 30 x 20s = 10 minutes
+            still=
+            for u in $missing; do
+              code=$(curl -o /dev/null -sIL --max-time 30 -w '%{http_code}' "$u" || echo 000)
+              [ "$code" = "200" ] || still="$still $u"
+            done
+            missing=$(echo $still)
+            [ -n "$missing" ] || { echo ":: every orig is in Launchpad"; exit 0; }
+            echo ":: waiting for $(echo $missing | wc -w) orig(s), attempt $attempt"
+            sleep 20
+          done
+
+          # Loud, not silent: without the orig the deb build of these packages
+          # would keep shipping the previous version and look perfectly green.
+          echo "::error::Launchpad still has no orig for:"
+          for u in $missing; do echo "  $u"; done
+          echo "The PPA upload for this version has not been accepted yet, or it failed."
+          exit 1
 
       - name: Ask OBS to re-run the source services
         env:
