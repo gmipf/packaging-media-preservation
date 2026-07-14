@@ -109,29 +109,85 @@ osc results "$OBS_PROJECT" 2>&1 | sed -n '1,12p' | sed 's/^/  /'
 # The general rule: a pin is justified by what UPSTREAM says, not by what a consumer
 # happens to bundle. MPF says nothing and has no version check of any kind -- so it
 # gets this watchdog instead of a pinned package.
-hr "MPF-Bundle vs. unsere Pakete"
+hr "MPF-Bundle vs. unsere Pins"
+REPO=$(cd "$(dirname "$0")/.." && pwd)
 NIX=$(curl -fsSL https://raw.githubusercontent.com/SabreTools/MPF/master/publish-nix.sh 2>/dev/null)
 if [ -z "$NIX" ]; then
     echo "  publish-nix.sh nicht erreichbar — Bundle-Drift UNGEPRUEFT"
 else
+    # What MPF bundles today.
     MPF_RD=$(printf '%s' "$NIX" | grep -oE 'redumper/releases/download/b[0-9]+' | head -1 | grep -oE '[0-9]+$')
-    MPF_AA=$(printf '%s' "$NIX" | grep -oE 'Aaru/releases/download/v[0-9.]+' | head -1 | sed 's/.*v//')
-    OUR_RD=$(grep -m1 '^Version:' "$(dirname "$0")/../fedora/redumper/redumper.spec" | awk '{print $2}')
-    OUR_AA=$(grep -m1 '^Version:' "$(dirname "$0")/../fedora/aaru5/aaru5.spec"       | awk '{print $2}')
+    MPF_AA=$(printf '%s' "$NIX" | grep -oE 'Aaru/releases/download/v[0-9.]+'    | head -1 | sed 's/.*v//')
+    # What our mpf package actually points at (metadata AND the seeded config --
+    # both have to agree, or the package recommends one dumper and configures
+    # another).
+    PTR_META=$(grep -oE '^Recommends: +redumper[0-9]*' "$REPO/fedora/mpf/mpf.spec" | head -1 | grep -oE 'redumper[0-9]*')
+    PTR_SEED=$(grep -oE '^red_p=redumper[0-9]*'        "$REPO/fedora/mpf/mpf.spec" | head -1 | sed 's/^red_p=//')
+    OUR_AA=$(grep -m1 '^Version:' "$REPO/fedora/aaru5/aaru5.spec" | awk '{print $2}')
 
-    cmp_line() {   # name, what MPF bundles, what we point at
-        if [ "$2" = "$3" ]; then
-            printf '  \033[32mok\033[0m    %-10s MPF buendelt %-10s wir liefern %s\n' "$1" "$2" "$3"
-        else
-            printf '  \033[31mDRIFT\033[0m %-10s MPF buendelt %-10s wir liefern %s\n' "$1" "$2" "$3"
-        fi
-    }
-    cmp_line redumper "b${MPF_RD:-?}" "b${OUR_RD:-?}"
-    cmp_line aaru5    "${MPF_AA:-?}"  "${OUR_AA:-?}"
-    if [ "b${MPF_RD:-x}" != "b${OUR_RD:-y}" ] || [ "${MPF_AA:-x}" != "${OUR_AA:-y}" ]; then
-        echo "  -> entscheiden: rolling nachziehen, oder ein gepinntes redumper<N>/aaru<N> bauen"
-        echo "     (MPF hat KEINE Versionspruefung — es meldet die Abweichung nie selbst)"
+    ok()   { printf '  \033[32mok\033[0m    %s\n' "$1"; }
+    bad()  { printf '  \033[31mFEHLER\033[0m %s\n' "$1"; }
+
+    # 1. MPF must point at the PIN that carries the build MPF bundles -- never at
+    #    the rolling `redumper`, not even while the rolling package happens to
+    #    carry that same build.
+    WANT="redumper${MPF_RD}"
+    if [ "$PTR_META" = "$WANT" ] && [ "$PTR_SEED" = "$WANT" ]; then
+        ok "MPF buendelt b${MPF_RD} und zeigt auf ${WANT} (Metadaten + Config-Seed)"
+    else
+        bad "MPF buendelt b${MPF_RD}, zeigt aber auf Metadaten=${PTR_META:-?} / Seed=${PTR_SEED:-?}"
+        echo "     -> ${WANT} erzeugen (fedora/ ubuntu/ opensuse/) und MPF darauf umbiegen."
+        echo "        NIEMALS auf das rollende 'redumper' zeigen: es bewegt sich, MPF hat"
+        echo "        KEINE Versionspruefung und wuerde still mit einer ungetesteten Build dumpen."
     fi
+
+    # 2. The recipe for that pin has to exist in every lane.
+    MISS=""
+    for lane in fedora ubuntu opensuse; do
+        [ -d "$REPO/$lane/$WANT" ] || MISS="$MISS $lane"
+    done
+    if [ -z "$MISS" ]; then
+        ok "Rezept ${WANT} in allen drei Lanes vorhanden"
+    else
+        bad "Rezept ${WANT} FEHLT in:${MISS}"
+    fi
+
+    # 3. Aaru: MPF runs only the latest stable, which is what aaru5 carries.
+    if [ "$MPF_AA" = "$OUR_AA" ]; then
+        ok "MPF buendelt Aaru ${MPF_AA} und aaru5 liefert ${OUR_AA}"
+    else
+        bad "MPF buendelt Aaru ${MPF_AA:-?}, aaru5 liefert ${OUR_AA:-?}"
+    fi
+
+    # 4. ORPHANED PINS. A redumper<N> nobody points at any more keeps building and
+    #    keeps being published in all three lanes, forever, because nothing ever
+    #    says so. It only becomes an orphan when a CONSUMER moves -- which is
+    #    exactly the moment nobody is looking at the pin.
+    #
+    #    ⚠️ Asked via `rpmspec`, NOT via grep. The specs write their dependency as
+    #    `Requires: redumper%{rdpin}` -- a MACRO. A grep for the literal string
+    #    finds nothing and cheerfully reports redumper729 as an orphan, i.e. it
+    #    tells you to delete a package that redumper-gui hard-depends on. Measured:
+    #    the first version of this check did exactly that. Let rpm expand the spec.
+    USED=$(
+        for s in "$REPO"/fedora/*/[a-z]*.spec; do
+            rpmspec -q --requires   "$s" 2>/dev/null
+            rpmspec -q --recommends "$s" 2>/dev/null
+        done
+        # The Debian lane has no macros, so plain text is honest there.
+        grep -hoE 'redumper[0-9]+' "$REPO"/ubuntu/*/debian/control 2>/dev/null
+    )
+    for dir in "$REPO"/fedora/redumper[0-9]*/; do
+        [ -d "$dir" ] || continue
+        pin=$(basename "$dir")
+        if printf '%s\n' "$USED" | grep -qx "$pin"; then
+            ok "${pin} wird benutzt"
+        else
+            bad "${pin} ist ein WAISENPAKET — kein Konsument zeigt mehr darauf"
+            echo "     -> Rezept entfernen + 'copr-cli delete-package ${pin}' + aus PPA/OBS nehmen."
+            echo "        Sonst baut und publiziert es fuer immer weiter, ohne dass es jemand braucht."
+        fi
+    done
 fi
 
 # --- silent failure #2: red runs nobody looked at -----------------------------

@@ -17,7 +17,7 @@ Version:        %{mpfver}~%{mpfsnap}
 # lives in the changelog. (Stuck at 5 here from pre-fix manual bumps of
 # the 71dafe3d snapshot — already shipped as -5, so left as-is to avoid
 # a downgrade; the next snapshot resets it.)
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        Media Preservation Frontend suite (mpf-check, mpf-cli, mpf-gui)
 
 License:        MIT
@@ -111,7 +111,29 @@ Requires:       openssl-libs
 Requires:       zlib
 %endif
 Requires:       jq
-Recommends:     redumper
+# The three backends, and why two of them are PINNED and one is not:
+#
+#   redumper732  PINNED to the build MPF's publish-nix.sh bundles. NOT the rolling
+#                `redumper` -- not even on a day when the rolling package carries
+#                the very same build (it does right now: both are b732). The
+#                rolling package MOVES. The day b733 lands, an MPF pointed at it
+#                would silently dump with a build MPF was never tested against, and
+#                MPF has no version check of any kind to notice -- it just reads
+#                whatever version it finds out of the log and writes it into the
+#                submission. Today's equality is an accident of timing.
+#                ⇒ When MPF bundles a new build, GENERATE redumper<N> and repoint
+#                  here. Never collapse this back to the rolling package.
+#   aaru5        PINNED. MPF supports only the latest STABLE Aaru; the rolling
+#                `aaru` is a 6.0 alpha with a different command line and does not
+#                run in MPF at all.
+#   dic          NOT pinned, deliberately. DiscImageCreator's command-line surface
+#                is effectively frozen -- what still lands upstream is bugfixes and
+#                new disc types, not features that could break a frontend. A pin
+#                would guard against a risk that does not exist.
+#
+# scripts/status.sh compares MPF's bundled builds against these and goes red on
+# drift. The wrapper below seeds the same names into MPF's config.
+Recommends:     redumper732
 Recommends:     aaru5
 Recommends:     discimagecreator
 
@@ -151,7 +173,10 @@ Requires:       zlib
 Requires:       jq
 Requires:       hicolor-icon-theme
 Requires:       desktop-file-utils
-Recommends:     redumper
+# Same three backends as mpf-cli, same reasons -- see the block above it. In
+# short: redumper732 and aaru5 are PINNED to the builds MPF bundles and must not
+# be collapsed into the rolling packages; dic is deliberately not pinned.
+Recommends:     redumper732
 Recommends:     aaru5
 Recommends:     discimagecreator
 # Avalonia 11.x ships only the X11 backend; on Wayland sessions the GUI
@@ -274,7 +299,7 @@ config_dir="\${XDG_CONFIG_HOME:-\$HOME/.config}/mpf"
 config="\$config_dir/config.json"
 aaru_p=aaru5
 dic_p=DiscImageCreator.out
-red_p=redumper
+red_p=redumper732
 # Without a HOME there is no sane home-relative output directory; leave the
 # key alone rather than rewriting it to a root-owned "/ISO".
 out_p=""
@@ -424,6 +449,19 @@ install -m 0644 %{SOURCE6} %{buildroot}%{_mandir}/man1/mpf-gui.1
 %{_datadir}/icons/hicolor/*/apps/mpf.png
 
 %changelog
+* Tue Jul 14 2026 gmipf <gmipf64@gmail.com> - 3.8.3~20260713172204.8602d4dd-2
+- Point MPF at the PINNED redumper732 instead of the rolling `redumper`, in both
+  the metadata (Recommends) and the config the wrapper seeds. b732 is the build
+  MPF's publish-nix.sh bundles, so an MPF dump now runs the dumper build its
+  upstream actually tested with.
+- The pin exists even though the rolling package carries the very same build
+  today. That equality is an accident of timing, not something to lean on: the
+  rolling package moves, and the day redumper b733 lands, an MPF pointed at it
+  would silently dump with a build it was never tested against -- MPF has no
+  version check of any kind and would never say so. When MPF bundles a new build,
+  a new redumper<N> is generated and MPF is repointed; scripts/status.sh goes red
+  until that is done.
+
 * Mon Jul 13 2026 gmipf <gmipf64@gmail.com> - 3.8.3~20260713172204.8602d4dd-1
 - Automated rolling-snapshot sync to upstream MPF commit 8602d4dd
   (rolling tag, published 20260713172204 UTC); Release reset to 1.

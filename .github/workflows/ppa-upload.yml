@@ -40,7 +40,7 @@ on:
         description: 'ubuntu/<tool> recipe directory (= Debian source package name)'
         required: true
         type: choice
-        options: [redumper, redumper729, mpf, aaru, aaru5, discimagecreator, redumper-gui]
+        options: [redumper, redumper729, redumper732, mpf, aaru, aaru5, discimagecreator, redumper-gui]
       series:
         # redumper-gui MUST be uploaded as series=resolute, never `all`: eframe/
         # egui 0.35 requires rustc 1.92, and the newest VERSIONED toolchain jammy

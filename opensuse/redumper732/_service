@@ -1,0 +1,30 @@
+<services>
+  <!-- OBS pulls EVERYTHING itself; `_service` is the only file committed to OBS.
+       Same shape as every other tool in this lane — see opensuse/README.md.
+
+       1. download_url fetches each recipe file (spec, rpmlintrc) straight from
+          `main` of the packaging repo, so git stays the single source of truth.
+       2. download_files then reads the *generated* spec and downloads the upstream
+          assets named in its Source: URLs (the pinned b729 release zip, LICENSE,
+          README). OBS build roots have no network, so they must exist as package
+          sources before the build starts.
+
+       The services run SERVER-SIDE (no mode= attribute), so a scoped `runservice`
+       token can refresh the package (.github/workflows/obs-trigger.yml). An OBS
+       token can never commit — which is precisely why the recipe has to be fetched
+       by OBS rather than pushed to it.
+
+       Unlike the rolling `redumper`, nothing here ever moves: the build number is
+       pinned in the name. The service exists so the RECIPE can be corrected from
+       git, not so the binary can advance. -->
+  <service name="download_url">
+    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/redumper732/redumper732-rpmlintrc</param>
+    <param name="filename">redumper732-rpmlintrc</param>
+  </service>
+  <service name="download_url">
+    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/redumper732/redumper732.spec</param>
+    <param name="filename">redumper732.spec</param>
+  </service>
+  <!-- upstream assets, taken from the Source: URLs of the spec above -->
+  <service name="download_files"/>
+</services>

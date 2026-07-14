@@ -1,0 +1,40 @@
+Source: redumper732
+Section: utils
+Priority: optional
+Maintainer: gmipf <gmipf64@gmail.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.2
+Homepage: https://github.com/superg/redumper
+Rules-Requires-Root: no
+Vcs-Git: https://github.com/gmipf/packaging-media-preservation.git
+Vcs-Browser: https://github.com/gmipf/packaging-media-preservation
+
+Package: redumper732
+Architecture: amd64
+# No ${shlibs:Depends}: the upstream linux-x64 binary is fully statically
+# linked (dh_shlibdeps finds no shared-library dependencies at all).
+Depends: ${misc:Depends}, libcap2-bin
+Description: redumper b732, the build pinned by MPF
+ redumper is a low-level byte-perfect disc dumper for CD, DVD, HD-DVD and
+ Blu-ray, used by the Redump and No-Intro preservation projects.
+ .
+ This package ships upstream build b732 as /usr/bin/redumper732. It exists so
+ that tools which are version-coupled to a specific redumper build get exactly
+ the build they were tested against, no matter which version the rolling
+ redumper package currently carries. b732 is the build MPF bundles, and the mpf
+ packages point their configuration at it.
+ .
+ The pin exists even while the rolling redumper package happens to carry the
+ same build, as it does today. The rolling package moves: the day b733 is
+ released, an MPF pointed at it would silently dump with a build its upstream
+ never tested, and MPF has no version check to notice.
+ .
+ It installs alongside the rolling redumper package, and alongside redumper729
+ (redumper-gui's pin), without conflicting: the binary is named after the build,
+ so no files overlap. For interactive use prefer the rolling package -- it tracks
+ upstream and carries the redumper(1) manpage. This is a compatibility build, not
+ a replacement.
+ .
+ On install the binary is given the cap_sys_rawio file capability so vendor
+ SCSI passthrough commands work without sudo; drive node access still requires
+ a local desktop seat (uaccess) or membership of the cdrom group.

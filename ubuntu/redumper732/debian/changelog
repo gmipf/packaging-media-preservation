@@ -1,0 +1,19 @@
+redumper732 (732-1) UNRELEASED; urgency=medium
+
+  * Initial package. Pinned-build compatibility package carrying upstream
+    redumper b732 as /usr/bin/redumper732 -- the build MPF's publish-nix.sh
+    bundles. The mpf packages point their configuration at it, so an MPF dump
+    runs the dumper build its upstream actually tested with.
+  * The pin exists even though the rolling redumper package carries the very same
+    build today. That equality is an accident of timing, not something to lean on:
+    the rolling package moves. The day b733 is released, an MPF pointed at the
+    rolling package would silently dump with a build it was never tested against,
+    and MPF has no version check of any kind -- it reads whatever version it finds
+    out of the log and writes it into the submission. When MPF bundles a new
+    build, a new redumper<N> is generated and MPF is repointed at it.
+  * Co-installable with the rolling redumper package and with redumper729
+    (redumper-gui's pin): the build number is in the binary name, so no files
+    overlap. No manpage on purpose -- the rolling package carries redumper(1);
+    this is a compatibility build, not a replacement.
+
+ -- gmipf <gmipf64@gmail.com>  Tue, 14 Jul 2026 03:30:00 +0200

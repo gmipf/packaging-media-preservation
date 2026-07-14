@@ -1,0 +1,16 @@
+# rpmlintrc for the media-preservation redumper732 package (personal OBS home:
+# project). redumper732 ships a permissions.d profile that grants cap_sys_rawio
+# to /usr/bin/redumper732 so vendor SCSI passthrough (Plextor read method D8,
+# Kreon commands, ...) works without sudo — the exact same capability the
+# rolling redumper package carries, and the same one the Fedora/COPR (%caps) and
+# Ubuntu/PPA (postinst setcap) lanes already ship for this pinned build.
+#
+# openSUSE's rpmlint flags any non-whitelisted permissions.d profile with
+# `permissions-file-unauthorized` (Badness 10). That code is a BlockedFilter in
+# opensuse.toml: it cannot, by design, be silenced with addFilter (that would
+# defeat the security review). Submitting to openSUSE Factory would instead
+# require the profile to be reviewed and whitelisted in the central
+# `permissions` package. For this personal repo the capability is intentional
+# and packager-reviewed, so drop its badness to 0 to keep the rpmlint score
+# clean.
+setBadness("permissions-file-unauthorized", 0)

@@ -114,7 +114,7 @@ Requires:       openssl-libs
 Requires:       zlib
 %endif
 Requires:       jq
-Recommends:     redumper
+Recommends:     redumper732
 Recommends:     aaru5
 Recommends:     discimagecreator
 
@@ -154,7 +154,7 @@ Requires:       zlib
 Requires:       jq
 Requires:       hicolor-icon-theme
 Requires:       desktop-file-utils
-Recommends:     redumper
+Recommends:     redumper732
 Recommends:     aaru5
 Recommends:     discimagecreator
 # Avalonia 11.x ships only the X11 backend; on Wayland sessions the GUI runs
@@ -284,7 +284,7 @@ config_dir="\${XDG_CONFIG_HOME:-\$HOME/.config}/mpf"
 config="\$config_dir/config.json"
 aaru_p=aaru5
 dic_p=DiscImageCreator.out
-red_p=redumper
+red_p=redumper732
 # Without a HOME there is no sane home-relative output directory; leave the
 # key alone rather than rewriting it to a root-owned "/ISO".
 out_p=""
@@ -433,6 +433,13 @@ install -m 0644 %{SOURCE6} %{buildroot}%{_mandir}/man1/mpf-gui.1
 %{_datadir}/icons/hicolor/*/apps/mpf.png
 
 %changelog
+* Tue Jul 14 2026 gmipf <gmipf64@gmail.com> - 3.8.3~20260713172204.8602d4dd-0
+- Point MPF at the PINNED redumper732 instead of the rolling `redumper`, in both
+  the metadata and the config the wrapper seeds. b732 is the build MPF's
+  publish-nix.sh bundles. The pin exists even though the rolling package carries
+  the same build today: it moves, MPF has no version check, and the day b733 lands
+  an MPF pointed at the rolling package would silently dump with an untested build.
+
 * Mon Jul 13 2026 gmipf <gmipf64@gmail.com> - 3.8.3~20260713172204.8602d4dd-0
 - Automated rolling-snapshot sync to upstream MPF commit 8602d4dd (published 20260713172204 UTC).
 

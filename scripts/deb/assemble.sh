@@ -71,11 +71,16 @@ fi
 
 echo ":: fetching upstream $TOOL $TAG (version $VER)"
 case "$TOOL" in
-  redumper|redumper729)
-    # Same upstream artifact for both, only at a different tag: the rolling
-    # package follows .upstream-tag as the watcher bumps it, the pinned one has
-    # b729 written there for good. The binary is installed under the package's
-    # own name so the two never collide on /usr/bin.
+  redumper|redumper[0-9]*)
+    # The rolling package and EVERY pinned build (redumper729, redumper732, ...)
+    # are the same upstream artifact at a different tag: the rolling one follows
+    # .upstream-tag as the watcher bumps it, a pinned one has its build written
+    # there for good. The binary is installed under the PACKAGE's own name, so it
+    # is /usr/bin/redumper732 and never collides with /usr/bin/redumper.
+    #
+    # Matched by PATTERN, not by a list of names, on purpose: a new pin appears
+    # whenever a consumer bundles a new build, and an enumeration is a thing you
+    # have to remember to extend. This one you do not.
     mkdir -p "$SRC/bin"
     curl -fsSL -o "$WORK/up.zip" \
       "https://github.com/superg/redumper/releases/download/${TAG}/redumper-${TAG}-linux-x64.zip"

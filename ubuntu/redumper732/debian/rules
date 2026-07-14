@@ -1,0 +1,27 @@
+#!/usr/bin/make -f
+#
+# redumper732 — repackage of upstream's statically-linked linux-x64 binary at a
+# PINNED build (b732), installed as /usr/bin/redumper732.
+#
+# Nothing is compiled, and unlike the rolling redumper package nothing is
+# documented either: this carries no manpage on purpose. It is a compatibility
+# build for consumers that pinned it, not a tool to reach for on the command
+# line -- the rolling redumper package is, and it is the one that ships
+# redumper(1). Both install at once; the binary name keeps them apart.
+
+%:
+	dh $@
+
+# The upstream binary is prebuilt and statically linked — there is nothing to
+# configure, compile or test.
+override_dh_auto_build:
+
+override_dh_auto_test:
+
+# Do not touch the upstream release binary: it is statically linked and shipped
+# as-is by upstream. Stripping / dwz would only risk corrupting it and would
+# make the packaged binary differ from the published release — which is the one
+# thing a pinned package must never do.
+override_dh_strip:
+
+override_dh_dwz:
