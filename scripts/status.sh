@@ -83,6 +83,37 @@ else
     printf '\n  kein Versions-Drift (alle Serien auf derselben Upstream-Version)\n'
 fi
 
+# --- silent failure #5: die QUELLE ist ueberall da, das BINARY fehlt -----------
+# Der Drift-Check oben liest getPublishedSources. Faellt aber nicht der Upload aus,
+# sondern der BUILD, dann ist die Quelle auf ALLEN Serien "Published" -- identische
+# Versionen, kein Drift, gruen. Nur ein Binary fehlt, und niemand erfaehrt es.
+#
+# Genau so passiert (2026-07-14, gemessen): aaru 6.0.0~alpha.19-4 stand auf allen
+# drei Serien als Published, der jammy-BUILD war gescheitert. Jede andere Anzeige
+# blieb gruen. 74 Builds, 2 rot -- beide OHNE LOG.
+#
+# Und das Fehlen des Logs IST die Diagnose: kein Log + keine Startzeit = Launchpad
+# hat den Job nie ausgeliefert (Dispatcher), das Rezept war nie im Spiel. Solche
+# Builds heilt ein Retry. Ein Fehlschlag MIT Log ist das Gegenteil -- da liegt es
+# an uns, und ein Retry wiederholt nur den Fehler.
+BUILDS=$(curl -fsSL "${LP_API}?ws.op=getBuildRecords&ws.size=300" 2>/dev/null) \
+    || BUILDS='{"entries":[]}'
+
+BAD=$(echo "$BUILDS" | jq -r '
+    .entries[]
+    | select(.buildstate == "Failed to build" or .buildstate == "Chroot problem"
+             or .buildstate == "Failed to upload")
+    | "  \(.title)\t" + (if .build_log_url == null
+                         then "KEIN LOG -> Launchpad-Dispatch, Retry hilft"
+                         else "mit Log -> unser Rezept: " + .build_log_url end)')
+
+if [ -n "$BAD" ]; then
+    printf '\n  \033[31mFEHLGESCHLAGENE BUILDS (die Quelle sagt dazu nichts):\033[0m\n%s\n' "$BAD"
+    echo "  -> Dispatch-Aussetzer nachholen: python3 .tmp/lp-retry-build.py [<tool>]"
+else
+    printf '  keine fehlgeschlagenen Builds\n'
+fi
+
 hr "OBS — ${OBS_PROJECT}"
 osc results "$OBS_PROJECT" 2>&1 | sed -n '1,12p' | sed 's/^/  /'
 
