@@ -20,7 +20,7 @@
 Nothing in this lane can be published until there is an account on the
 [openSUSE Build Service](https://build.opensuse.org/) (OBS) and a home project
 with build targets. This is the OBS equivalent of "create the COPR project" /
-"create the Launchpad PPA" — you only do it once.
+"create the COPR project" — you only do it once.
 
 Everything in `opensuse/` is already validated locally without an account (all
 five specs build in a Leap 16.0 chroot, see [README](README.md)), so this is the

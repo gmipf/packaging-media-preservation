@@ -100,12 +100,11 @@ jobs:
           sed -i "/^%changelog/r $CL_ENTRY" "$SPEC"
           rm -f "$CL_ENTRY"
 
-          # --- Ubuntu PPA lane: advance the ubuntu recipe in lockstep. Debian
-          # tilde version mirrors the RPM's Version = %{aaruver}~%{aaruprerel}
-          # (e.g. 6.0.0~alpha.19); the marker keeps the full upstream tag. ---
+          # --- Debian/Ubuntu recipe: advance it in lockstep. It is built on OBS,
+          # from the same upstream Source: URLs the spec names. ---
           UB=ubuntu/aaru
           echo "$UPSTREAM_TAG" > "$UB/.upstream-tag"
-          bash scripts/deb/ppa-bump-changelog.sh "$UB" "${AARUVER}~${PRERELEASE}" \
+          bash scripts/deb/bump-changelog.sh "$UB" "${AARUVER}~${PRERELEASE}" \
             "Automated sync to upstream Aaru ${UPSTREAM_TAG}."
 
           # --- openSUSE/OBS lane: advance the recipe in lockstep as well, so all
@@ -117,6 +116,23 @@ jobs:
             "Automated sync to upstream Aaru ${UPSTREAM_TAG}." \
             aaruprerel="$PRERELEASE"
 
+          # The .dsc carries the version AND the upstream archive names
+
+          # (redumper-b732-... becomes -b733-...). Regenerate it here or OBS
+
+          # keeps building the previous release, green and wrong.
+
+          # rpmspec: gen-deb.sh reads the upstream Source: URLs out of the spec,
+          # so the .dsc names exactly what download_files fetches.
+          command -v rpmspec >/dev/null || sudo apt-get install -y -qq rpm >/dev/null
+          bash scripts/obs/gen-deb.sh aaru
+
+          git add opensuse/aaru/aaru.dsc \
+
+                  opensuse/aaru/debian.tar.gz \
+
+                  opensuse/aaru/_service
+
           git add "$SPEC" "$MARKER" "$UB/.upstream-tag" "$UB/debian/changelog" \
                   opensuse/aaru/aaru.spec opensuse/aaru/.upstream-tag
           if git diff --cached --quiet; then
@@ -124,7 +140,7 @@ jobs:
             exit 0
           fi
 
-          # Signal the ppa job (below) that there is a new revision to upload.
+          # Signal the obs job (below) that there is a new revision to build.
           echo "changed=true" >> "$GITHUB_OUTPUT"
 
           git config user.name "rolling-watcher"
@@ -145,7 +161,7 @@ jobs:
           # unpublished until the next scheduled run -- silently, because a red
           # watcher looks like every other red run nobody reads. Rebase onto the
           # new tip and retry instead. Same shape as the dput retry in
-          # ppa-upload.yml: try, fix the cause, try again, and fail LOUDLY only
+          # obs-trigger.yml: try, fix the cause, try again, and fail LOUDLY only
           # if it still will not go.
           pushed=
           for attempt in 1 2 3; do
@@ -161,16 +177,6 @@ jobs:
           git commit -q -m "trigger: aaru build (branch landing README)"
           git push -f origin trigger-tmp:build-aaru
 
-  # Upload the same revision to the Launchpad PPA (noble + jammy). Runs only
-  # when the sync above committed a change; skips gracefully if the signing
-  # secret is unset. See .github/workflows/ppa-upload.yml.
-  ppa:
-    needs: watch
-    if: needs.watch.outputs.changed == 'true'
-    uses: ./.github/workflows/ppa-upload.yml
-    with:
-      tool: aaru
-    secrets: inherit
 
   # Tell OBS to re-pull the recipe from main and rebuild what actually changed.
   # OBS fetches the recipe itself, so there is nothing to upload — this only asks

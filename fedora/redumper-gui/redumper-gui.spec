@@ -27,12 +27,12 @@ URL:            https://github.com/Deterous/Redumper-GUI
 # Source0 is a REPACKAGED tarball, not the upstream release archive:
 # upstream's release archive ships a prebuilt binary (glibc 2.39, so it is
 # unusable on EL8/EL9 and jammy), and Rust needs its dependency crates
-# present at build time while the COPR chroot and the Launchpad builders
+# present at build time while no build root -- COPR's or OBS's --
 # have no network. scripts/rust-vendor-tarball.sh therefore takes the
 # upstream git tag, pins a Cargo.lock, vendors the crates filtered to
 # x86_64-linux (cargo-vendor-filterer, which drops the windows-* trees:
 # 546 MB -> 178 MB) and publishes the result as a release asset on this
-# packaging repo. Every lane -- COPR, OBS and the PPA -- consumes that one
+# packaging repo. Both lanes -- COPR and OBS -- consume that one
 # file, so all three build from byte-identical sources.
 Source0:        https://github.com/gmipf/packaging-media-preservation/releases/download/%{name}-%{version}/%{name}-%{version}-vendored.tar.xz
 Source1:        redumper-gui.desktop
@@ -139,7 +139,7 @@ rules out EL8, EL9 and Ubuntu 22.04.
 %build
 # Crates come from the vendored tree in the tarball (.cargo/config.toml
 # redirects crates-io at it), so the build must never reach for the network:
-# neither the COPR chroot nor the Launchpad builders have any.
+# no build root has any: not COPR's chroot, not OBS's.
 export CARGO_NET_OFFLINE=true
 cargo build --release --offline
 
@@ -276,7 +276,7 @@ done
   left out EL8, EL9 and Ubuntu 22.04. Building from source covers every target
   instead -- Rust 1.85+ (edition 2024) is available on all of them.
 - Crates are vendored into the source tarball and the build runs --offline,
-  because neither the COPR chroot nor the Launchpad build farm has network.
+  because no build root has network: not COPR's chroot, not OBS's.
 - Does not bundle redumper. Upstream's archives ship a pinned b729 next to the
   GUI executable and the GUI runs its sibling by that name; a package cannot
   add a second /usr/bin/redumper, so the pinned build is packaged separately as

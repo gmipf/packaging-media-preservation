@@ -1,157 +1,96 @@
-# Ubuntu packaging lane (Launchpad PPA)
+# Debian-format packaging lane (Debian + Ubuntu, built on OBS)
 
-Debian-format packaging for the media-preservation tools, published as an
-**Ubuntu PPA** on [Launchpad](https://launchpad.net/). This is the Ubuntu/Debian
-counterpart to the Fedora/EPEL `fedora/` lane (COPR) and the planned openSUSE
-lane (OBS).
+`ubuntu/<tool>/debian/` holds **one** Debian-format recipe per tool, and it serves
+**every** Debian and Ubuntu target: Debian 12 and 13, Ubuntu 22.04, 24.04 and
+26.04. The directory name predates the Debian targets; the recipes were never
+Ubuntu-specific.
 
-## How a Launchpad PPA build works
+They are built on the [OBS project](https://build.opensuse.org/project/show/home:gmipf:media-preservation),
+alongside the openSUSE RPMs. There is no separate Debian recipe and no separate
+Ubuntu one — a `.deb` built for jammy does not fit bookworm anyway, because the
+ICU runtime carries its soname in the package name (`libicu70` vs `libicu72`), so
+`debian/rules` resolves that dependency from the **build root** at build time
+(`dpkg-query`) instead of from a table of series. Each target gets the one it has.
 
-Unlike COPR (where we upload an SRPM), Launchpad builds the binaries itself:
+## How a build runs
 
-1. **Locally** we build a signed **source package** (`.dsc` + `.orig.tar.*` +
-   `.debian.tar.*` + `_source.changes`) and `dput` it to the PPA.
-2. **Launchpad's build farm** compiles the `.deb` for each enabled series
-   (resolute, noble, jammy) and architecture, then publishes them.
+OBS pulls everything itself; nothing is uploaded.
 
-So no local binary build is strictly required to publish — but we still run a
-local test build first (see below) to catch failures without the slow upload
-round-trip.
+1. `opensuse/<tool>/_service` tells OBS to fetch the spec, the `.dsc`,
+   `debian.tar.gz` and `debian/changelog` from `main` of this repo, and then to
+   download the **upstream** archives named in the spec's `Source:` URLs.
+2. At build time OBS runs `debtransform`, which turns the `.dsc` plus those files
+   into a real `3.0 (quilt)` source package.
+3. `dpkg-buildpackage` builds it in the target's build root.
 
-> ⚠️ **Launchpad needs one upload per series** — unlike COPR and OBS, where a
-> single build fans out to every enabled target. So adding a series only covers
-> the tools that are uploaded *afterwards*; every tool not re-uploaded stays
-> silently absent from it. When a series is added, re-upload **all five** tools
-> and verify against `getPublishedSources`, not against the tool you just
-> touched. (This bit us: `resolute` was added while bumping aaru/aaru5/dic, so
-> `redumper` and `mpf` were missing from 26.04 until they were uploaded too.)
+The `.dsc`, `debian.tar.gz` and the deb block of `_service` are **generated** —
+`scripts/obs/gen-deb.sh` — from this recipe and from the spec. Never edit them by
+hand; `scripts/status.sh` fails if they drift.
 
-## Layout
+## Nothing is assembled and nothing is re-hosted
 
-```
-ubuntu/<tool>/
-├── .upstream-tag          # last-seen upstream tag (watcher anchor, mirrors fedora/)
-└── debian/
-    ├── changelog          # base version <upstream>-1, distribution UNRELEASED;
-    │                      #   deb-build.sh rewrites the top line to
-    │                      #   <upstream>-1~<series>1 / <series> per build
-    ├── control            # debhelper-compat 13; Architecture: amd64
-    ├── copyright          # DEP-5 (upstream GPL-3.0-only, debian/* MIT)
-    ├── rules              # dh; no compile — stamps the manpage, skips strip/dwz
-    ├── <tool>.1.in        # handwritten manpage template (@TAG@/@DATE@ stamped at build)
-    ├── <tool>.install     # bin/<tool> -> /usr/bin
-    ├── <tool>.manpages    # installs the stamped manpage
-    ├── <tool>.docs        # README + LICENSE
-    ├── <tool>.postinst    # setcap cap_sys_rawio+ep (parity with the RPM %caps)
-    ├── clean              # generated manpage
-    └── source/format      # 3.0 (quilt)
-```
+An RPM spec lists `Source0:`, `Source1:`, `Source2:` and `rpmbuild` assembles the
+tree in `%prep`. A Debian source package has **one** orig tarball, and the build
+root has no network — which looks like it forces someone to pre-assemble a merged
+tarball and host it somewhere. It does not:
 
-Most tools are **repackages of upstream prebuilt binaries** (the same artifacts
-the RPM specs repackage), so the `.orig` tarball is assembled from the upstream
-release ZIP/tarball rather than a source clone — `debian/rules` compiles
-nothing, it only stamps the manpage. `discimagecreator` is the exception: a real
-source build (meson + three helper makefiles), so its `debian/rules` does
-compile and `dh_strip`/`dh_dwz` run normally (a `-dbgsym` is produced).
+| | RPM spec | `.dsc` |
+|---|---|---|
+| main upstream archive | `Source0:` | `DEBTRANSFORM-TAR:` |
+| the other upstream files | `Source1:`, `Source2:` … | `DEBTRANSFORM-FILES:` |
+| assembling the tree | `%prep` | `debian/rules` |
 
-## Local test build (the `mock` equivalent)
+So `debian/rules` unpacks aaru's source tarball, mpf's CLI and GUI zips and dic's
+three sibling projects — in the build root, from files OBS downloaded straight
+from upstream. The RPM and the `.deb` are built from the same upstream bytes,
+fetched once.
 
-```sh
-scripts/deb-build.sh redumper          # noble (default)
-scripts/deb-build.sh redumper jammy    # 22.04
-```
+Two things about `DEBTRANSFORM-FILES` are not obvious and each costs a red build:
 
-This builds a clean `mp-deb-builder:<series>` Podman image (Ubuntu of that
-series + debhelper/devscripts/lintian), fetches the upstream release assets,
-assembles the source package, runs `dpkg-buildpackage` (source + binary,
-unsigned) and `lintian`. Artifacts land in `.deb-out/<tool>-<series>/`
-(gitignored). Needs network, so run it outside the command sandbox.
+* **It must be UPPERCASE in the `.dsc`.** `debtransform` reads its own headers
+  case-insensitively, but obs-build greps for a literal `^DEBTRANSFORM-FILES:` to
+  decide whether to pass `--include-binaries` to `dpkg-source`. Spelled in mixed
+  case the transform still works — and then `dpkg-source` rejects the extra
+  upstream archives as "unrepresentable changes".
+* **`--include-binaries` covers binaries, not text.** redumper's `LICENSE` and
+  `README.md` — which upstream publishes separately, they are not in the release
+  zip — come out as "unexpected upstream changes", so `debian/source/options`
+  keeps them out of the diff. They are build inputs, not modifications.
 
-Expected lintian tags for these repackages (inherent to shipping an upstream
-prebuilt binary, not defects — and Launchpad does not gate uploads on lintian):
-`source-is-missing` (the ELF in the orig tarball), `statically-linked-binary`
-and `unstripped-binary-or-object`. These would block acceptance into the Debian
-archive proper, but a personal PPA takes them — exactly parallel to the RPM lane
-repackaging prebuilt binaries.
-
-## Versioning
-
-Base version in the committed changelog is `<upstream>-1` (e.g. `726-1`). Per
-series the build appends `~<series>1`, so `726-1~resolute1`, `726-1~noble1` and
-`726-1~jammy1`. The `~` sorts *before* the plain version, and `jammy` < `noble` <
-`resolute` alphabetically, so the per-series uploads never collide and always
-order sensibly — the same tilde discipline the RPM lane uses. It also means the
-same upstream version can be uploaded for a newly added series without bumping
-the Debian revision.
-
-## Signed upload to Launchpad
+## Testing before you push
 
 ```sh
-scripts/deb-upload.sh redumper noble             # build, sign, dput
-scripts/deb-upload.sh redumper jammy --dry-run   # build + sign only, verify
+scripts/obs/test-deb.sh debian:13 mpf aaru
+scripts/obs/test-deb.sh ubuntu:24.04 redumper
 ```
 
-This runs the same assembly as the test build, then `dpkg-buildpackage -S -sa`
-(signed **source** package) and `dput` to `ppa:dreunion61/media-preservation`.
-The dedicated passphrase-less packaging key is exported from the host
-`~/.gnupg` to a private 0600 temp file, bind-mounted read-only into the
-builder container and shredded on exit — the key never lives in the image or
-the repo. Needs network + `~/.gnupg`, so run it outside the command sandbox.
-Launchpad then builds the `.deb` for each series on its own farm.
+This replays exactly what OBS does — download the spec's `Source:` URLs, take the
+generated files from git, run `debtransform`, then `dpkg-buildpackage` — in the
+target's own container.
 
-## Automated uploads (watchers)
+It deliberately builds **without** `-b`, because obs-build runs
+`dpkg-buildpackage -us -uc`: that builds the source package too, and every mistake
+listed above lives in `dpkg-source -b`. A gate milder than the build farm is not
+a gate.
 
-The same per-tool watchers that drive the Fedora/COPR lane
-(`.github/workflows/watch-<tool>.yml`) also drive the PPA. On a new upstream
-revision a watcher bumps both lanes in one commit (the fedora spec **and**
-`ubuntu/<tool>/debian/changelog` + `.upstream-tag`), then a gated `ppa` job
-calls the reusable `ppa-upload.yml` workflow, which builds the signed source
-package for resolute + noble + jammy and `dput`s them — no `build-<tool>` trigger
-branch needed (Launchpad rejects duplicate versions, so there is nothing to
-isolate). The workflow also runs via *Run workflow* with a `tool` and an optional
-`series`, which is the route for a packaging-only rebuild or a series backfill.
+The container cannot tell you whether the packaged tool **runs**: a binary
+carrying `cap_sys_rawio` cannot even be `exec`'d there, because `CAP_SYS_RAWIO` is
+absent from the container's bounding set and the kernel refuses the `execve`
+outright. That is a property of the container, not a bug in the package — see the
+`drive-access-verification` skill, and use a `test-*` VM.
 
-`ppa-upload.yml` signs with the dedicated passphrase-less packaging key, stored
-as the `PPA_SIGNING_KEY` Actions secret (an ASCII-armored secret key). If the
-secret is unset the `ppa` job skips gracefully. Set it once (run it yourself so
-the key only ever goes to GitHub, never through a third party):
+## Per-tool notes
 
-```sh
-gpg --export-secret-keys --armor F95E3A17D02ED2D53C54DA78E2E956CC4B250741 \
-  | gh secret set PPA_SIGNING_KEY --repo gmipf/packaging-media-preservation
-```
+| Tool | Upstream inputs | Targets |
+|---|---|---|
+| `redumper`, `redumper729`, `redumper732` | release zip + `LICENSE` + `README.md` | all |
+| `aaru5` | one release tarball | all |
+| `aaru` | binary tarball + source tarball (icons, `.desktop`, MIME xml) | all |
+| `discimagecreator` | DIC + EccEdc + DVDAuth + unscrambler, built from source | all |
+| `mpf` | three release zips (Check, CLI, Avalonia) | all |
+| `redumper-gui` | vendored source tarball (crates travel with the source: no build root has network) | **Ubuntu 26.04 only** |
 
-`aaru5` is stable/manually pinned (no watcher), so its PPA uploads stay manual
-via `deb-upload.sh`.
-
-## Packaged tools
-
-| Tool             | Kind                              | Notes |
-|------------------|-----------------------------------|-------|
-| redumper         | static binary                     | no shlib deps; stamped manpage |
-| aaru5            | NativeAOT binary + sidecar `.so`  | `${shlibs:Depends}` from the ELF; static manpage; udev |
-| aaru             | self-contained .NET (single-file) | two tarballs merged; manpage generated from `--help`; udev; icons/MIME/desktop |
-| mpf              | self-contained .NET × 3           | `mpf` meta + `mpf-check`/`mpf-cli`/`mpf-gui`; generated `/usr/bin` wrappers |
-| discimagecreator | **source build** (meson)          | four archive tarballs merged; `${shlibs:Depends}` from the ELF; helper makefiles; static manpage; udev |
-
-`discimagecreator` is the only source build: like `fedora/discimagecreator` it
-compiles the main dumper via meson against the system libarchive/OpenSSL/zlib
-(so it links OpenSSL 3, sidestepping the EOL `libcrypto.so.1.1` the upstream
-prebuilt Linux binary needs) plus three helper tools via their own makefiles.
-Its `debian/rules` ports the RPM's `%prep` source fix-ups (they run at
-binary-build time, keeping the source package quilt-patch-free).
-
-### Self-contained .NET runtime dependencies
-
-The self-contained .NET tools (`aaru`, `mpf`) load their runtime libraries by
-`dlopen` at run time, so `dh_shlibdeps` cannot see them — they are declared by
-hand (parity with the RPM `Requires`). The ICU runtime package carries its
-soname in its *name* (`libicu78` on resolute, `libicu74` on noble, `libicu70` on
-jammy), so it is resolved per-series at build via a `${dep:icu}` substvar in
-`override_dh_gencontrol` (from what `libicu-dev` pulled in). That substvar is
-what makes a build **series-bound**: a noble package hard-depends on `libicu74`,
-which 26.04 does not ship, so it is not merely suboptimal there but
-uninstallable. Every new series needs its own build. The others
-(`libkrb5-3`, `libssl3`, `zlib1g`, `libunwind8`) have stable names. The shared
-builder image carries the matching `-dev` packages so the prebuilt binary can
-run at build time (for `aaru`'s `--help` manpage generation).
+`redumper-gui` needs rustc ≥ 1.92 (eframe/egui). Debian 13 ships 1.85, Debian 12
+ships 1.63, and Ubuntu 22.04/24.04 top out at 1.91. Only 26.04 clears the floor —
+that is a floor, not an oversight, and it is why the tool is build-enabled for
+exactly one repository in its OBS package meta.

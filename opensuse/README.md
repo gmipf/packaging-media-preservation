@@ -3,7 +3,7 @@
 RPM packaging for the media-preservation tools, published on the
 **[openSUSE Build Service](https://build.opensuse.org/)** (OBS). This is the
 openSUSE counterpart to the Fedora/EPEL `fedora/` lane (COPR) and the Ubuntu
-`ubuntu/` lane (Launchpad PPA).
+`ubuntu/` lane (Debian-format recipes, also built here).
 
 > **Status: LIVE on OBS.** All seven packages are published from
 > **[`home:gmipf:media-preservation`](https://build.opensuse.org/project/show/home:gmipf:media-preservation)**
@@ -124,7 +124,7 @@ make it a non-issue here:
   `setBadness` is honoured where `addFilter` is blocked.
 
 Submitting any of these to **openSUSE Factory** (not the plan — this is a
-personal repo, the COPR/PPA equivalent) would instead require the profile to be
+personal repo, the COPR equivalent) would instead require the profile to be
 reviewed and whitelisted in the central `permissions` package. A separate
 cosmetic `permissions-missing-verifyscript` warning is a stale rpmlint check
 (it greps the verifyscript for `/chkstat` only, not the new `permctl`); our

@@ -1,9 +1,9 @@
 #!/bin/bash
 #
-# ppa-bump-changelog.sh <recipe-dir> <debian-upstream-version> <message>
+# bump-changelog.sh <recipe-dir> <debian-upstream-version> <message>
 #
 # Prepend a fresh UNRELEASED changelog stanza to <recipe-dir>/debian/changelog so
-# the next signed PPA upload builds <version>-1~<series>1. Pure bash (no dch, so
+# OBS builds <version>-1 for every Debian and Ubuntu target. Pure bash (no dch, so
 # it needs nothing beyond coreutils) but produces the exact stanza format dch
 # would: the assemble.sh per-series rewrite keys off "(<version>-1) UNRELEASED".
 #

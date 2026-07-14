@@ -9,14 +9,14 @@
 #
 #   * COPR's mock chroot has no network at all (enable_net does not help --
 #     cargo/npm/pip all fail there),
-#   * the Launchpad build farm has no network,
+#   * no OBS build root has network either,
 #   * OBS source services can download a URL but cannot run cargo.
 #
 # So the crates have to be inside the source archive. Rather than solving that
 # three times with three different mechanisms, we solve it once: this script
 # produces ONE tarball -- upstream source + a pinned Cargo.lock + the vendored
 # crates -- and all three lanes consume the same file by URL. That also means
-# COPR, OBS and the PPA build from byte-identical sources, which is a property
+# COPR and OBS build from byte-identical sources, which is a property
 # worth having on its own.
 #
 # The crates are filtered to x86_64-linux with cargo-vendor-filterer, which
@@ -162,7 +162,7 @@ if [ "$PUBLISH" = "--publish" ]; then
             --title "${TOOL} ${VERSION} (vendored source)" \
             --notes "Vendored source tarball for ${TOOL} ${VERSION}: upstream ${UPSTREAM_REPO} tag ${TAG}, plus a pinned Cargo.lock and its crates vendored (filtered to x86_64-linux).
 
-This is a packaging artifact, not a release of the tool. It exists because neither the COPR chroot nor the Launchpad build farm has network access, so the crates must travel inside the source archive. All three lanes (COPR, OBS, PPA) build from this one file.
+This is a packaging artifact, not a release of the tool. It exists because no build root has network access -- not COPR's chroot and not OBS's -- so the crates must travel inside the source archive. Both lanes build from this one file.
 
 Upstream tarball sha256: \`${UPSTREAM_SHA}\`"
     gh release upload "$REL" "${TARBALL}" --repo "$PKG_REPO" --clobber

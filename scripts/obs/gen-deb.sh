@@ -25,11 +25,11 @@
 # three sibling projects). Measured: dpkg-source accepts the non-debian/ paths and
 # the resulting .deb is byte-for-byte what the pre-assembled orig produced.
 #
-# So the Debian lane needs NO assembled tarball, NO release asset of our own and
-# NO other distro's archive. It briefly took its orig from the Launchpad PPA --
-# convenient, since the PPA assembled one anyway -- and that was wrong: it chained
-# one lane's health to another's, and left us re-hosting 88 MB of MPF binaries
-# several times a day the moment the PPA went away.
+# So the Debian lane needs NO assembled tarball and NO release asset of our own.
+# It briefly took its orig from a Launchpad PPA, because that PPA assembled one
+# anyway -- convenient, and wrong: it chained one lane's health to another's, and
+# would have left us re-hosting 88 MB of MPF binaries several times a day the day
+# that PPA went away. Which it since has. Every lane stands on its own.
 #
 #
 # THE SOURCE LIST IS READ OUT OF THE SPEC, NOT WRITTEN DOWN TWICE

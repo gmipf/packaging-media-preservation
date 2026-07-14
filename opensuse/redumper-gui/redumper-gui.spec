@@ -28,11 +28,11 @@ URL:            https://github.com/Deterous/Redumper-GUI
 # upstream's release archive ships a prebuilt binary (glibc 2.39, so it is
 # unusable on EL8/EL9 and jammy), and Rust needs its dependency crates
 # present at build time while the OBS build root, the COPR chroot and the
-# Launchpad builders all have no network. scripts/rust-vendor-tarball.sh
+# and OBS build roots have no network. scripts/rust-vendor-tarball.sh
 # therefore takes the upstream git tag, pins a Cargo.lock, vendors the crates
 # filtered to x86_64-linux (cargo-vendor-filterer, which drops the windows-*
 # trees: 546 MB -> 178 MB) and publishes the result as a release asset on this
-# packaging repo. Every lane -- COPR, OBS and the PPA -- consumes that one
+# packaging repo. Both lanes -- COPR and OBS -- consume that one
 # file, so all three build from byte-identical sources.
 #
 # Fetched by the _service (download_files) and committed as a package source,
@@ -160,7 +160,7 @@ release binary is compiled on Ubuntu 24.04 and requires glibc 2.39.
 %build
 # Crates come from the vendored tree in the tarball (.cargo/config.toml
 # redirects crates-io at it), so the build must never reach for the network:
-# the OBS build root is hermetic, and neither the COPR chroot nor the Launchpad
+# the OBS build root is hermetic, and so is COPR's chroot -- neither has a
 # builders have any network either.
 export CARGO_NET_OFFLINE=true
 cargo build --release --offline

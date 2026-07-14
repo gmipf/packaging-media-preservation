@@ -64,6 +64,25 @@ EOF
 rc=0
 for tool in "$@"; do
     echo "== $tool  ($IMAGE)"
+
+    # debian.tar.gz is GENERATED from ubuntu/<tool>/debian/. Edit the recipe,
+    # forget to regenerate, and this harness would faithfully test the OLD one and
+    # report green -- which is precisely how a rename that WAS in debian/rules
+    # still came out as "dh_install: cannot find bin/redumper732". Refuse to test
+    # a stale blob rather than lie about it. gen-deb.sh is deterministic, so this
+    # is a byte comparison, not a guess.
+    stale=$(mktemp)
+    tar -C "$REPO/ubuntu/$tool" --sort=name --owner=0 --group=0 --numeric-owner \
+        --mtime=@0 --format=gnu --exclude=debian/changelog -cf - debian \
+      | gzip -n9 > "$stale"
+    if ! cmp -s "$stale" "$REPO/opensuse/$tool/debian.tar.gz"; then
+        rm -f "$stale"
+        echo "   STALE: opensuse/$tool/debian.tar.gz does not match ubuntu/$tool/debian/"
+        echo "   run:   scripts/obs/gen-deb.sh $tool"
+        rc=1; continue
+    fi
+    rm -f "$stale"
+
     d="$WORK/$tool"; mkdir -p "$d/pkg" "$d/out"
 
     # 1. the upstream artefacts, straight from the spec -- what download_files does

@@ -4,8 +4,13 @@ Distribution packaging recipes (RPM specs, Debian rules) for the
 media-preservation tools, published to the
 [`gmipf/media-preservation`](https://copr.fedorainfracloud.org/coprs/gmipf/media-preservation/)
 COPR repository (Fedora / EPEL) and the
-[`ppa:dreunion61/media-preservation`](https://launchpad.net/~dreunion61/+archive/ubuntu/media-preservation)
-Launchpad PPA (Ubuntu).
+[`home:gmipf:media-preservation`](https://build.opensuse.org/project/show/home:gmipf:media-preservation)
+OBS project (openSUSE, Debian, Ubuntu).
+
+**Every lane builds straight from upstream.** Neither depends on the other, and
+neither re-hosts anyone's bytes: an RPM spec names its `Source0:`/`Source1:` URLs
+and assembles the tree in `%prep`; the `.dsc` names the very same URLs
+(`DEBTRANSFORM-TAR` + `DEBTRANSFORM-FILES`) and `debian/rules` does the same work.
 
 **This repo does *not* contain upstream tool source code** — only the recipes
 needed to build the tools into distro packages. Upstream source lives at the
@@ -13,7 +18,7 @@ respective project URLs (see below).
 
 ## Tools
 
-| Tool | Update mode | [Fedora][copr] | [EPEL][copr] | [openSUSE][obs] | [Debian][obs] | [Ubuntu][ppa] |
+| Tool | Update mode | [Fedora][copr] | [EPEL][copr] | [openSUSE][obs] | [Debian][obs] | [Ubuntu][obs] |
 |---|---|---|---|---|---|---|
 | [redumper](https://github.com/superg/redumper) | auto-tracked hourly on new `b<N>` tags (binary repackage) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [MPF suite](https://github.com/SabreTools/MPF) | rolling, auto-tracked hourly (binary repackage); meta-package `mpf` pulls in `mpf-check` (validator), `mpf-cli` (headless orchestrator) and `mpf-gui` (Avalonia desktop UI) | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -25,12 +30,11 @@ respective project URLs (see below).
 
 [copr]: https://copr.fedorainfracloud.org/coprs/gmipf/media-preservation/
 [obs]: https://build.opensuse.org/project/show/home:gmipf:media-preservation
-[ppa]: https://launchpad.net/~dreunion61/+archive/ubuntu/media-preservation
 
-The **Fedora** / **EPEL** column headers link to the COPR project, **openSUSE**
-and **Debian** to the OBS project (Leap 16.0 + Tumbleweed, Debian 12 + 13) and
-**Ubuntu** to the Launchpad PPA (26.04 resolute + 24.04 noble + 22.04 jammy). For
-the currently shipping versions and full install instructions, see those pages.
+**Fedora** / **EPEL** link to the COPR project; **openSUSE**, **Debian** and
+**Ubuntu** all link to the one OBS project (Leap 16.0, Tumbleweed, Debian 12+13,
+Ubuntu 22.04/24.04/26.04 — x86_64). For the versions currently shipping and full
+install instructions, see those pages.
 
 Redumper-GUI is the one gap, and it is not an oversight: eframe/egui needs
 rustc ≥ 1.92, which Debian 13 (1.85), Debian 12 (1.63) and Ubuntu 22.04/24.04
@@ -85,13 +89,15 @@ device on the system, so it is not a safe substitute.
         └── .upstream-tag                   # last seen upstream tag (written by watcher)
 ```
 
-The Ubuntu lane (Launchpad PPA) is live — see [`ubuntu/README.md`](ubuntu/README.md):
+The Debian-format recipes live in `ubuntu/` — see [`ubuntu/README.md`](ubuntu/README.md).
+One recipe serves Debian AND Ubuntu; the directory name predates the Debian targets:
 
 ```
 ubuntu/<tool>/debian/         # debian/control, debian/rules, debian/changelog
 ```
 
-`opensuse/<tool>/` is the OBS lane, and it delivers **both** openSUSE and Debian:
+`opensuse/<tool>/` is the OBS lane, and it delivers openSUSE, Debian **and**
+Ubuntu:
 
 ```
 opensuse/<tool>/
@@ -101,18 +107,26 @@ opensuse/<tool>/
 └── _service                  # tells OBS what to fetch ┘
 ```
 
-The Debian side reuses `ubuntu/<tool>/debian/` unchanged — there is no second
-Debian recipe. OBS assembles the source package at build time from a `.dsc`
-carrying `Debtransform-*` headers, and fetches every input itself, so git stays
-the single source of truth for both halves. The three generated files are checked
-against the recipe by `scripts/status.sh`: drift between them does not fail a
-build, it corrupts one silently.
+The `.deb` side reuses `ubuntu/<tool>/debian/` unchanged — there is no second
+recipe. OBS assembles the Debian source package at build time from the `.dsc`,
+and fetches every input itself, so git stays the single source of truth for both
+halves. The three generated files are checked against the recipe by
+`scripts/status.sh`: drift between them does not fail a build, it corrupts one
+silently.
 
-The `.orig` tarball is taken from the Launchpad PPA, which already stores one
-immutable copy per upstream version. It has to be *assembled* (aaru merges two
-upstream tarballs, mpf three binaries) and no OBS source service can do that —
-OBS can only download. Reusing it costs no storage of our own and guarantees the
-Debian and Ubuntu packages are built from byte-identical upstream payloads.
+**No `.orig` tarball is assembled anywhere, and nothing is re-hosted.** A Debian
+source package takes one orig tarball and the build root has no network, which
+looks like it forces someone to pre-assemble and host a merged archive. It does
+not: `DEBTRANSFORM-TAR` names the first upstream archive and `DEBTRANSFORM-FILES`
+the rest — the `.dsc`'s answer to an RPM spec's `Source1:`/`Source2:` — and
+`debian/rules` unpacks them in the build root exactly as `%prep` does (aaru's
+source tarball, mpf's CLI and GUI zips, dic's three sibling projects). OBS has
+already downloaded those files for the RPM, so the `.rpm` and the `.deb` are built
+from the same upstream bytes, fetched once.
+
+`scripts/obs/test-deb.sh <image> <tool>` replays that chain locally before a push
+— including `dpkg-buildpackage` **without** `-b`, which is what OBS runs. A gate
+milder than the build farm is not a gate.
 
 Each distro folder uses that distro's native tooling conventions — no custom
 abstraction layer on top.
@@ -124,11 +138,11 @@ touches a tool's `fedora/<tool>/` path triggers Packit to fetch sources, build
 the SRPM, and ship a build to COPR project `gmipf/media-preservation`. No
 manual `copr-cli build` needed.
 
-The same per-tool watchers also drive the Ubuntu PPA: on an upstream bump they
-advance `ubuntu/<tool>/debian/changelog` in the same commit, then build and
-`dput` the signed source package (resolute + noble + jammy) to the Launchpad PPA,
-which compiles the `.deb`s on its own build farm. See
-[`ubuntu/README.md`](ubuntu/README.md).
+The same per-tool watchers drive the OBS lane: on an upstream bump they advance
+`ubuntu/<tool>/debian/changelog` and regenerate `opensuse/<tool>/{<tool>.dsc,
+debian.tar.gz,_service}` in the same commit, then ask OBS to re-run its source
+services. Nothing is uploaded — OBS fetches the recipe and the upstream archives
+itself.
 
 Each package is built for `fedora-all-x86_64` and `epel-all-x86_64` — x86_64
 only, since every spec is `ExclusiveArch: x86_64` and the repackaged tools have
@@ -231,11 +245,11 @@ For Tumbleweed, swap `16.0` for `openSUSE_Tumbleweed` in the repo URL.
 
 ### Debian 13 (trixie) and 12 (bookworm)
 
-Built on the same OBS project. There is no PPA for Debian — a PPA builds Ubuntu
-series only, and an Ubuntu `.deb` does not fit Debian anyway, because the ICU
-runtime carries its soname in the package name (`libicu70` on jammy vs `libicu72`
-on bookworm). The dependency is resolved from the build root at build time, so
-each series gets the one it actually has.
+Built on the same OBS project as everything else. One `debian/` recipe serves
+every Debian and Ubuntu release: an Ubuntu `.deb` does not fit Debian, because the
+ICU runtime carries its soname in the package name (`libicu70` on jammy vs
+`libicu72` on bookworm), so the dependency is resolved from the build root at
+build time rather than from a table of series.
 
 ```sh
 . /etc/os-release        # VERSION_ID is 13 on trixie, 12 on bookworm
@@ -254,14 +268,23 @@ Redumper-GUI is not available on Debian: it needs rustc ≥ 1.92 and trixie ship
 
 ### Ubuntu 26.04 (resolute), 24.04 (noble) and 22.04 (jammy)
 
+Same OBS project as Debian and openSUSE — swap the repository name for your
+release (`xUbuntu_26.04`, `xUbuntu_24.04`, `xUbuntu_22.04`):
+
 ```sh
-sudo add-apt-repository ppa:dreunion61/media-preservation
+. /etc/os-release        # VERSION_ID is 26.04, 24.04 or 22.04
+REPO="https://download.opensuse.org/repositories/home:/gmipf:/media-preservation/xUbuntu_${VERSION_ID}"
+
+curl -fsSL "$REPO/Release.key" | sudo gpg --dearmor -o /usr/share/keyrings/media-preservation.gpg
+echo "deb [signed-by=/usr/share/keyrings/media-preservation.gpg] $REPO/ /" \
+  | sudo tee /etc/apt/sources.list.d/media-preservation.list
+
 sudo apt update
 sudo apt install redumper discimagecreator aaru aaru5 mpf
 ```
 
-See [`ubuntu/README.md`](ubuntu/README.md) for how the PPA source packages are
-built and signed.
+`redumper-gui` is available on 26.04 only: eframe/egui needs rustc ≥ 1.92, and
+22.04/24.04 top out at 1.91.
 
 `mpf` is a meta-package; it pulls in `mpf-check` (log validator),
 `mpf-cli` (headless dump orchestrator) and `mpf-gui` (Avalonia desktop

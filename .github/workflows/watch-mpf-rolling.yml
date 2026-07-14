@@ -73,11 +73,10 @@ jobs:
           sed -i "/^%changelog/r $CL_ENTRY" "$SPEC"
           rm -f "$CL_ENTRY"
 
-          # --- Ubuntu PPA lane: advance the ubuntu recipe in lockstep. The
-          # ubuntu marker stays 'rolling' (assemble.sh's download anchor); only
-          # the changelog version bumps, mirroring the RPM tilde snapshot. ---
+          # --- Debian/Ubuntu recipe: advance it in lockstep. It is built on OBS,
+          # from the same upstream Source: URLs the spec names. ---
           UB=ubuntu/mpf
-          bash scripts/deb/ppa-bump-changelog.sh "$UB" "${UPSTREAM_VERSION}~${UPSTREAM_TS}.${UPSTREAM_SHA}" \
+          bash scripts/deb/bump-changelog.sh "$UB" "${UPSTREAM_VERSION}~${UPSTREAM_TS}.${UPSTREAM_SHA}" \
             "Automated rolling-snapshot sync to upstream MPF commit ${UPSTREAM_SHA} (published ${UPSTREAM_TS} UTC)."
 
           # --- openSUSE/OBS lane: advance the recipe in lockstep as well, so all
@@ -90,13 +89,30 @@ jobs:
             "Automated rolling-snapshot sync to upstream MPF commit ${UPSTREAM_SHA} (published ${UPSTREAM_TS} UTC)." \
             mpfver="$UPSTREAM_VERSION" mpfsnap="${UPSTREAM_TS}.${UPSTREAM_SHA}"
 
+          # The .dsc carries the version AND the upstream archive names
+
+          # (redumper-b732-... becomes -b733-...). Regenerate it here or OBS
+
+          # keeps building the previous release, green and wrong.
+
+          # rpmspec: gen-deb.sh reads the upstream Source: URLs out of the spec,
+          # so the .dsc names exactly what download_files fetches.
+          command -v rpmspec >/dev/null || sudo apt-get install -y -qq rpm >/dev/null
+          bash scripts/obs/gen-deb.sh mpf
+
+          git add opensuse/mpf/mpf.dsc \
+
+                  opensuse/mpf/debian.tar.gz \
+
+                  opensuse/mpf/_service
+
           git add "$SPEC" "$MARKER" "$UB/debian/changelog" opensuse/mpf/mpf.spec
           if git diff --cached --quiet; then
             echo "Spec and marker unchanged after rewrite — exiting clean"
             exit 0
           fi
 
-          # Signal the ppa job (below) that there is a new revision to upload.
+          # Signal the obs job (below) that there is a new revision to build.
           echo "changed=true" >> "$GITHUB_OUTPUT"
 
           git config user.name "rolling-watcher"
@@ -117,7 +133,7 @@ jobs:
           # unpublished until the next scheduled run -- silently, because a red
           # watcher looks like every other red run nobody reads. Rebase onto the
           # new tip and retry instead. Same shape as the dput retry in
-          # ppa-upload.yml: try, fix the cause, try again, and fail LOUDLY only
+          # obs-trigger.yml: try, fix the cause, try again, and fail LOUDLY only
           # if it still will not go.
           pushed=
           for attempt in 1 2 3; do
@@ -133,16 +149,6 @@ jobs:
           git commit -q -m "trigger: mpf build (branch landing README)"
           git push -f origin trigger-tmp:build-mpf
 
-  # Upload the same revision to the Launchpad PPA (noble + jammy). Runs only
-  # when the sync above committed a change; skips gracefully if the signing
-  # secret is unset. See .github/workflows/ppa-upload.yml.
-  ppa:
-    needs: watch
-    if: needs.watch.outputs.changed == 'true'
-    uses: ./.github/workflows/ppa-upload.yml
-    with:
-      tool: mpf
-    secrets: inherit
 
   # Tell OBS to re-pull the recipe from main and rebuild what actually changed.
   # OBS fetches the recipe itself, so there is nothing to upload — this only asks

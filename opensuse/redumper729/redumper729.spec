@@ -28,7 +28,7 @@ URL:            https://github.com/superg/redumper
 # artifact the rolling `redumper` package repackages, only at a pinned tag.
 # The binary inside is a single statically linked ELF (clang + libc++ +
 # -static), built by upstream's own CI. Identical artifact to the Fedora/COPR
-# and Ubuntu/PPA lanes.
+# and Debian/Ubuntu lanes.
 #
 # OBS build roots are hermetic (no network), so these URLs are NOT fetched at
 # build time -- the _service (download_files) downloads them by basename and
