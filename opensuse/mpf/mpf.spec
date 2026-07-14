@@ -1,5 +1,5 @@
 %global mpfver         3.8.3
-%global mpfsnap        20260713172204.8602d4dd
+%global mpfsnap        20260714014450.252b3617
 %global rolltag        rolling
 
 %global debug_package      %{nil}
@@ -433,6 +433,9 @@ install -m 0644 %{SOURCE6} %{buildroot}%{_mandir}/man1/mpf-gui.1
 %{_datadir}/icons/hicolor/*/apps/mpf.png
 
 %changelog
+* Tue Jul 14 2026 gmipf <gmipf64@gmail.com> - 3.8.3~20260714014450.252b3617-0
+- Automated rolling-snapshot sync to upstream MPF commit 252b3617 (published 20260714014450 UTC).
+
 * Tue Jul 14 2026 gmipf <gmipf64@gmail.com> - 3.8.3~20260713172204.8602d4dd-0
 - Point MPF at the PINNED redumper732 instead of the rolling `redumper`, in both
   the metadata and the config the wrapper seeds. b732 is the build MPF's

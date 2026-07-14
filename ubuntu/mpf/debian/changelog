@@ -1,3 +1,9 @@
+mpf (3.8.3~20260714014450.252b3617-1) UNRELEASED; urgency=medium
+
+  * Automated rolling-snapshot sync to upstream MPF commit 252b3617 (published 20260714014450 UTC).
+
+ -- gmipf <gmipf64@gmail.com>  Tue, 14 Jul 2026 04:34:44 +0000
+
 mpf (3.8.3~20260713172204.8602d4dd-2) UNRELEASED; urgency=medium
 
   * Point MPF at the PINNED redumper732 instead of the rolling redumper, in both

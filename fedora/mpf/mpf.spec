@@ -1,5 +1,5 @@
 %global mpfver         3.8.3
-%global mpfsnap        20260713172204.8602d4dd
+%global mpfsnap        20260714014450.252b3617
 %global rolltag        rolling
 
 %global debug_package      %{nil}
@@ -17,7 +17,7 @@ Version:        %{mpfver}~%{mpfsnap}
 # lives in the changelog. (Stuck at 5 here from pre-fix manual bumps of
 # the 71dafe3d snapshot — already shipped as -5, so left as-is to avoid
 # a downgrade; the next snapshot resets it.)
-Release:        2%{?dist}
+Release:        1%{?dist}
 Summary:        Media Preservation Frontend suite (mpf-check, mpf-cli, mpf-gui)
 
 License:        MIT
@@ -449,6 +449,10 @@ install -m 0644 %{SOURCE6} %{buildroot}%{_mandir}/man1/mpf-gui.1
 %{_datadir}/icons/hicolor/*/apps/mpf.png
 
 %changelog
+* Tue Jul 14 2026 gmipf <gmipf64@gmail.com> - 3.8.3~20260714014450.252b3617-1
+- Automated rolling-snapshot sync to upstream MPF commit 252b3617
+  (rolling tag, published 20260714014450 UTC); Release reset to 1.
+
 * Tue Jul 14 2026 gmipf <gmipf64@gmail.com> - 3.8.3~20260713172204.8602d4dd-2
 - Point MPF at the PINNED redumper732 instead of the rolling `redumper`, in both
   the metadata (Recommends) and the config the wrapper seeds. b732 is the build
