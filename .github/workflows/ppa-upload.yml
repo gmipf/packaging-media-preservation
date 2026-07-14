@@ -116,6 +116,25 @@ jobs:
           FULLVER=$(dpkg-parsechangelog -l "$RECIPE/debian/changelog" -SVersion)
           if [ "${FULLVER##*-}" = "1" ]; then SRCOPT=-sa; else SRCOPT=-sd; fi
 
+          # A version Launchpad already has is REJECTED -- and the rejection is
+          # invisible: dput reports success, the job goes green, and the new
+          # version simply never appears anywhere. (Acceptance is asynchronous and
+          # a rejected upload shows up in no API at all; the only proof of an
+          # accepted upload is the version turning up as Pending.) That is a
+          # silence worth breaking BEFORE we sign anything: forget the changelog
+          # entry on a packaging-only change and this is exactly what happens.
+          #
+          # The archive is public, so this needs no credential.
+          PUB=$(curl -fsSL "https://api.launchpad.net/1.0/~${LP_OWNER:-dreunion61}/+archive/ubuntu/${LP_PPA:-media-preservation}?ws.op=getPublishedSources&source_name=${TOOL}&exact_match=true" \
+                | jq -r --arg v "$FULLVER" \
+                  '[.entries[] | select(.source_package_version | startswith($v + "~"))] | length' 2>/dev/null || echo 0)
+          if [ "${PUB:-0}" -gt 0 ]; then
+            echo "::error::$TOOL $FULLVER is already in the PPA ($PUB series). Launchpad rejects a"
+            echo "::error::re-upload of a known version, and it does so SILENTLY -- dput would report"
+            echo "::error::success and nothing would change. Add a debian/changelog entry first."
+            exit 1
+          fi
+
           # ppa.launchpad.net's FTP endpoint intermittently answers the second
           # upload of a run with "550 ... internal server error". Retry rather
           # than leave one series behind; `series:` can re-run just one.
