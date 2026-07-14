@@ -7,6 +7,6 @@ Maintainer: gmipf <gmipf64@gmail.com>
 Homepage: https://github.com/SabreTools/MPF
 Standards-Version: 4.6.2
 Build-Depends: debhelper-compat (= 13), libicu-dev, imagemagick, unzip
-Debtransform-Tar: MPF.Check_net10.0_linux-x64_release.zip
-Debtransform-Files: MPF.CLI_net10.0_linux-x64_release.zip MPF.Avalonia_net10.0_linux-x64_release.zip
-Debtransform-Files-Tar: debian.tar.gz
+DEBTRANSFORM-TAR: MPF.Check_net10.0_linux-x64_release.zip
+DEBTRANSFORM-FILES: MPF.CLI_net10.0_linux-x64_release.zip MPF.Avalonia_net10.0_linux-x64_release.zip
+DEBTRANSFORM-FILES-TAR: debian.tar.gz

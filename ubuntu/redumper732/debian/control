@@ -2,7 +2,11 @@ Source: redumper732
 Section: utils
 Priority: optional
 Maintainer: gmipf <gmipf64@gmail.com>
-Build-Depends: debhelper-compat (= 13)
+# unzip: not for debian/rules -- for debtransform. Upstream ships the linux-x64
+# release as a .zip, and OBS turns it into the .orig tarball inside the BUILD ROOT,
+# where the only tools present are the ones named here.
+Build-Depends: debhelper-compat (= 13),
+               unzip
 Standards-Version: 4.6.2
 Homepage: https://github.com/superg/redumper
 Rules-Requires-Root: no

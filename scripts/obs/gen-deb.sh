@@ -59,10 +59,17 @@ set -euo pipefail
 
 REPO=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)
 
-# redumper-gui is absent on purpose: eframe/egui needs rustc >= 1.92, and of our
-# targets only Ubuntu 26.04 clears that (Debian 13 has 1.85, Debian 12 has 1.63,
-# Ubuntu 22.04/24.04 top out at 1.91). Its absence here IS the answer.
-DEB_TOOLS=(redumper redumper729 redumper732 aaru aaru5 discimagecreator mpf)
+# redumper-gui IS generated, but it can only be BUILT on Ubuntu 26.04: eframe/egui
+# needs rustc >= 1.92, and Debian 13 ships 1.85, Debian 12 ships 1.63, Ubuntu
+# 22.04/24.04 top out at 1.91. That is a per-repository `build enable` in its OBS
+# package meta, not an omission here -- generating its .dsc costs nothing and the
+# day a target catches up, only the meta has to change.
+#
+# Its Source0 is a tarball of OUR making (cargo vendor: the build root has no
+# network, so the crates must travel with the source) published on OUR release.
+# That is not a re-host of someone else's bytes -- it is this lane's own build
+# input, and the RPM spec names the very same file.
+DEB_TOOLS=(redumper redumper729 redumper732 aaru aaru5 discimagecreator mpf redumper-gui)
 
 gen_one() {
     local tool=$1
@@ -137,9 +144,16 @@ fields = [
     ('Homepage',               src.get('Homepage', '')),
     ('Standards-Version',      src.get('Standards-Version', '')),
     ('Build-Depends',          src.get('Build-Depends', '')),
-    ('Debtransform-Tar',       main),
-    ('Debtransform-Files',     others),
-    ('Debtransform-Files-Tar', 'debian.tar.gz'),
+    # UPPERCASE, and that is load-bearing. debtransform reads these headers
+    # case-insensitively, but obs-build greps the .dsc for a literal
+    # '^DEBTRANSFORM-FILES:' to decide whether to pass --include-binaries to
+    # dpkg-source. Spell it 'Debtransform-Files:' and the transform still works
+    # -- and then dpkg-source refuses the extra upstream archives with
+    # "cannot represent change ... add it to debian/source/include-binaries".
+    # One header, two readers, only one of them case-blind.
+    ('DEBTRANSFORM-TAR',       main),
+    ('DEBTRANSFORM-FILES',     others),
+    ('DEBTRANSFORM-FILES-TAR', 'debian.tar.gz'),
 ]
 with open(out, 'w') as f:
     for k, v in fields:

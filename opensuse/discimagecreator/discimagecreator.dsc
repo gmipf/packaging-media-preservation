@@ -7,6 +7,6 @@ Maintainer: gmipf <gmipf64@gmail.com>
 Homepage: https://github.com/saramibreak/DiscImageCreator
 Standards-Version: 4.6.2
 Build-Depends: debhelper-compat (= 13), meson, ninja-build, pkg-config, libarchive-dev, libssl-dev, zlib1g-dev
-Debtransform-Tar: DiscImageCreator-efa7d4826f7e48b50d84cdd2a3d03cfb0321cf6b.tar.gz
-Debtransform-Files: EccEdc-20240901.tar.gz DVDAuth-1.4.tar.gz unscrambler-0.5.5.tar.gz
-Debtransform-Files-Tar: debian.tar.gz
+DEBTRANSFORM-TAR: DiscImageCreator-efa7d4826f7e48b50d84cdd2a3d03cfb0321cf6b.tar.gz
+DEBTRANSFORM-FILES: EccEdc-20240901.tar.gz DVDAuth-1.4.tar.gz unscrambler-0.5.5.tar.gz
+DEBTRANSFORM-FILES-TAR: debian.tar.gz

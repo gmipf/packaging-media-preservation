@@ -1,0 +1,11 @@
+# LICENSE and README.md are upstream's, and upstream does NOT put them in the
+# release zip -- it publishes them as separate files, which is why the spec pulls
+# them as Source1:/Source2:. They reach this source tree the same way, through the
+# .dsc's DEBTRANSFORM-FILES, and dpkg-source then sees two files that are not in
+# the .orig tarball and calls them "unexpected upstream changes".
+#
+# For BINARY extras (aaru's source tarball, mpf's CLI/GUI zips) obs-build already
+# solves this: it passes --include-binaries. There is no such flag for text. The
+# documented answer is to keep them out of the diff -- they are build inputs, not
+# modifications to upstream, and debian/redumper.docs installs them from the tree.
+extend-diff-ignore = "^(LICENSE|README\.md)$"

@@ -8,7 +8,10 @@
 #   2. take <tool>.dsc, debian.tar.gz, debian.changelog from git
 #                                                (OBS: the download_url services)
 #   3. run debtransform over that directory      (OBS: the build script does this)
-#   4. dpkg-buildpackage the source package it produced, in the target's container
+#   4. dpkg-buildpackage it in the target's container -- WITHOUT -b, because that
+#      is what obs-build runs (`dpkg-buildpackage -us -uc`). A binary-only build
+#      skips dpkg-source -b, and with it the whole class of errors about extra
+#      files in the tree. A gate milder than the build farm is not a gate.
 #
 # Step 3 is the one worth having: debtransform is where a .dsc that names a source
 # wrongly, or a debian/ that lost a mode bit, turns into a package that is broken
@@ -46,7 +49,7 @@ dpkg-source -x "$dsc" tree >/dev/null 2>&1
 cd tree
 echo "   debian/rules: $(stat -c %A debian/rules)"
 mk-build-deps -i -r -t "apt-get -y -qq --no-install-recommends" debian/control >/dev/null 2>&1
-if dpkg-buildpackage -b -us -uc > /work/log 2>&1; then
+if dpkg-buildpackage -us -uc --source-option=--include-binaries > /work/log 2>&1; then
     echo "   BUILD OK"
     for d in /work/*.deb; do
         printf '     %-34s %s\n' "$(basename "$d")" "$(du -h "$d" | cut -f1)"
