@@ -18,42 +18,68 @@ respective project URLs (see below).
 
 ## Tools
 
-| Tool | Update mode | [Fedora][copr] | [EPEL][copr] | [openSUSE][obs] | [Debian][obs] | [Ubuntu][obs] |
+| Tool | Update mode | [Fedora][copr] | [EPEL][copr] | [openSUSE][obs] | [Ubuntu][obs] | [Debian][obs] |
 |---|---|---|---|---|---|---|
 | [redumper](https://github.com/superg/redumper) | auto-tracked hourly on new `b<N>` tags (binary repackage) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [MPF suite](https://github.com/SabreTools/MPF) | rolling, auto-tracked hourly (binary repackage); meta-package `mpf` pulls in `mpf-check` (validator), `mpf-cli` (headless orchestrator) and `mpf-gui` (Avalonia desktop UI) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [DiscImageCreator suite](https://github.com/saramibreak/DiscImageCreator) | auto-tracked hourly on new master commits (built from source — upstream binary links against EOL OpenSSL 1.1); bundles DIC + EccEdc + DVDAuth + unscrambler in one package | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Aaru](https://github.com/aaru-dps/Aaru) | auto-tracked hourly on new `v6.0.0-alpha.<N>` tags (binary repackage); CLI + Avalonia GUI ship as one binary, launch the GUI via `aaru gui` | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Aaru 5.4.x](https://github.com/aaru-dps/Aaru) (`aaru5`) | version-pinned, no auto-tracking (binary repackage); the stable 5.4 CLI that MPF drives, installs as `/usr/bin/aaru5` alongside the rolling `aaru` v6 | ✅ | ✅ | ✅ | ✅ | ✅ |
-| [Redumper-GUI](https://github.com/Deterous/Redumper-GUI) | release tags, built from source (vendored crates) | ✅ | ✅ | ✅ | ❌ | 26.04 only |
+| [Redumper-GUI](https://github.com/Deterous/Redumper-GUI) | release tags, built from source (vendored crates) | ✅ | ✅ | ✅ | 26.04 only | ❌ |
 | `redumper729` / `redumper732` | version pins, no auto-tracking: the redumper build that Redumper-GUI (729) and MPF (732) bundle. Install one only if you use that frontend — the rolling `redumper` is what you want otherwise. They coexist, each installing as `/usr/bin/redumper<build>` | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 [copr]: https://copr.fedorainfracloud.org/coprs/gmipf/media-preservation/
 [obs]: https://build.opensuse.org/project/show/home:gmipf:media-preservation
 
-**Fedora** / **EPEL** link to the COPR project; **openSUSE**, **Debian** and
-**Ubuntu** all link to the one OBS project (Leap 16.0, Tumbleweed, Debian 12+13,
-Ubuntu 22.04/24.04/26.04 — x86_64). For the versions currently shipping and full
-install instructions, see those pages.
+**Fedora** / **EPEL** link to the COPR project; **openSUSE**, **Ubuntu** and
+**Debian** all link to the one OBS project (Leap 16.0, Tumbleweed,
+Ubuntu 22.04/24.04/26.04, Debian 12+13 — x86_64). For the versions currently
+shipping and full install instructions, see those pages.
 
 Redumper-GUI is the one gap, and it is not an oversight: eframe/egui needs
-rustc ≥ 1.92, which Debian 13 (1.85), Debian 12 (1.63) and Ubuntu 22.04/24.04
-(≤ 1.91) do not have. Only Ubuntu 26.04 clears the floor.
+rustc ≥ 1.92, which Ubuntu 22.04/24.04 (≤ 1.91), Debian 13 (1.85) and Debian 12
+(1.63) do not have. Only Ubuntu 26.04 clears the floor.
 
 ## Drive access
 
-`cap_sys_rawio` is preset on the dumper binaries, so vendor SCSI passthrough
-commands (Plextor `0xD8`, etc.) work without `sudo`.
+**Verified on every lane** (2026-07-14, real hardware passed through to a clean
+VM per distribution: a Plextor PX-760A USB optical drive and a NEC USB floppy).
+A plain desktop user in **no** drive group — not `cdrom`, not `floppy`, not
+`disk`, not `plugdev` — dumped both, with `sudo` never invoked. Two independent
+mechanisms carry that, and each is delivered differently per distribution:
 
-Logged in at a **local desktop seat** you also need **no group membership and no
-root** to read the drives: systemd-logind grants a `uaccess` ACL to the device
-node automatically — for optical drives (`/dev/sr*`) via systemd's own rule, and
-for USB or legacy floppy drives via a udev rule these packages ship.
+| | what it grants | Fedora / EPEL | openSUSE | Ubuntu / Debian |
+|---|---|---|---|---|
+| `uaccess` ACL on the device node | opening and reading the drive | udev rule | udev rule | udev rule |
+| `cap_sys_rawio` on the binary | vendor SCSI commands (Plextor `0xD8` …) | `%caps` in the spec | permissions framework (`permctl`) | `setcap` in the `postinst` |
+
+The ACL is granted by systemd-logind to whoever holds the **active local seat** —
+for optical drives (`/dev/sr*`) via systemd's own rule, and for USB or legacy
+floppy drives via a udev rule these packages ship. It appears the moment the
+package is installed; the drive does not need to be re-plugged.
+
+The capability sits on the **dumping tools** — `redumper`, `redumper729`,
+`redumper732`, `aaru`, `aaru5` and DiscImageCreator — and deliberately **not** on
+any GUI (`mpf-gui`, `redumper-gui`) or on the MPF frontends, which orchestrate
+those tools rather than talk to a drive. A process holding file capabilities is
+non-dumpable, and the desktop portal service then refuses to authorise it: giving
+a GUI `cap_sys_rawio` breaks every file dialog it opens.
 
 Only headless / SSH / cron sessions, which have no seat, need more. For optical
 drives, add yourself to the `cdrom` group. A headless floppy dump needs root: the
 floppy node stays `root:disk`, and the `disk` group would expose every block
 device on the system, so it is not a safe substitute.
+
+Two things that look like permission errors and are not:
+
+- **The desktop may have auto-mounted the medium** (GNOME does, KDE does not) —
+  the dumper then cannot take its exclusive lock. Release it without root:
+  `udisksctl unmount -b /dev/sr1` (or the floppy's node). Aaru reports this as
+  `Could not open device, error EncodingUnknown`, which names everything except
+  the cause.
+- **Aaru asks a GDPR consent question on its very first run.** Until it is
+  answered once, `aaru media dump` stops there. Run `aaru configure` in a
+  terminal, then dump.
 
 ## Layout
 
@@ -243,10 +269,30 @@ sudo zypper install redumper discimagecreator aaru aaru5 mpf
 
 For Tumbleweed, swap `16.0` for `openSUSE_Tumbleweed` in the repo URL.
 
+### Ubuntu 26.04 (resolute), 24.04 (noble) and 22.04 (jammy)
+
+Same OBS project as openSUSE and Debian — swap the repository name for your
+release (`xUbuntu_26.04`, `xUbuntu_24.04`, `xUbuntu_22.04`):
+
+```sh
+. /etc/os-release        # VERSION_ID is 26.04, 24.04 or 22.04
+REPO="https://download.opensuse.org/repositories/home:/gmipf:/media-preservation/xUbuntu_${VERSION_ID}"
+
+curl -fsSL "$REPO/Release.key" | sudo gpg --dearmor -o /usr/share/keyrings/media-preservation.gpg
+echo "deb [signed-by=/usr/share/keyrings/media-preservation.gpg] $REPO/ /" \
+  | sudo tee /etc/apt/sources.list.d/media-preservation.list
+
+sudo apt update
+sudo apt install redumper discimagecreator aaru aaru5 mpf
+```
+
+`redumper-gui` is available on 26.04 only: eframe/egui needs rustc ≥ 1.92, and
+22.04/24.04 top out at 1.91.
+
 ### Debian 13 (trixie) and 12 (bookworm)
 
 Built on the same OBS project as everything else. One `debian/` recipe serves
-every Debian and Ubuntu release: an Ubuntu `.deb` does not fit Debian, because the
+every Ubuntu and Debian release: an Ubuntu `.deb` does not fit Debian, because the
 ICU runtime carries its soname in the package name (`libicu70` on jammy vs
 `libicu72` on bookworm), so the dependency is resolved from the build root at
 build time rather than from a table of series.
@@ -266,26 +312,6 @@ sudo apt install redumper discimagecreator aaru aaru5 mpf
 Redumper-GUI is not available on Debian: it needs rustc ≥ 1.92 and trixie ships
 1.85.
 
-### Ubuntu 26.04 (resolute), 24.04 (noble) and 22.04 (jammy)
-
-Same OBS project as Debian and openSUSE — swap the repository name for your
-release (`xUbuntu_26.04`, `xUbuntu_24.04`, `xUbuntu_22.04`):
-
-```sh
-. /etc/os-release        # VERSION_ID is 26.04, 24.04 or 22.04
-REPO="https://download.opensuse.org/repositories/home:/gmipf:/media-preservation/xUbuntu_${VERSION_ID}"
-
-curl -fsSL "$REPO/Release.key" | sudo gpg --dearmor -o /usr/share/keyrings/media-preservation.gpg
-echo "deb [signed-by=/usr/share/keyrings/media-preservation.gpg] $REPO/ /" \
-  | sudo tee /etc/apt/sources.list.d/media-preservation.list
-
-sudo apt update
-sudo apt install redumper discimagecreator aaru aaru5 mpf
-```
-
-`redumper-gui` is available on 26.04 only: eframe/egui needs rustc ≥ 1.92, and
-22.04/24.04 top out at 1.91.
-
 `mpf` is a meta-package; it pulls in `mpf-check` (log validator),
 `mpf-cli` (headless dump orchestrator) and `mpf-gui` (Avalonia desktop
 frontend). Install the individual subpackages if you only need part of
@@ -296,18 +322,15 @@ the suite (`sudo dnf install mpf-check`, etc.). Launch the GUI via
 the GUI via `aaru gui` or via the `Aaru` desktop entry. `redumper` and
 `discimagecreator` are CLI-only.
 
-`cap_sys_rawio` is preset on the dumper binaries (redumper, discimagecreator,
-aaru, mpf-check, mpf-cli, mpf-gui) so vendor SCSI passthrough commands work
-without sudo. Logged in at a local desktop seat you also need **no group
-membership and no root** to read the drives themselves: systemd-logind grants a
-`uaccess` ACL to the device node automatically — for optical drives (`/dev/sr*`)
-via systemd's own rule, and for USB or legacy floppy drives via a udev rule
-these packages ship. Only headless / SSH / cron sessions, which have no seat,
-need more: the `cdrom` group for optical drives, or root for floppies (the
-floppy node stays `root:disk`; the `disk` group would expose every block device
-and is not a safe substitute). See the
-[COPR project page](https://copr.fedorainfracloud.org/coprs/gmipf/media-preservation/)
-for details.
+`cap_sys_rawio` is preset on the dumping tools (`redumper`, `redumper729`,
+`redumper732`, `aaru`, `aaru5`, DiscImageCreator) so vendor SCSI passthrough
+commands work without sudo — and deliberately **not** on the GUIs or the MPF
+frontends, which drive those tools rather than a drive. Logged in at a local
+desktop seat you also need **no group membership and no root** to read the drives
+themselves. All of this is measured against real hardware on every distribution;
+see [Drive access](#drive-access) above for what is proven, what a headless
+session still needs, and the two non-errors (desktop auto-mount, Aaru's first-run
+consent prompt) that look like permission failures.
 
 ## Versioning convention
 

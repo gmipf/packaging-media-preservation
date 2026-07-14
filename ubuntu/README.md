@@ -1,8 +1,8 @@
-# Debian-format packaging lane (Debian + Ubuntu, built on OBS)
+# Debian-format packaging lane (Ubuntu + Debian, built on OBS)
 
 `ubuntu/<tool>/debian/` holds **one** Debian-format recipe per tool, and it serves
-**every** Debian and Ubuntu target: Debian 12 and 13, Ubuntu 22.04, 24.04 and
-26.04. The directory name predates the Debian targets; the recipes were never
+**every** Ubuntu and Debian target: Ubuntu 22.04, 24.04 and 26.04, Debian 12 and
+13. The directory name predates the Debian targets; the recipes were never
 Ubuntu-specific.
 
 They are built on the [OBS project](https://build.opensuse.org/project/show/home:gmipf:media-preservation),
@@ -11,6 +11,31 @@ Ubuntu one — a `.deb` built for jammy does not fit bookworm anyway, because th
 ICU runtime carries its soname in the package name (`libicu70` vs `libicu72`), so
 `debian/rules` resolves that dependency from the **build root** at build time
 (`dpkg-query`) instead of from a table of series. Each target gets the one it has.
+
+## File capabilities come from the `postinst`
+
+This lane has no `%caps` (Fedora) and no permissions framework (openSUSE): each
+dumper package's `postinst` calls `setcap cap_sys_rawio+ep` on its binary, and
+depends on `libcap2-bin` so that `setcap` is guaranteed to be there.
+
+**Verified on real hardware** (2026-07-14, clean Ubuntu 26.04 and Debian 13 VMs
+with a Plextor PX-760A and a NEC USB floppy passed through; the user was in no
+drive group and `sudo` was never invoked): both media dumped, and the installed
+`redumper729` read the Plextor lead-in over the vendor `0xD8` command. A **copy**
+of that same binary — `cp` drops file capabilities — died on the first negative
+LBA with `error: SYSTEM (Operation not permitted)`. The capability is the only
+difference between the two runs.
+
+The capability lands on the **dumping tools** only (`redumper`, `redumper729`,
+`redumper732`, `aaru`, `aaru5`, DiscImageCreator). The GUIs and the MPF frontends
+deliberately get none — a process with file capabilities is non-dumpable, so the
+desktop portal will not authorise it and its file dialogs stop working.
+
+⚠️ Measure the result with **`/usr/sbin/getcap`, spelled out in full**: on Debian
+and Ubuntu `getcap` lives in `/sbin` and is *not* in a normal user's `PATH`, so a
+bare `getcap` silently reports nothing and a perfectly good `postinst` looks
+broken. (`getfattr` and `xxd` are not installed at all there, so they are no
+substitute either.)
 
 ## How a build runs
 
