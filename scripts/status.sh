@@ -284,9 +284,14 @@ for dsc in "$REPO"/opensuse/*/*.dsc; do
     spec_src=$(rpmspec -P "$REPO/fedora/$tool/$tool.spec" 2>/dev/null \
         | sed -n 's/^Source[0-9]*:[[:space:]]*//p' | grep -E '^[a-z]+://' \
         | sed 's|.*#/||; s|.*/||' | sort | tr '\n' ' ')
-    dsc_src=$( { sed -n 's/^Debtransform-Tar: //p' "$dsc"
-                 sed -n 's/^Debtransform-Files: //p' "$dsc" | tr ' ' '\n'; } \
-        | grep -v '^$' | sort | tr '\n' ' ')
+    # Case-insensitiv lesen -- so wie debtransform es tut. Die .dsc MUSS die
+    # Header GROSS schreiben (obs-build grept case-sensitiv nach
+    # ^DEBTRANSFORM-FILES:, sonst kein --include-binaries), aber ein Pruefer, der
+    # nur EINE Schreibweise kennt, meldet beim naechsten Wechsel wieder Rot fuer
+    # nichts. Genau das ist hier passiert.
+    dsc_src=$( { grep -i '^DEBTRANSFORM-TAR:'   "$dsc" | cut -d: -f2-
+                 grep -i '^DEBTRANSFORM-FILES:' "$dsc" | cut -d: -f2- | tr ' ' '\n'; } \
+        | tr -d ' ' | grep -v '^$' | sort | tr '\n' ' ')
     [ "$spec_src" = "$dsc_src" ] || {
         printf '  \033[31m%-18s .dsc nennt andere Upstream-Quellen als die Spec\033[0m\n' "$tool"
         printf '                     Spec: %s\n                     .dsc: %s\n' "$spec_src" "$dsc_src"
