@@ -15,10 +15,23 @@
 # answered `550 internal server error` three times during the upload; the job
 # went red exactly as it should -- and nobody looked at it. A tool can therefore
 # fall behind on ONE series and every lane still reports "success". So this
-# script does not just print state, it names the two silent failures:
+# script does not just print state, it names the silent failures:
 #
 #   * VERSION DRIFT — one tool, different versions across the PPA series.
 #   * RED RUNS      — failed workflow runs nobody acknowledged.
+#   * BUNDLE DRIFT  — MPF bundles a specific redumper and Aaru build, and our mpf
+#                     package deliberately drops those bundled binaries and points
+#                     MPF's config at the system packages instead. If upstream MPF
+#                     moves to a different bundled build, an MPF dump silently runs
+#                     a dumper version its own upstream never tested. Nothing in
+#                     either project says so: MPF has no version check at all, it
+#                     only writes whatever version it finds into the submission.
+#                     (This is not hypothetical -- it is why redumper726 was never
+#                     shipped: it was drafted when MPF bundled b726, and by the
+#                     time it would have gone out MPF had moved to b732, which is
+#                     exactly what our rolling redumper already carries. Shipping
+#                     the pin would have handed users a dumper OLDER than the one
+#                     MPF itself ships.)
 #
 # Usage: scripts/status.sh
 # Needs network (copr, launchpad, obs) -- run it outside the command sandbox.
@@ -72,6 +85,36 @@ fi
 
 hr "OBS — ${OBS_PROJECT}"
 osc results "$OBS_PROJECT" 2>&1 | sed -n '1,12p' | sed 's/^/  /'
+
+# --- silent failure #3: MPF's bundled backends drift away from ours ------------
+# Our mpf package deletes MPF's bundled Programs/ folder and points its config at
+# the system dumpers. That is only honest while the system dumper IS the build MPF
+# bundles. Read what MPF bundles TODAY from its own publish script -- never from a
+# note someone wrote once.
+hr "MPF-Bundle vs. unsere Pakete"
+NIX=$(curl -fsSL https://raw.githubusercontent.com/SabreTools/MPF/master/publish-nix.sh 2>/dev/null)
+if [ -z "$NIX" ]; then
+    echo "  publish-nix.sh nicht erreichbar — Bundle-Drift UNGEPRUEFT"
+else
+    MPF_RD=$(printf '%s' "$NIX" | grep -oE 'redumper/releases/download/b[0-9]+' | head -1 | grep -oE '[0-9]+$')
+    MPF_AA=$(printf '%s' "$NIX" | grep -oE 'Aaru/releases/download/v[0-9.]+' | head -1 | sed 's/.*v//')
+    OUR_RD=$(grep -m1 '^Version:' "$(dirname "$0")/../fedora/redumper/redumper.spec" | awk '{print $2}')
+    OUR_AA=$(grep -m1 '^Version:' "$(dirname "$0")/../fedora/aaru5/aaru5.spec"       | awk '{print $2}')
+
+    cmp_line() {   # name, what MPF bundles, what we point at
+        if [ "$2" = "$3" ]; then
+            printf '  \033[32mok\033[0m    %-10s MPF buendelt %-10s wir liefern %s\n' "$1" "$2" "$3"
+        else
+            printf '  \033[31mDRIFT\033[0m %-10s MPF buendelt %-10s wir liefern %s\n' "$1" "$2" "$3"
+        fi
+    }
+    cmp_line redumper "b${MPF_RD:-?}" "b${OUR_RD:-?}"
+    cmp_line aaru5    "${MPF_AA:-?}"  "${OUR_AA:-?}"
+    if [ "b${MPF_RD:-x}" != "b${OUR_RD:-y}" ] || [ "${MPF_AA:-x}" != "${OUR_AA:-y}" ]; then
+        echo "  -> entscheiden: rolling nachziehen, oder ein gepinntes redumper<N>/aaru<N> bauen"
+        echo "     (MPF hat KEINE Versionspruefung — es meldet die Abweichung nie selbst)"
+    fi
+fi
 
 # --- silent failure #2: red runs nobody looked at -----------------------------
 # Only a failure that no later green run of the SAME workflow has superseded is
