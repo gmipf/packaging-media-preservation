@@ -30,6 +30,9 @@
 #                     .dsc makes debtransform silently rewrite debian/changelog to
 #                     the version the .dsc claims, and a stale debian.tar.gz makes
 #                     OBS build yesterday's debian/rules.
+#   * BROKEN LINE    — a shell line continuation followed by a blank line. Valid
+#                     YAML, valid bash, and it silently truncates the command and
+#                     then tries to EXECUTE the next argument as a program.
 #
 # Usage: scripts/status.sh
 # Needs network (copr, obs, github) -- run it outside the command sandbox.
@@ -239,3 +242,25 @@ for dsc in "$REPO"/opensuse/*/*.dsc; do
     rm -f "$tmp"
 done
 [ "$DEB_DRIFT" = 0 ] && echo "  alle .dsc / debian.tar.gz / _service passen zum Rezept"
+
+# --- silent failure #5: a line continuation followed by a blank line -----------
+# `foo bar \` + an empty line is not a syntax error anywhere in the toolchain: the
+# YAML is valid, `bash -n` is happy, and bash simply ENDS the command at the blank
+# line. The arguments below it become COMMANDS -- so a `git add a \ / b \ / c`
+# staged only `a` and then tried to execute `b`, exit 126, "permission denied".
+# That killed all four watchers for five hours on 2026-07-14, and a red run only
+# tells you AFTER an upstream release you then failed to ship. Grep for the shape
+# instead: it is never intentional.
+hr "Workflow-Shell — abgebrochene Zeilenfortsetzungen"
+CONT=$(for f in "$REPO"/.github/workflows/*.yml "$REPO"/scripts/*.sh "$REPO"/scripts/obs/*.sh; do
+    [ -f "$f" ] || continue
+    awk -v F="${f#$REPO/}" '/\\[ \t]*$/ { l=$0; ln=NR; if ((getline nxt) > 0 && nxt ~ /^[ \t]*$/)
+        printf "  %s:%d: %s\n", F, ln, l }' "$f"
+done)
+if [ -n "$CONT" ]; then
+    printf '\033[31m%s\033[0m\n' "$CONT"
+    echo "  -> Die Leerzeile MUSS weg: bash beendet den Befehl dort und fuehrt die"
+    echo "     naechste Zeile als Programm aus (exit 126)."
+else
+    echo "  keine (kein '\\' am Zeilenende vor einer Leerzeile)"
+fi

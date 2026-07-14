@@ -92,22 +92,13 @@ jobs:
             Version="$VERSION"
 
           # The .dsc carries the version AND the upstream archive names
-
           # (redumper-b732-... becomes -b733-...). Regenerate it here or OBS
-
           # keeps building the previous release, green and wrong.
-
           # rpmspec: gen-deb.sh reads the upstream Source: URLs out of the spec,
           # so the .dsc names exactly what download_files fetches.
           command -v rpmspec >/dev/null || sudo apt-get install -y -qq rpm >/dev/null
           bash scripts/obs/gen-deb.sh redumper
-
-          git add opensuse/redumper/redumper.dsc \
-
-                  opensuse/redumper/debian.tar.gz \
-
-                  opensuse/redumper/_service
-
+          git add opensuse/redumper/redumper.dsc opensuse/redumper/debian.tar.gz opensuse/redumper/_service
           git add "$SPEC" "$MARKER" "$UB/.upstream-tag" "$UB/debian/changelog" \
                   opensuse/redumper/redumper.spec opensuse/redumper/.upstream-tag
           if git diff --cached --quiet; then

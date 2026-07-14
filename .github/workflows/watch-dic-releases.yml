@@ -90,22 +90,13 @@ jobs:
             dicsnap="${UPSTREAM_TS}.${UPSTREAM_SHA}" diccommit="$UPSTREAM_SHA_FULL"
 
           # The .dsc carries the version AND the upstream archive names
-
           # (redumper-b732-... becomes -b733-...). Regenerate it here or OBS
-
           # keeps building the previous release, green and wrong.
-
           # rpmspec: gen-deb.sh reads the upstream Source: URLs out of the spec,
           # so the .dsc names exactly what download_files fetches.
           command -v rpmspec >/dev/null || sudo apt-get install -y -qq rpm >/dev/null
           bash scripts/obs/gen-deb.sh discimagecreator
-
-          git add opensuse/discimagecreator/discimagecreator.dsc \
-
-                  opensuse/discimagecreator/debian.tar.gz \
-
-                  opensuse/discimagecreator/_service
-
+          git add opensuse/discimagecreator/discimagecreator.dsc opensuse/discimagecreator/debian.tar.gz opensuse/discimagecreator/_service
           git add "$SPEC" "$MARKER" "$UB/.upstream-tag" "$UB/debian/changelog" \
                   opensuse/discimagecreator/discimagecreator.spec \
                   opensuse/discimagecreator/.upstream-tag

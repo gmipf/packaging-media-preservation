@@ -117,22 +117,13 @@ jobs:
             aaruprerel="$PRERELEASE"
 
           # The .dsc carries the version AND the upstream archive names
-
           # (redumper-b732-... becomes -b733-...). Regenerate it here or OBS
-
           # keeps building the previous release, green and wrong.
-
           # rpmspec: gen-deb.sh reads the upstream Source: URLs out of the spec,
           # so the .dsc names exactly what download_files fetches.
           command -v rpmspec >/dev/null || sudo apt-get install -y -qq rpm >/dev/null
           bash scripts/obs/gen-deb.sh aaru
-
-          git add opensuse/aaru/aaru.dsc \
-
-                  opensuse/aaru/debian.tar.gz \
-
-                  opensuse/aaru/_service
-
+          git add opensuse/aaru/aaru.dsc opensuse/aaru/debian.tar.gz opensuse/aaru/_service
           git add "$SPEC" "$MARKER" "$UB/.upstream-tag" "$UB/debian/changelog" \
                   opensuse/aaru/aaru.spec opensuse/aaru/.upstream-tag
           if git diff --cached --quiet; then
