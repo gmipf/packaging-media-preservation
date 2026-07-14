@@ -149,7 +149,11 @@ jobs:
           esac
           echo ":: $TOOL $FULLVER -> dpkg-buildpackage $SRCOPT, series: $SERIES_LIST"
 
+          # Both initialised: `set -u` is on, and appending to an unset variable
+          # aborts the job -- after a successful upload, which is the worst possible
+          # moment to die (the package IS in the archive, the run says failure).
           skipped=
+          uploaded=
           for SERIES in $SERIES_LIST; do
             echo "::group::$TOOL $SERIES"
 
