@@ -117,23 +117,24 @@ jobs:
           if [ "${FULLVER##*-}" = "1" ]; then SRCOPT=-sa; else SRCOPT=-sd; fi
 
           # A version Launchpad already has is REJECTED -- and the rejection is
-          # invisible: dput reports success, the job goes green, and the new
-          # version simply never appears anywhere. (Acceptance is asynchronous and
-          # a rejected upload shows up in no API at all; the only proof of an
-          # accepted upload is the version turning up as Pending.) That is a
-          # silence worth breaking BEFORE we sign anything: forget the changelog
-          # entry on a packaging-only change and this is exactly what happens.
+          # invisible: dput reports success, the job goes green, and the new version
+          # simply never appears. (Acceptance is asynchronous; a rejected upload shows
+          # up in no API at all, and the only proof of an accepted one is the version
+          # turning up as Pending.) Forget the changelog entry on a packaging-only
+          # change and that is exactly what you get. So we ask the archive first --
+          # it is public, no credential needed. Fetched once here, evaluated PER
+          # SERIES inside the loop below.
           #
-          # The archive is public, so this needs no credential.
-          PUB=$(curl -fsSL "https://api.launchpad.net/1.0/~${LP_OWNER:-dreunion61}/+archive/ubuntu/${LP_PPA:-media-preservation}?ws.op=getPublishedSources&source_name=${TOOL}&exact_match=true" \
-                | jq -r --arg v "$FULLVER" \
-                  '[.entries[] | select(.source_package_version | startswith($v + "~"))] | length' 2>/dev/null || echo 0)
-          if [ "${PUB:-0}" -gt 0 ]; then
-            echo "::error::$TOOL $FULLVER is already in the PPA ($PUB series). Launchpad rejects a"
-            echo "::error::re-upload of a known version, and it does so SILENTLY -- dput would report"
-            echo "::error::success and nothing would change. Add a debian/changelog entry first."
-            exit 1
-          fi
+          # ⚠️ PER SERIES, and that distinction is the whole point. Launchpad versions
+          # every series separately (732-1~resolute1, ~noble1, ~jammy1) and wants ONE
+          # upload per series. A check that asked "is this version in the archive at
+          # all?" would see resolute and block the noble upload -- which is precisely
+          # the retry path that exists BECAUSE Launchpad's FTP answers 550 now and
+          # then and leaves a single series behind. Measured: the first version of
+          # this guard did exactly that and killed a legitimate `series: noble` re-run.
+          # A guard that blocks the repair is worse than the failure it guards against.
+          PUBVERS=$(curl -fsSL "https://api.launchpad.net/1.0/~${LP_OWNER:-dreunion61}/+archive/ubuntu/${LP_PPA:-media-preservation}?ws.op=getPublishedSources&source_name=${TOOL}&exact_match=true" \
+                    | jq -r '.entries[].source_package_version' 2>/dev/null || true)
 
           # ppa.launchpad.net's FTP endpoint intermittently answers the second
           # upload of a run with "550 ... internal server error". Retry rather
@@ -148,8 +149,24 @@ jobs:
           esac
           echo ":: $TOOL $FULLVER -> dpkg-buildpackage $SRCOPT, series: $SERIES_LIST"
 
+          skipped=
           for SERIES in $SERIES_LIST; do
             echo "::group::$TOOL $SERIES"
+
+            # This series' exact version. Already in the archive -> Launchpad would
+            # reject the upload and say so nowhere. Skip it and keep going: on an
+            # `all` run after a partial failure, the series that DID land are
+            # supposed to be skipped -- it is the missing one we came for.
+            SVER="${FULLVER}~${SERIES}1"
+            if printf '%s\n' "$PUBVERS" | grep -qx "$SVER"; then
+              echo "::notice::$TOOL $SVER is already in the PPA -- skipping this series."
+              echo "  (If you meant to ship a CHANGE, it needs a new debian/changelog entry:"
+              echo "   Launchpad never accepts a version it already knows, and never says so.)"
+              skipped="$skipped $SERIES"
+              echo "::endgroup::"
+              continue
+            fi
+
             WORK=$(mktemp -d)
             bash scripts/deb/assemble.sh "$TOOL" "$SERIES" "$RECIPE" "$WORK"
             VER=${FULLVER%-*}
@@ -167,6 +184,18 @@ jobs:
             [ -n "$ok" ] || { echo "::error::dput failed 3x for $TOOL $SERIES"; exit 1; }
 
             echo ":: uploaded $TOOL $SERIES (${FULLVER}~${SERIES}1)"
+            uploaded="$uploaded $SERIES"
             echo "::endgroup::"
           done
-          echo ":: PPA upload complete — Launchpad will build the .debs and email results."
+
+          # Nothing uploaded at all means the run did nothing -- and a run that does
+          # nothing must not read as a run that shipped something. That is the exact
+          # shape of every silent failure in this lane.
+          if [ -z "${uploaded:-}" ]; then
+            echo "::error::$TOOL $FULLVER: NOTHING was uploaded (already in the PPA for:${skipped})."
+            echo "::error::If you changed the recipe, it needs a new debian/changelog entry --"
+            echo "::error::Launchpad never accepts a version it already knows, and never says so."
+            exit 1
+          fi
+          [ -z "${skipped:-}" ] || echo "::notice::skipped (already in the PPA):${skipped}"
+          echo ":: uploaded:${uploaded} — Launchpad will build the .debs and email results."
