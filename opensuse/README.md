@@ -241,6 +241,11 @@ fedora macro names (`mpfver`/`mpfsnap`, `dicsnap`/`diccommit`, `aaruver`/
 only, the bump script fails loudly rather than silently skipping the lane.
 `Release:` is never touched — it stays `0` and OBS supplies its own counter.
 
+The same commit also **regenerates** the three generated files (`scripts/obs/gen-deb.sh`). It has to:
+the `.dsc` carries the version *and* the names of the upstream archives, so a bump that leaves it
+behind makes OBS build the previous release — green, published, and wrong. `scripts/status.sh` is
+what catches it if it ever drifts.
+
 > This was a real gap, not a hypothetical: the lane went live after the watchers
 > were written, so for a while an upstream release updated fedora/ and ubuntu/ and
 > left openSUSE behind. redumper (b729 vs b731) and mpf (3.8.2 vs 3.8.3) both had
