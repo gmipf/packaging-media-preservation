@@ -13,22 +13,28 @@ respective project URLs (see below).
 
 ## Tools
 
-| Tool | Update mode | [Fedora][copr] | [EPEL][copr] | [openSUSE][obs] | [Ubuntu][ppa] |
-|---|---|---|---|---|---|
-| [redumper](https://github.com/superg/redumper) | auto-tracked hourly on new `b<N>` tags (binary repackage) | ✅ | ✅ | ✅ | ✅ |
-| [MPF suite](https://github.com/SabreTools/MPF) | rolling, auto-tracked hourly (binary repackage); meta-package `mpf` pulls in `mpf-check` (validator), `mpf-cli` (headless orchestrator) and `mpf-gui` (Avalonia desktop UI) | ✅ | ✅ | ✅ | ✅ |
-| [DiscImageCreator suite](https://github.com/saramibreak/DiscImageCreator) | auto-tracked hourly on new master commits (built from source — upstream binary links against EOL OpenSSL 1.1); bundles DIC + EccEdc + DVDAuth + unscrambler in one package | ✅ | ✅ | ✅ | ✅ |
-| [Aaru](https://github.com/aaru-dps/Aaru) | auto-tracked hourly on new `v6.0.0-alpha.<N>` tags (binary repackage); CLI + Avalonia GUI ship as one binary, launch the GUI via `aaru gui` | ✅ | ✅ | ✅ | ✅ |
-| [Aaru 5.4.x](https://github.com/aaru-dps/Aaru) (`aaru5`) | version-pinned, no auto-tracking (binary repackage); the stable 5.4 CLI that MPF drives, installs as `/usr/bin/aaru5` alongside the rolling `aaru` v6 | ✅ | ✅ | ✅ | ✅ |
+| Tool | Update mode | [Fedora][copr] | [EPEL][copr] | [openSUSE][obs] | [Debian][obs] | [Ubuntu][ppa] |
+|---|---|---|---|---|---|---|
+| [redumper](https://github.com/superg/redumper) | auto-tracked hourly on new `b<N>` tags (binary repackage) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| [MPF suite](https://github.com/SabreTools/MPF) | rolling, auto-tracked hourly (binary repackage); meta-package `mpf` pulls in `mpf-check` (validator), `mpf-cli` (headless orchestrator) and `mpf-gui` (Avalonia desktop UI) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| [DiscImageCreator suite](https://github.com/saramibreak/DiscImageCreator) | auto-tracked hourly on new master commits (built from source — upstream binary links against EOL OpenSSL 1.1); bundles DIC + EccEdc + DVDAuth + unscrambler in one package | ✅ | ✅ | ✅ | ✅ | ✅ |
+| [Aaru](https://github.com/aaru-dps/Aaru) | auto-tracked hourly on new `v6.0.0-alpha.<N>` tags (binary repackage); CLI + Avalonia GUI ship as one binary, launch the GUI via `aaru gui` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| [Aaru 5.4.x](https://github.com/aaru-dps/Aaru) (`aaru5`) | version-pinned, no auto-tracking (binary repackage); the stable 5.4 CLI that MPF drives, installs as `/usr/bin/aaru5` alongside the rolling `aaru` v6 | ✅ | ✅ | ✅ | ✅ | ✅ |
+| [Redumper-GUI](https://github.com/Deterous/Redumper-GUI) | release tags, built from source (vendored crates) | ✅ | ✅ | ✅ | ❌ | 26.04 only |
+| `redumper729` / `redumper732` | version pins, no auto-tracking: the redumper build that Redumper-GUI (729) and MPF (732) bundle. Install one only if you use that frontend — the rolling `redumper` is what you want otherwise. They coexist, each installing as `/usr/bin/redumper<build>` | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 [copr]: https://copr.fedorainfracloud.org/coprs/gmipf/media-preservation/
 [obs]: https://build.opensuse.org/project/show/home:gmipf:media-preservation
 [ppa]: https://launchpad.net/~dreunion61/+archive/ubuntu/media-preservation
 
 The **Fedora** / **EPEL** column headers link to the COPR project, **openSUSE**
-to the OBS project (Leap 16.0 + Tumbleweed) and **Ubuntu** to the Launchpad PPA
-(26.04 resolute + 24.04 noble + 22.04 jammy). For the currently shipping versions
-and full install instructions, see those pages.
+and **Debian** to the OBS project (Leap 16.0 + Tumbleweed, Debian 12 + 13) and
+**Ubuntu** to the Launchpad PPA (26.04 resolute + 24.04 noble + 22.04 jammy). For
+the currently shipping versions and full install instructions, see those pages.
+
+Redumper-GUI is the one gap, and it is not an oversight: eframe/egui needs
+rustc ≥ 1.92, which Debian 13 (1.85), Debian 12 (1.63) and Ubuntu 22.04/24.04
+(≤ 1.91) do not have. Only Ubuntu 26.04 clears the floor.
 
 ## Drive access
 
@@ -82,12 +88,34 @@ device on the system, so it is not a safe substitute.
 The Ubuntu lane (Launchpad PPA) is live — see [`ubuntu/README.md`](ubuntu/README.md):
 
 ```
-ubuntu/<tool>/debian/         # debian/control, debian/rules, debian/changelog (Launchpad PPA)
+ubuntu/<tool>/debian/         # debian/control, debian/rules, debian/changelog
 ```
 
-The openSUSE lane lives in `opensuse/<tool>/` (spec + OBS `_service`) and reuses the
-Fedora specs' `%if 0%{?suse_version}` branches. Each distro folder uses that distro's
-native tooling conventions — no custom abstraction layer on top.
+`opensuse/<tool>/` is the OBS lane, and it delivers **both** openSUSE and Debian:
+
+```
+opensuse/<tool>/
+├── <tool>.spec               # reuses the Fedora spec's %if 0%{?suse_version} branches
+├── <tool>.dsc                # debtransform template   ┐
+├── debian.tar.gz             # debian/ minus changelog ├─ generated: scripts/obs/gen-deb.sh
+└── _service                  # tells OBS what to fetch ┘
+```
+
+The Debian side reuses `ubuntu/<tool>/debian/` unchanged — there is no second
+Debian recipe. OBS assembles the source package at build time from a `.dsc`
+carrying `Debtransform-*` headers, and fetches every input itself, so git stays
+the single source of truth for both halves. The three generated files are checked
+against the recipe by `scripts/status.sh`: drift between them does not fail a
+build, it corrupts one silently.
+
+The `.orig` tarball is taken from the Launchpad PPA, which already stores one
+immutable copy per upstream version. It has to be *assembled* (aaru merges two
+upstream tarballs, mpf three binaries) and no OBS source service can do that —
+OBS can only download. Reusing it costs no storage of our own and guarantees the
+Debian and Ubuntu packages are built from byte-identical upstream payloads.
+
+Each distro folder uses that distro's native tooling conventions — no custom
+abstraction layer on top.
 
 ## Automation
 
@@ -200,6 +228,29 @@ sudo zypper install redumper discimagecreator aaru aaru5 mpf
 ```
 
 For Tumbleweed, swap `16.0` for `openSUSE_Tumbleweed` in the repo URL.
+
+### Debian 13 (trixie) and 12 (bookworm)
+
+Built on the same OBS project. There is no PPA for Debian — a PPA builds Ubuntu
+series only, and an Ubuntu `.deb` does not fit Debian anyway, because the ICU
+runtime carries its soname in the package name (`libicu70` on jammy vs `libicu72`
+on bookworm). The dependency is resolved from the build root at build time, so
+each series gets the one it actually has.
+
+```sh
+. /etc/os-release        # VERSION_ID is 13 on trixie, 12 on bookworm
+REPO="https://download.opensuse.org/repositories/home:/gmipf:/media-preservation/Debian_${VERSION_ID}"
+
+curl -fsSL "$REPO/Release.key" | sudo gpg --dearmor -o /usr/share/keyrings/media-preservation.gpg
+echo "deb [signed-by=/usr/share/keyrings/media-preservation.gpg] $REPO/ /" \
+  | sudo tee /etc/apt/sources.list.d/media-preservation.list
+
+sudo apt update
+sudo apt install redumper discimagecreator aaru aaru5 mpf
+```
+
+Redumper-GUI is not available on Debian: it needs rustc ≥ 1.92 and trixie ships
+1.85.
 
 ### Ubuntu 26.04 (resolute), 24.04 (noble) and 22.04 (jammy)
 
