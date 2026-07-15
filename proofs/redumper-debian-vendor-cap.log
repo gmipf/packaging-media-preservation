@@ -1,0 +1,26 @@
+proof: redumper | debian | vendor-cap
+date: 2026-07-15
+lane/VM: test-ubuntu (Ubuntu 26.04 LTS, GNOME autologin -> seat0). The "debian" lane
+  packaging (ubuntu/<tool>/debian/) is the SHARED Debian+Ubuntu recipe; tested on
+  Ubuntu 26.04 which runs the identical postinst.
+repo: OBS home:gmipf:media-preservation
+user groups: "gmipf adm sudo dip users lpadmin lxd" -- NO cdrom/disk/plugdev/floppy -> groupless
+drive: PLEXTOR PX-760A (USB) -> /dev/sr1
+mechanism: setcap cap_sys_rawio=ep in the Debian postinst (NOT %caps / permctl).
+getcap lives in /usr/sbin (and /sbin).
+
+GNOME gotcha (not a cap issue): with an AUDIO track present, gvfsd-cdda + udisks2
+auto-grab the disc (data track mounted iso9660) -> redumper "Device or resource busy".
+Fixed for the test by disabling automount, chmod -x gvfsd-cdda, and udisksctl unmount
+/dev/sr1 before each run.
+
+--- delivery (postinst-setcap applied at install) ---
+$ /usr/sbin/getcap /usr/bin/redumper -> /usr/bin/redumper cap_sys_rawio=ep
+$ dpkg -S /usr/bin/redumper -> redumper
+
+--- GREEN (cap present) ---  read method: D8 ; permit-errors 0
+--- RED (setcap -r, then restored) ---  "not permitted" at D8 lead-in ; permit-errors 1
+$ /usr/sbin/setcap cap_sys_rawio=ep /usr/bin/redumper -> cap restored
+
+VERDICT: PROVEN. The postinst-delivered cap_sys_rawio on redumper is load-bearing for
+the Plextor D8 (>=0xC0) read; EPERM without it (kernel gate).

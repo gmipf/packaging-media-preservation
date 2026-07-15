@@ -1,0 +1,18 @@
+proof: redumper732 | opensuse | vendor-cap
+date: 2026-07-15
+lane/VM: test-openSUSE (Leap 16.0, autologin Plasma X11 -> seat0), OBS repo
+user groups: "gmipf wheel" (NO cdrom/disk/plugdev) -> groupless
+drive: PLEXTOR PX-760A (USB) -> /dev/sr1
+mechanism: openSUSE permissions framework (permissions.d/redumper732 + permctl)
+
+--- delivery ---
+$ /usr/sbin/getcap /usr/bin/redumper732 -> cap_sys_rawio=ep
+$ rpm -qf /usr/bin/redumper732 -> redumper732-732-lp160.11.1.x86_64
+
+--- A/B ---
+GREEN (cap):  read method: D8 ; permit-errors 0
+RED (setcap -r): "not permitted" at D8 lead-in ; permit-errors 1
+restore: setcap cap_sys_rawio=ep -> getcap shows cap again
+
+VERDICT: PROVEN. permctl-delivered cap is load-bearing for the D8 read; EPERM without.
+Pin note: mpf -> redumper732.

@@ -1,0 +1,19 @@
+proof: aaru | debian | node-floppy
+date: 2026-07-15
+lane/VM: test-ubuntu (Ubuntu 26.04 LTS, autologin -> seat0); shared Debian+Ubuntu recipe
+repo: OBS home:gmipf:media-preservation
+user groups: NO cdrom/disk/plugdev/floppy -> groupless
+device: NEC USB UF000x floppy (USB-UFI 0409:0040) -> /dev/sda (media present)
+mechanism: packaged udev rule /usr/lib/udev/rules.d/70-aaru-floppy.rules
+  (ENV{ID_TYPE}=="floppy", TAG+="uaccess"); NO cap needed. dpkg -S -> aaru.
+
+Verified: Ubuntu systemd 70-uaccess.rules has NO floppy clause (grep 0) -> our rule is
+the sole uaccess source. Sticky uaccess db tag -> RED/GREEN via FRESH USB enumeration
+(detach/attach), ACL polled (~2s lag). automount disabled for the test.
+
+--- RED (no floppy rule, fresh enumeration) ---   ACL ABSENT ; dd /dev/sda -> DENIED
+--- GREEN (ONLY 70-aaru-floppy.rules, fresh enum) ---
+    node=/dev/sda ; ACL present @~2s (user:gmipf:rw-) ; tag=uaccess ; dd=OK
+
+VERDICT: PROVEN. aaru's packaged floppy rule alone grants the floppy node uaccess to a
+groupless user on a fresh plug; without any floppy rule the fresh device is denied.

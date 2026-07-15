@@ -1,0 +1,25 @@
+proof: discimagecreator | debian | vendor-cap
+date: 2026-07-15
+lane/VM: test-ubuntu (Ubuntu 26.04 LTS, autologin -> seat0); shared Debian+Ubuntu postinst
+repo: OBS home:gmipf:media-preservation
+user groups: NO cdrom/disk/plugdev -> groupless
+drive: PLEXTOR PX-760A (USB) -> /dev/sr1
+mechanism: setcap cap_sys_rawio=ep in the Debian postinst
+(DIC output written to ~ for free space; disc unmounted before run.)
+
+--- delivery ---
+$ /usr/sbin/getcap /usr/lib/discimagecreator/DiscImageCreator.out -> cap_sys_rawio=ep
+  (DVDAuth.out also carries it)
+$ dpkg -S DiscImageCreator.out -> discimagecreator
+
+--- GREEN (cap present) ---
+  supports [OpCode: 0xd8, ...] (4 hits) ; Creating (Lead-in) ; permit-errors 0
+
+--- RED (setcap -r, then restored) ---
+  lpCmd: d8, ... (0xd8 CDB sent 6x)
+  [F:ExecSearchingOffset]/[F:ReadCDForCheckingSubPack]/[F:ReadEeprom]
+     GetLastError: 1, Operation not permitted   (7 permit-errors)
+$ /usr/sbin/setcap cap_sys_rawio=ep .../DiscImageCreator.out -> cap restored
+
+VERDICT: PROVEN. postinst-delivered cap is load-bearing: with it the 0xd8 vendor CDBs
+reach the drive; without it they EPERM (kernel gate).

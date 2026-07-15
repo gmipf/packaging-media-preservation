@@ -1,0 +1,18 @@
+proof: aaru5 | opensuse | node-floppy
+date: 2026-07-15
+lane/VM: test-openSUSE (Leap 16.0, autologin Plasma X11 -> seat0), OBS repo
+user groups: "gmipf wheel" (NO cdrom/disk/plugdev) -> groupless
+device: NEC USB UF000x floppy (USB-UFI 0409:0040) -> /dev/sda (media present)
+mechanism: packaged udev rule /usr/lib/udev/rules.d/70-aaru5-floppy.rules
+  (ENV{ID_TYPE}=="floppy", TAG+="uaccess"); NO cap needed.
+
+Method: fresh USB enumeration per state (sticky uaccess db tag), poll ACL ~2s.
+openSUSE systemd 70-uaccess has no floppy clause -> our rule is the sole source.
+
+--- RED (no floppy rule, fresh enumeration) ---   ACL ABSENT ; dd -> DENIED
+--- GREEN (ONLY 70-aaru5-floppy.rules, fresh enum) ---
+    node=/dev/sda ; ACL present @~2s ; tag=uaccess ; dd=OK
+
+VERDICT: PROVEN. aaru5's packaged floppy rule alone grants floppy uaccess groupless;
+without any floppy rule the fresh device is denied.
+(Note: aaru5 vendor-cap is a separate, still-open item -- see aaru5-vendor-cap-BLOCKED.md.)

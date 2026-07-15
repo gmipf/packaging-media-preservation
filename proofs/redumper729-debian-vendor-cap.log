@@ -1,0 +1,19 @@
+proof: redumper729 | debian | vendor-cap
+date: 2026-07-15
+lane/VM: test-ubuntu (Ubuntu 26.04 LTS, autologin -> seat0); shared Debian+Ubuntu postinst
+repo: OBS home:gmipf:media-preservation
+user groups: NO cdrom/disk/plugdev -> groupless
+drive: PLEXTOR PX-760A (USB) -> /dev/sr1
+mechanism: setcap cap_sys_rawio=ep in the Debian postinst
+
+--- delivery ---
+$ /usr/sbin/getcap /usr/bin/redumper729 -> cap_sys_rawio=ep
+$ dpkg -S /usr/bin/redumper729 -> redumper729
+
+--- A/B ---
+GREEN (cap):  read method: D8 ; permit-errors 0
+RED (setcap -r): "not permitted" at D8 lead-in ; permit-errors 1
+restore: setcap cap_sys_rawio=ep -> getcap shows cap again
+
+VERDICT: PROVEN. postinst-delivered cap is load-bearing for the D8 read; EPERM without.
+Pin note: redumper-gui -> redumper729.

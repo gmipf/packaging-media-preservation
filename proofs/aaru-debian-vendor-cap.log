@@ -1,0 +1,27 @@
+proof: aaru | debian | vendor-cap
+date: 2026-07-15
+lane/VM: test-ubuntu (Ubuntu 26.04 LTS, autologin -> seat0); shared Debian+Ubuntu postinst
+repo: OBS home:gmipf:media-preservation
+user groups: NO cdrom/disk/plugdev -> groupless
+drive: PLEXTOR PX-760A (USB) -> /dev/sr1
+disc: MIXED-MODE CD (track 1 data, track 2 STEREO AUDIO) -- audio track needed so aaru
+      takes its Plextor D8 disc-offset-detection path (a data CD uses only 0xBE).
+mechanism: setcap cap_sys_rawio=ep in the Debian postinst
+Note: aaru GDPR wizard skipped via ~/.config/Aaru.json GdprCompliance=1; disc unmounted
+(gvfsd-cdda disabled) before each run.
+
+--- delivery ---
+$ /usr/sbin/getcap /usr/lib/aaru/aaru -> cap_sys_rawio=ep
+$ dpkg -S /usr/lib/aaru/aaru -> aaru
+
+--- A/B (disc-offset detection via Plextor D8) ---
+GREEN (cap):     "Disc offset is 5044 bytes (1261 samples)"           # D8 vendor read OK
+RED (setcap -r): "Disc write offset is unknown, dump may not be correct."  # D8 blocked
+restore:         setcap cap_sys_rawio=ep -> getcap shows cap again
+
+MECHANISM: the offset read is a SG_IO with CDB 0xD8 (Plextor, >=0xC0), strace-confirmed
+to return EPERM without CAP_SYS_RAWIO on the identical operation (fedora lane,
+proofs/aaru-fedora-vendor-cap.log). Same kernel gate here.
+
+VERDICT: PROVEN. postinst-delivered cap on aaru is load-bearing for the Plextor D8
+disc-offset read; without it aaru cannot determine the offset.

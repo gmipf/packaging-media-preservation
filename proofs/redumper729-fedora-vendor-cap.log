@@ -1,0 +1,26 @@
+proof: redumper729 | fedora | vendor-cap
+date: 2026-07-15
+lane/VM: test-fedora (Fedora 44 KDE), repo COPR gmipf/media-preservation
+user groups: "gmipf wheel" (NO cdrom/disk/plugdev) -> groupless
+drive: PLEXTOR DVDR PX-760A (USB) -> /dev/sr1, data CD
+mechanism: Fedora %caps(cap_sys_rawio=ep) in redumper729.spec
+
+--- delivery ---
+$ getcap /usr/bin/redumper729 -> /usr/bin/redumper729 cap_sys_rawio=ep
+$ rpm -qf /usr/bin/redumper729 -> redumper729-729-1.fc44.x86_64
+
+--- GREEN (cap present) ---
+$ redumper729 disc --verbose --drive=/dev/sr1 ...
+  configuration: PLEXTOR (... read method: D8 ...)
+  LBA: -75/226575, errors: { SCSIs: 0, C2s: 0, Q: 0 }   # D8 lead-in, 0 errors
+permit-errors: 0 ; exit 124 (trimmed after lead-in)
+
+--- RED (setcap -r, then restored) ---
+$ setcap -r /usr/bin/redumper729 ; getcap -> []
+$ redumper729 disc ...
+  LBA: -75 ... error: SYSTEM (Operation not permitted)   # EPERM at first D8 read
+permit-errors: 1 ; exit 255
+$ setcap cap_sys_rawio=ep /usr/bin/redumper729 -> cap restored
+
+VERDICT: PROVEN. Package-delivered cap_sys_rawio on redumper729 is load-bearing for
+the D8 (>=0xC0) lead-in read; EPERM without it. Pin note: redumper-gui -> redumper729.

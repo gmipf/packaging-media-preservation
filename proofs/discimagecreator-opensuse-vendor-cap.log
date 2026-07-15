@@ -1,0 +1,32 @@
+proof: discimagecreator | opensuse | vendor-cap
+date: 2026-07-15
+lane/VM: test-openSUSE (Leap 16.0, autologin Plasma X11 -> seat0), OBS repo
+user groups: "gmipf wheel" (NO cdrom/disk/plugdev) -> groupless
+drive: PLEXTOR PX-760A (USB) -> /dev/sr1
+mechanism: openSUSE permissions framework (permissions.d/discimagecreator + permctl)
+
+Note: DIC pre-checks free space and aborts if the output dir is too small. openSUSE
+/tmp is a 1 GB tmpfs -> DIC bailed ("not enough disk space"). Re-run with output in
+~ (27 GB free) so DIC actually performs the D8 dump. Not a cap issue.
+
+--- delivery ---
+$ /usr/sbin/getcap /usr/libexec/discimagecreator/DiscImageCreator.out -> cap_sys_rawio=ep
+  (DVDAuth.out also carries it)
+$ rpm -qf DiscImageCreator.out -> discimagecreator-20260703121302.efa7d482-lp160.26.1
+
+--- GREEN (cap present, output in ~/dicg) ---
+$ discimagecreator cd /dev/sr1 ~/dicg/t.bin 8 /d8
+  supports [OpCode: 0xd8, SubCode: 0/1/...]   (4 hits)
+  Creating (Lead-in)...                       # D8 lead-in read
+  permit-errors: 0
+
+--- RED (setcap -r, then restored) ---
+$ /usr/sbin/setcap -r .../DiscImageCreator.out ; getcap -> []
+$ discimagecreator cd /dev/sr1 ~/dicr/t.bin 8 /d8
+  lpCmd: d8, ...        (0xd8 CDB sent 6x)
+  [F:ExecSearchingOffset] / [F:ReadCDForCheckingSubPack] / [F:ReadEeprom]
+     GetLastError: 1, Operation not permitted   (7 permit-errors)
+$ /usr/sbin/setcap cap_sys_rawio=ep .../DiscImageCreator.out -> cap restored
+
+VERDICT: PROVEN. permctl-delivered cap is load-bearing: with it the 0xd8 vendor CDBs
+(and Plextor ReadEeprom) reach the drive; without it they EPERM (kernel gate).

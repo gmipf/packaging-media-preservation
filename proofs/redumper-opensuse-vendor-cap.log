@@ -1,0 +1,27 @@
+proof: redumper | opensuse | vendor-cap
+date: 2026-07-15
+lane/VM: test-openSUSE (openSUSE Leap 16.0, SDDM autologin Plasma X11 -> seat0)
+repo: OBS home:gmipf:media-preservation
+user groups: "gmipf wheel" (NO cdrom/disk/plugdev) -> groupless
+drive: PLEXTOR DVDR PX-760A (USB) -> /dev/sr1
+mechanism: openSUSE permissions framework -- permissions.d/redumper profile +
+  %set_permissions (permctl), NOT %caps. getcap tool lives in /usr/sbin.
+
+--- delivery (permctl-applied at install, never hand-touched) ---
+$ /usr/sbin/getcap /usr/bin/redumper -> /usr/bin/redumper cap_sys_rawio=ep
+$ rpm -qf /usr/bin/redumper -> redumper-732-lp160.27.1.x86_64
+(rpm -V shows ....P on capped binaries = normal on openSUSE; header carries no caps,
+ permctl sets them at install.)
+
+--- GREEN (cap present) ---
+$ redumper disc --verbose --drive=/dev/sr1 ...
+  read method: D8      # Plextor D8 lead-in read
+  permit-errors: 0     # exit 124 (trimmed after lead-in)
+
+--- RED (A/B: setcap -r, then restored) ---
+$ /usr/sbin/setcap -r /usr/bin/redumper ; getcap -> []
+$ redumper disc ...  -> "not permitted" at the D8 lead-in read; permit-errors: 1
+$ /usr/sbin/setcap cap_sys_rawio=ep /usr/bin/redumper -> cap restored
+
+VERDICT: PROVEN. The permctl-delivered cap_sys_rawio on redumper is load-bearing for
+the Plextor D8 (>=0xC0) read; EPERM without it (kernel blk_verify_command gate).

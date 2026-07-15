@@ -1,0 +1,28 @@
+proof: aaru | opensuse | vendor-cap
+date: 2026-07-15
+lane/VM: test-openSUSE (Leap 16.0, autologin Plasma X11 -> seat0), OBS repo
+user groups: "gmipf wheel" (NO cdrom/disk/plugdev) -> groupless
+drive: PLEXTOR PX-760A (USB) -> /dev/sr1
+disc: MIXED-MODE CD (track 1 data, track 2 STEREO AUDIO) -- audio track needed so
+      aaru takes its Plextor D8 disc-offset-detection path (a plain data CD uses only
+      whitelisted 0xBE and does not exercise the cap).
+mechanism: openSUSE permissions framework (permissions.d/aaru + permctl)
+Note: aaru first-run GDPR wizard skipped by seeding ~/.config/Aaru.json GdprCompliance=1.
+
+--- delivery ---
+$ /usr/sbin/getcap /usr/lib64/aaru/aaru -> cap_sys_rawio=ep
+$ rpm -qf /usr/lib64/aaru/aaru -> aaru-6.0.0~alpha.19-lp160.31.1.x86_64
+
+--- A/B (disc-offset detection via Plextor D8) ---
+GREEN (cap):     aaru media dump /dev/sr1 ~/ag.aaruf -f -p 0
+                 -> "Disc offset is 5044 bytes (1261 samples)"   # D8 vendor read OK
+RED (setcap -r): identical command
+                 -> "Disc write offset is unknown, dump may not be correct."  # D8 blocked
+restore:         setcap cap_sys_rawio=ep -> getcap shows cap again
+
+MECHANISM: identical operation was strace-confirmed on fedora -- the offset read is a
+SG_IO with CDB 0xD8 (Plextor, >=0xC0) that returns EPERM without CAP_SYS_RAWIO
+(see proofs/aaru-fedora-vendor-cap.log). Same kernel gate applies here.
+
+VERDICT: PROVEN. permctl-delivered cap on aaru is load-bearing for the Plextor D8
+disc-offset read; without it aaru cannot determine the offset.

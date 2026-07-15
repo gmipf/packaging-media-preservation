@@ -1,0 +1,33 @@
+proof: discimagecreator | fedora | vendor-cap
+date: 2026-07-15
+lane/VM: test-fedora (Fedora 44 KDE), repo COPR gmipf/media-preservation
+user groups: "gmipf wheel" (NO cdrom/disk/plugdev) -> groupless
+drive: PLEXTOR DVDR PX-760A (USB) -> /dev/sr1, data CD
+mechanism: Fedora %caps(cap_sys_rawio=ep) in discimagecreator.spec
+
+--- delivery ---
+$ getcap /usr/libexec/discimagecreator/DiscImageCreator.out
+  /usr/libexec/discimagecreator/DiscImageCreator.out cap_sys_rawio=ep
+  (DVDAuth.out also carries it)
+$ rpm -qf DiscImageCreator.out -> discimagecreator-20260703121302.efa7d482-3.fc44.x86_64
+
+--- GREEN (cap present) ---
+$ discimagecreator cd /dev/sr1 /tmp/dic/t.bin 8 /d8
+  This drive (DVDR PX-760A ...) supports [OpCode: 0xd8, SubCode: 0]
+  ... SubCode: 1 / 2 / 8    # Plextor D8 detected + used
+  Creating (Lead-in)(Track 0).scm & .sub ... (LBA) -10000/-10000   # D8 lead-in read
+exit 124 (trimmed)
+
+--- RED (setcap -r on DiscImageCreator.out, then restored) ---
+$ setcap -r .../DiscImageCreator.out ; getcap -> []
+$ discimagecreator cd /dev/sr1 ... /d8
+  lpCmd: d8, 00, 00, 00, 00, 00, 00, 00, 00, 01, 02, 00        # the D8 CDB sent
+  [F:ExecSearchingOffset][L:190] GetLastError: 1, Operation not permitted
+  [F:ReadCDForCheckingSubPack][L:1275] GetLastError: 1, Operation not permitted
+  This drive (...PX-760A...) doesn't support [OpCode: 0xd8, SubCode: 2]  # EPERM => "unsupported"
+$ setcap cap_sys_rawio=ep .../DiscImageCreator.out -> cap restored
+
+VERDICT: PROVEN. Package-delivered cap_sys_rawio on DiscImageCreator.out is
+load-bearing: with it the 0xd8 (>=0xC0) CDB reaches the drive; without it the
+identical CDB (lpCmd: d8,...) fails EPERM (kernel gate), and DIC misreads that as
+"drive doesn't support 0xd8".

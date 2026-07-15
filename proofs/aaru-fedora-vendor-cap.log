@@ -1,0 +1,41 @@
+proof: aaru | fedora | vendor-cap
+date: 2026-07-15
+lane/VM: test-fedora (Fedora 44 KDE), repo COPR gmipf/media-preservation
+user groups: "gmipf wheel" (NO cdrom/disk/plugdev) -> groupless
+drive: PLEXTOR DVDR PX-760A (USB) -> /dev/sr1
+disc: MIXED-MODE CD (track 1 = data @LBA 0, track 2 = STEREO AUDIO @LBA 50100)
+mechanism: Fedora %caps(cap_sys_rawio=ep) in aaru.spec
+
+Why a mixed/audio disc is needed: aaru dumps a plain DATA CD entirely with the
+kernel-whitelisted READ CD (0xBE) -> works WITHOUT the cap (verified separately).
+The cap is only exercised on the Plextor vendor path, which aaru takes for the
+AUDIO disc-write-offset detection (Plextor D8, opcode 0xD8, >=0xC0).
+
+--- delivery ---
+$ getcap /usr/lib64/aaru/aaru -> /usr/lib64/aaru/aaru cap_sys_rawio=ep
+$ rpm -qf /usr/lib64/aaru/aaru -> aaru-6.0.0~alpha.19-8.fc44.x86_64
+
+--- GREEN (cap present): disc offset detected via Plextor D8 ---
+$ aaru media dump /dev/sr1 out.aaruf -f -p 0
+  Drive reading offset is 120 bytes (30 samples).
+  Disc offset is 5044 bytes (1261 samples)      # <-- vendor read succeeded
+
+--- RED (A/B: setcap -r, then restored) ---
+$ setcap -r /usr/lib64/aaru/aaru ; getcap -> []
+$ aaru media dump /dev/sr1 out.aaruf -f -p 0    # identical command
+  Drive reading offset is 120 bytes (30 samples).
+  Disc write offset is unknown, dump may not be correct.   # <-- vendor read blocked
+$ setcap cap_sys_rawio=ep /usr/lib64/aaru/aaru -> cap restored
+
+--- MECHANISM PROOF (strace of the uncapped run) ---
+$ strace -f -e trace=ioctl aaru media dump ...   (cap stripped)
+  829 SG_IO ioctls total; 2 returned EPERM:
+  ioctl(117, SG_IO, {... cmd_len=12, cmdp="\xd8...}) = -1 EPERM   # Plextor D8 (0xD8) blocked
+  ioctl(117, SG_IO, {... cmd_len=16, cmdp="\x85...}) = -1 EPERM   # ATA PASS-THROUGH(16) 0x85 blocked
+  Both are off the kernel's SG_IO whitelist -> blk_verify_command returns EPERM
+  without CAP_SYS_RAWIO. This is exactly why the disc offset comes out "unknown".
+
+VERDICT: PROVEN. Package-delivered cap_sys_rawio on aaru's binary is load-bearing:
+with it aaru issues the Plextor D8 (0xD8) vendor read and detects the disc offset;
+without it the identical 0xD8 SG_IO is EPERM (kernel gate) and aaru reports the
+offset unknown. Groups clean (no cdrom/disk/plugdev), so nothing else grants access.

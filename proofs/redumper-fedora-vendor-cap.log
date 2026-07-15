@@ -1,0 +1,32 @@
+proof: redumper | fedora | vendor-cap
+date: 2026-07-15
+lane/VM: test-fedora (Fedora Linux 44 KDE Plasma), repo COPR gmipf/media-preservation
+user groups: "gmipf wheel" (NO cdrom/disk/plugdev) -> groupless
+drive: PLEXTOR DVDR PX-760A (USB 0dc4:0061) -> /dev/sr1, data CD (ID_CDROM_MEDIA_CD=1)
+mechanism: Fedora %caps(cap_sys_rawio=ep) in redumper.spec
+
+--- delivery (as installed, never hand-touched) ---
+$ getcap /usr/bin/redumper
+/usr/bin/redumper cap_sys_rawio=ep
+$ rpm -qf /usr/bin/redumper
+redumper-732-1.fc44.x86_64
+$ redumper --version -> redumper (build: b732)
+
+--- GREEN (cap present): D8 vendor read reaches the drive ---
+$ redumper disc --verbose --drive=/dev/sr1 --image-path=... --image-name=t
+  inquiry: PLEXTOR - DVDR PX-760A (revision level: 1.07, ...)
+  configuration: PLEXTOR (read offset: +30, C2 shift: 295, pre-gap start: -75,
+                 read method: D8, sector order: DATA_C2_SUB)
+- [  0%] LBA:    -75/226575, errors: { SCSIs: 0, C2s: 0, Q: 0 }   # lead-in via D8, 0 errors
+permit-errors: 0   (run trimmed after lead-in via timeout, exit 124)
+
+--- RED (A/B: cap stripped with `setcap -r`, then restored) ---
+$ setcap -r /usr/bin/redumper ; getcap -> []      # cap gone
+$ redumper disc ... (same command)
+- [  0%] LBA:    -75/226575, ... error: SYSTEM (Operation not permitted)   # EPERM at first D8 read
+permit-errors: 1 ; exit 255
+$ setcap cap_sys_rawio=ep /usr/bin/redumper ; getcap -> cap_sys_rawio=ep   # restored
+
+VERDICT: PROVEN. The cap is package-delivered on the correct binary and is
+load-bearing: with it the D8 (opcode 0xD8, >=0xC0) lead-in read succeeds groupless;
+without it the identical read fails EPERM at LBA -75 (kernel blk_verify_command gate).
