@@ -25,7 +25,7 @@ respective project URLs (see below).
 | [DiscImageCreator suite](https://github.com/saramibreak/DiscImageCreator) | auto-tracked hourly on new master commits (built from source — upstream binary links against EOL OpenSSL 1.1); bundles DIC + EccEdc + DVDAuth + unscrambler in one package | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Aaru](https://github.com/aaru-dps/Aaru) | auto-tracked hourly on new `v6.0.0-alpha.<N>` tags (binary repackage); CLI + Avalonia GUI ship as one binary, launch the GUI via `aaru gui` | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Aaru 5.4.x](https://github.com/aaru-dps/Aaru) (`aaru5`) | version-pinned, no auto-tracking (binary repackage); the stable 5.4 CLI that MPF drives, installs as `/usr/bin/aaru5` alongside the rolling `aaru` v6 | ✅ | ✅ | ✅ | ✅ | ✅ |
-| [Redumper-GUI](https://github.com/Deterous/Redumper-GUI) | release tags, built from source (vendored crates) | ✅ | ✅ | ✅ | 26.04 only | ❌ |
+| [Redumper-GUI](https://github.com/Deterous/Redumper-GUI) | release tags, built from source (vendored crates) | ✅ | ✅ | ✅ | 26.04 only | 13 only |
 | `redumper729` / `redumper732` | version pins, no auto-tracking: the redumper build that Redumper-GUI (729) and MPF (732) bundle. Install one only if you use that frontend — the rolling `redumper` is what you want otherwise. They coexist, each installing as `/usr/bin/redumper<build>` | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 [copr]: https://copr.fedorainfracloud.org/coprs/gmipf/media-preservation/
@@ -36,9 +36,10 @@ respective project URLs (see below).
 Ubuntu 22.04/24.04/26.04, Debian 12+13 — x86_64). For the versions currently
 shipping and full install instructions, see those pages.
 
-Redumper-GUI is the one gap, and it is not an oversight: eframe/egui needs
-rustc ≥ 1.92, which Ubuntu 22.04/24.04 (≤ 1.91), Debian 13 (1.85) and Debian 12
-(1.63) do not have. Only Ubuntu 26.04 clears the floor.
+Redumper-GUI needs rustc ≥ 1.92 (eframe/egui). Debian 13 clears the floor through
+`trixie-backports` (rustc 1.94.1, which OBS builds against — the package's
+`Build-Depends: rustc (>= 1.92)` pulls it), and Ubuntu 26.04 ships 1.93. Left out:
+Ubuntu 22.04/24.04 (≤ 1.91) and Debian 12 (1.63, and its backports carry no rustc).
 
 ## Drive access
 
@@ -309,8 +310,10 @@ sudo apt update
 sudo apt install redumper discimagecreator aaru aaru5 mpf
 ```
 
-Redumper-GUI is not available on Debian: it needs rustc ≥ 1.92 and trixie ships
-1.85.
+Redumper-GUI is available on Debian 13 (trixie) but not Debian 12 (bookworm): it
+needs rustc ≥ 1.92, which trixie provides through `trixie-backports` (rustc 1.94.1,
+what OBS builds against); bookworm's 1.63 has no backported rustc. On trixie, add it:
+`sudo apt install redumper-gui`.
 
 `mpf` is a meta-package; it pulls in `mpf-check` (log validator),
 `mpf-cli` (headless dump orchestrator) and `mpf-gui` (Avalonia desktop
