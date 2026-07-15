@@ -14,7 +14,7 @@
 
 Name:           redumper-gui
 Version:        1.0.1
-Release:        4%{?dist}
+Release:        5%{?dist}
 Summary:        Desktop frontend for the redumper optical-disc dumper
 
 # Upstream ships the plain GPL-3.0 text with no per-file headers and no
