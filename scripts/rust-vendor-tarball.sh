@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Build the vendored source tarball for a Rust tool and (optionally) publish it
-# as a release asset on this packaging repo.
+# to an orphan `vendored` branch of the tool's own fork (not a GitHub release).
 #
 # WHY THIS EXISTS
 # ---------------
@@ -15,7 +15,7 @@
 # So the crates have to be inside the source archive. Rather than solving that
 # three times with three different mechanisms, we solve it once: this script
 # produces ONE tarball -- upstream source + a pinned Cargo.lock + the vendored
-# crates -- and all three lanes consume the same file by URL. That also means
+# crates -- and both lanes consume the same file by URL. That also means
 # COPR and OBS build from byte-identical sources, which is a property
 # worth having on its own.
 #
@@ -155,18 +155,34 @@ cat <<EOF
 EOF
 
 if [ "$PUBLISH" = "--publish" ]; then
-    REL="${TOOL}-${VERSION}"
-    echo ":: publishing as release asset ${REL} on ${PKG_REPO}"
-    gh release view "$REL" --repo "$PKG_REPO" >/dev/null 2>&1 || \
-        gh release create "$REL" --repo "$PKG_REPO" \
-            --title "${TOOL} ${VERSION} (vendored source)" \
-            --notes "Vendored source tarball for ${TOOL} ${VERSION}: upstream ${UPSTREAM_REPO} tag ${TAG}, plus a pinned Cargo.lock and its crates vendored (filtered to x86_64-linux).
-
-This is a packaging artifact, not a release of the tool. It exists because no build root has network access -- not COPR's chroot and not OBS's -- so the crates must travel inside the source archive. Both lanes build from this one file.
-
-Upstream tarball sha256: \`${UPSTREAM_SHA}\`"
-    gh release upload "$REL" "${TARBALL}" --repo "$PKG_REPO" --clobber
-    echo ":: done"
+    # Host the tarball on an orphan `vendored` branch of OUR fork of the tool,
+    # not as a GitHub release: a Releases list reads like a binary download, and
+    # the vendored crates are conceptually the tool's own dependency tree. Both
+    # lanes fetch it via raw.githubusercontent (see the spec's Source0).
+    VENDOR_REPO="gmipf/$(basename "$UPSTREAM_REPO")"
+    VENDOR_BRANCH="vendored"
+    RAW="https://raw.githubusercontent.com/${VENDOR_REPO}/${VENDOR_BRANCH}/${TARBALL}"
+    echo ":: publishing ${TARBALL} to ${VENDOR_BRANCH} branch of ${VENDOR_REPO}"
+    PUB=$(mktemp -d)
+    if ! git clone --quiet --depth 1 --branch "$VENDOR_BRANCH" --single-branch \
+            "https://github.com/${VENDOR_REPO}.git" "$PUB" 2>/dev/null; then
+        # branch does not exist yet -> start it as an orphan
+        git clone --quiet --depth 1 "https://github.com/${VENDOR_REPO}.git" "$PUB"
+        git -C "$PUB" switch --quiet --orphan "$VENDOR_BRANCH"
+        git -C "$PUB" rm -rfq . 2>/dev/null || true
+    fi
+    cp "$TARBALL" "$PUB/"
+    git -C "$PUB" add "$TARBALL"
+    if git -C "$PUB" diff --cached --quiet; then
+        echo ":: identical bytes already on the branch -- nothing to push"
+    else
+        git -C "$PUB" -c user.name=gmipf -c user.email=gmipf64@gmail.com \
+            commit --quiet -m "vendored: ${TOOL} ${VERSION} crate tarball"
+        git -C "$PUB" push --quiet origin "$VENDOR_BRANCH"
+        echo ":: pushed"
+    fi
+    rm -rf "$PUB"
+    echo ":: Source0 -> ${RAW}"
 else
-    echo "not published (pass --publish to upload it as a release asset)"
+    echo "not published (pass --publish to push it to the vendored branch)"
 fi

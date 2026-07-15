@@ -31,10 +31,11 @@ URL:            https://github.com/Deterous/Redumper-GUI
 # have no network. scripts/rust-vendor-tarball.sh therefore takes the
 # upstream git tag, pins a Cargo.lock, vendors the crates filtered to
 # x86_64-linux (cargo-vendor-filterer, which drops the windows-* trees:
-# 546 MB -> 178 MB) and publishes the result as a release asset on this
-# packaging repo. Both lanes -- COPR and OBS -- consume that one
-# file, so all three build from byte-identical sources.
-Source0:        https://github.com/gmipf/packaging-media-preservation/releases/download/%{name}-%{version}/%{name}-%{version}-vendored.tar.xz
+# 546 MB -> 178 MB) and commits the result to an orphan `vendored` branch of
+# the redumper-gui fork (gmipf/Redumper-GUI). Both lanes -- COPR and OBS --
+# fetch that one file via raw.githubusercontent, so they build from
+# byte-identical sources.
+Source0:        https://raw.githubusercontent.com/gmipf/Redumper-GUI/vendored/%{name}-%{version}-vendored.tar.xz
 Source1:        redumper-gui.desktop
 Source2:        redumper-gui.1
 
