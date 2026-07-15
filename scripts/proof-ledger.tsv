@@ -1,0 +1,67 @@
+# proof-ledger.tsv — the drive-access proof backlog: what we must prove, and what
+# has actually been proven, for groupless/sudoless dumping. Machine-checked by
+# scripts/proof-status.sh. This is the "new system": every line carries a hash of
+# the recipe fragments that DELIVER its mechanism, so a proof cannot silently rot.
+#
+# Two states, nothing in between:
+#   not-yet  — an OPEN obligation. The mechanism exists in the tree, but it has NOT
+#              been proven under this system yet. mech_hash = '-', date = '-',
+#              evidence = 'not-yet'. Listed loudly; NOT drift-checked (there is no
+#              proof to invalidate). This is where EVERY line starts.
+#   proven   — measured, with a saved log. evidence = 'log:<path>', date = the
+#              measurement date, mech_hash = the recipe state AT that measurement.
+#              From then on it IS drift-checked: if the udev rule / scriptlet /
+#              %caps() / permissions profile changes, the hash moves and the proof
+#              is declared stale -> re-measure.
+#
+# Nothing is 'proven' today: the move to OBS and this ledger are new, and we have
+# re-measured nothing under it. That is correct and expected -- the backlog is the
+# point. To close one: measure per the drive-access-verification skill, save the
+# log, then set that row's evidence=log:<path>, date=<today>, mech_hash=AUTO, and
+# run `proof-status.sh --refresh` (it fills AUTO from the live recipe).
+#
+# Fingerprint is keyed on the MECHANISM, never the version: a redumper b731->b732
+# bump leaves the cap/udev fragments untouched, so a proof survives it; touching
+# the scriptlet moves the hash and voids it. (Proven empirically, 2026-07-15.)
+#
+# Cap POLICY is identical on all three lanes (only the MECHANISM differs: Fedora
+# %caps(), openSUSE permissions framework, Debian setcap in postinst): the six SCSI
+# tools below get cap_sys_rawio, the two front-ends get none. So there is
+# deliberately NO entry for mpf or redumper-gui on ANY lane -- a file capability
+# makes a process non-dumpable and kills the GUI's file dialog; the cap rides the
+# SCSI tool they point at. The coverage check knows this and will not demand a
+# proof for them. Do not "helpfully" add one.
+#
+# Format (pipe-separated):  tool | lane | property | date | mech_hash | evidence | mech_files
+#   mech_files  comma-separated, repo-relative; *.spec is sliced to its mechanism
+#               fragments (%caps(), %post/%postun, openSUSE permissions profile),
+#               everything else (.rules, postinst) is hashed whole.
+#
+tool|lane|property|date|mech_hash|evidence|mech_files
+aaru|fedora|vendor-cap|-|-|not-yet|fedora/aaru/aaru.spec
+aaru5|fedora|vendor-cap|-|-|not-yet|fedora/aaru5/aaru5.spec
+discimagecreator|fedora|vendor-cap|-|-|not-yet|fedora/discimagecreator/discimagecreator.spec
+redumper|fedora|vendor-cap|-|-|not-yet|fedora/redumper/redumper.spec
+redumper729|fedora|vendor-cap|-|-|not-yet|fedora/redumper729/redumper729.spec
+redumper732|fedora|vendor-cap|-|-|not-yet|fedora/redumper732/redumper732.spec
+aaru|fedora|node-floppy|-|-|not-yet|fedora/aaru/70-aaru-floppy.rules,fedora/aaru/aaru.spec
+aaru5|fedora|node-floppy|-|-|not-yet|fedora/aaru5/70-aaru5-floppy.rules,fedora/aaru5/aaru5.spec
+discimagecreator|fedora|node-floppy|-|-|not-yet|fedora/discimagecreator/70-discimagecreator-floppy.rules,fedora/discimagecreator/discimagecreator.spec
+redumper|debian|vendor-cap|-|-|not-yet|ubuntu/redumper/debian/redumper.postinst
+redumper729|debian|vendor-cap|-|-|not-yet|ubuntu/redumper729/debian/redumper729.postinst
+redumper732|debian|vendor-cap|-|-|not-yet|ubuntu/redumper732/debian/redumper732.postinst
+aaru|debian|vendor-cap|-|-|not-yet|ubuntu/aaru/debian/aaru.postinst
+aaru5|debian|vendor-cap|-|-|not-yet|ubuntu/aaru5/debian/aaru5.postinst
+discimagecreator|debian|vendor-cap|-|-|not-yet|ubuntu/discimagecreator/debian/discimagecreator.postinst
+aaru|debian|node-floppy|-|-|not-yet|ubuntu/aaru/debian/70-aaru-floppy.rules,ubuntu/aaru/debian/aaru.postinst
+aaru5|debian|node-floppy|-|-|not-yet|ubuntu/aaru5/debian/70-aaru5-floppy.rules,ubuntu/aaru5/debian/aaru5.postinst
+discimagecreator|debian|node-floppy|-|-|not-yet|ubuntu/discimagecreator/debian/70-discimagecreator-floppy.rules,ubuntu/discimagecreator/debian/discimagecreator.postinst
+aaru|opensuse|vendor-cap|-|-|not-yet|opensuse/aaru/aaru.spec
+aaru5|opensuse|vendor-cap|-|-|not-yet|opensuse/aaru5/aaru5.spec
+discimagecreator|opensuse|vendor-cap|-|-|not-yet|opensuse/discimagecreator/discimagecreator.spec
+redumper|opensuse|vendor-cap|-|-|not-yet|opensuse/redumper/redumper.spec
+redumper729|opensuse|vendor-cap|-|-|not-yet|opensuse/redumper729/redumper729.spec
+redumper732|opensuse|vendor-cap|-|-|not-yet|opensuse/redumper732/redumper732.spec
+aaru|opensuse|node-floppy|-|-|not-yet|opensuse/aaru/70-aaru-floppy.rules,opensuse/aaru/aaru.spec
+aaru5|opensuse|node-floppy|-|-|not-yet|opensuse/aaru5/70-aaru5-floppy.rules,opensuse/aaru5/aaru5.spec
+discimagecreator|opensuse|node-floppy|-|-|not-yet|opensuse/discimagecreator/70-discimagecreator-floppy.rules,opensuse/discimagecreator/discimagecreator.spec

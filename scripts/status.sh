@@ -36,6 +36,10 @@
 #
 # Usage: scripts/status.sh
 # Needs network (copr, obs, github) -- run it outside the command sandbox.
+#
+# Sibling: scripts/proof-status.sh checks a fourth silent failure this one does
+# NOT -- a drive-access proof (groupless/sudoless dumping) gone stale because the
+# udev rule / scriptlet / %caps changed under it. Offline; run it too on "sync".
 set -uo pipefail
 
 COPR_PROJECT=${COPR_PROJECT:-gmipf/media-preservation}
