@@ -27,10 +27,20 @@ an upstream bug):
   around by setting `~/.config/Aaru.xml` `<GdprCompliance>1</GdprCompliance>`. The
   crash above persists after that.
 
-## To close it later
-Either (a) a data+audio disc that aaru5 5.4.2 can dump (reaching its Plextor D8 offset
-detection), or (b) a fixed aaru5 build, or (c) accept aaru5 vendor-cap as
-delivery-proven (getcap + fedora mechanism proven by siblings + the 0x85 gate above).
-Decision deferred to the maintainer; kept **not-yet** to honor "measure, don't infer".
+## Pure audio CD tried too (2026-07-15) -- still blocked
+A pure 20-track audio CD (TRACK_COUNT_AUDIO=20, no data track) was inserted to force
+aaru5's Plextor D8 audio path. Result:
+- `aaru5 media dump` -> SAME crash (count '-1' in DumpMediaCommand.Invoke), before any read.
+- `aaru5 media scan` -> SAME crash (count '-1' in Aaru.Core.Devices.Scanning.MediaScan.Scsi()).
+- strace of `media scan` (uncapped): 50 SG_IO, opcodes 0x00/08/0b/12/25/28/2b/46/85/88/a8 --
+  standard reads (READ 6/10/12/16), **no 0xD8 at all**; 2 EPERM (incl. 0x85 ATA passthrough).
+So the crash is disc-type- AND command-independent, and aaru5 5.4.2 does not even emit the
+Plextor D8 for audio via scan. The cap is still demonstrably load-bearing (0x85 EPERM), but
+there is no clean GREEN state (aaru5 crashes with the cap too).
 
-Same blocker is expected on the opensuse and debian aaru5 lanes (same aaru5 5.4.2 code).
+## To close it later
+(a) a fixed aaru5 build whose `media dump`/`scan` does not crash on optical CDs, or
+(b) accept aaru5 vendor-cap as delivery-proven (getcap on all 3 lanes + the lane mechanism
+proven load-bearing by redumper/dic/aaru + aaru5's own 0x85 gate). A different disc will NOT
+help -- tried data, mixed and pure-audio, all crash. Kept **not-yet** to honor "measure,
+don't infer". Same blocker confirmed on fedora, opensuse and debian (same aaru5 5.4.2 code).
