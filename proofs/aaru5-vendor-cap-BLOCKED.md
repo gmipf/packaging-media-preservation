@@ -38,6 +38,11 @@ So the crash is disc-type- AND command-independent, and aaru5 5.4.2 does not eve
 Plextor D8 for audio via scan. The cap is still demonstrably load-bearing (0x85 EPERM), but
 there is no clean GREEN state (aaru5 crashes with the cap too).
 
+Also tested AS ROOT (sudo, ALL capabilities) on the audio CD: crashes identically
+(count '-1', right after "Added 4862 CompactDisc read offsets"). So the crash is
+privilege-independent too -- not cap_sys_rawio, not any capability, a pure aaru5 5.4.2
+code bug in the dump/scan setup. Root buys nothing here.
+
 ## To close it later
 (a) a fixed aaru5 build whose `media dump`/`scan` does not crash on optical CDs, or
 (b) accept aaru5 vendor-cap as delivery-proven (getcap on all 3 lanes + the lane mechanism
