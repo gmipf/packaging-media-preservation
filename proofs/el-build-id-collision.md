@@ -30,6 +30,52 @@ artifacts of the same commit:
 
 Fedora's rpm drops the links together with debug_package; EL's does not.
 
+## Why the distributions differ -- measured 2026-07-16
+
+Not the distro's macro: Fedora and EL set the *same* `_build_id_links`. What
+differs is the rpm generation.
+
+| | rpm | `%_build_id_links` | `/usr/lib/.build-id` on a stock install |
+|---|---|---|---|
+| Fedora 43 | **6.0.1** | compat | -- |
+| CentOS Stream 10 | **4.19.1.1** | compat | **4634 entries** |
+| openSUSE Leap 16.0 | 4.20.1 | **alldebug** | **does not exist** |
+
+Fedora is protected by rpm 6, not by a macro. Worth knowing: a Fedora-only test
+keeps hiding this class of bug for as long as EL stays on rpm 4.
+
+## openSUSE was never affected -- and the proof was an accident
+
+openSUSE defaults to `alldebug`: build-id links only ever go into the debuginfo
+subpackage. With `debug_package %{nil}` there is no debuginfo package, so there
+is nowhere for them to go. Across an entire Leap 16.0 install not one main
+package carries a build-id file -- `/usr/lib/.build-id` does not exist at all,
+where EL 10 has 4634 entries.
+
+The artifact-level proof turned up by accident: `test-openSUSE` still had the
+*pre-fix* OBS builds installed side by side, left over from the 2026-07-14 drive
+proofs (today's builds are lp160.39.1 / lp160.21.1):
+
+    redumper-732-lp160.27.1.x86_64      <- pre-fix
+    redumper732-732-lp160.11.1.x86_64   <- pre-fix
+
+On EL the same spec pair at the same upstream build could not be co-installed at
+all. The build-id entries are symlinks pointing at *different* targets, which is
+a genuine conflict rather than a duplicate file rpm would tolerate. These two
+coexisted -- so the openSUSE builds never shipped them.
+
+An attempt to reproduce the collision with a throwaway package in the VM FAILED
+and proves nothing: openSUSE creates debuginfo from the OBS build root, so a
+local `rpmbuild` never starts the machinery. The control stayed green across
+four variants (alldebug / none / compat, debug_package on and off) and through
+`_build_create_debug`. Four zeroes from a test that cannot go red are not a
+result; the coexistence artifact above is the whole evidence.
+
+Coexistence re-verified against the real OBS repo (2026-07-16): all nine
+packages in one transaction, `zypper` exit=0, 0 build-id files per package. The
+repackaged binaries also ran on openSUSE for the first time on record --
+`redumper` b732, `redumper729` b729, `redumper732` b732.
+
 ## GREEN (after `_build_id_links none`, same VM, same command)
 
     $ sudo dnf clean all
