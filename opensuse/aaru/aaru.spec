@@ -273,9 +273,15 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
 %files
 %dir %{aarudir}
 %attr(0755,root,root) %{aarudir}/aaru
-%{aarudir}/README.md
-%{aarudir}/Changelog.md
-%{aarudir}/CONTRIBUTING.md
+# %doc/%license MARK these as documentation instead of merely shipping them, so
+# `rpm -qd` lists them and --excludedocs can drop them. On an ABSOLUTE path the
+# marker only tags: the files stay in %{aarudir} beside the binary — upstream's
+# own spec keeps them next to it too (in /opt/Aaru) — they are NOT relocated to
+# %{_docdir}. Same intent as the Debian lane, where debhelper picks Changelog.md
+# up as the package's upstream changelog.
+%doc %{aarudir}/README.md
+%doc %{aarudir}/Changelog.md
+%doc %{aarudir}/CONTRIBUTING.md
 %license %{aarudir}/LICENSE
 %license %{aarudir}/LICENSE.MIT
 %license %{aarudir}/LICENSE.LGPL
@@ -288,6 +294,14 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
 %{_datadir}/permissions/permissions.d/aaru
 
 %changelog
+* Thu Jul 16 2026 gmipf <gmipf64@gmail.com> - 6.0.0~beta.1-0
+- Mark README.md, Changelog.md and CONTRIBUTING.md as %%doc. They were already
+  installed, but unmarked, so rpm did not know they were documentation: `rpm -qd
+  aaru` came back empty and --excludedocs kept them. The files do not move --
+  %%doc on an absolute path only tags. Inherited from upstream's own spec, which
+  ships all three unmarked in /opt/Aaru; the Debian lane already had it right,
+  where debhelper installs Changelog.md as the package's upstream changelog.
+
 * Thu Jul 16 2026 gmipf <gmipf64@gmail.com> - 6.0.0~beta.1-0
 - Automated sync to upstream Aaru v6.0.0-beta.1.
 

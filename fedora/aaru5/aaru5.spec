@@ -17,7 +17,7 @@
 
 Name:           aaru5
 Version:        5.4.2
-Release:        6%{?dist}
+Release:        7%{?dist}
 Summary:        Aaru 5.x stable data-preservation CLI (MPF-compatible)
 
 License:        GPL-3.0-or-later AND LGPL-2.1-or-later AND MIT
@@ -179,9 +179,15 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
 %dir %{aarudir}
 %caps(cap_sys_rawio=ep) %attr(0755,root,root) %{aarudir}/aaru
 %{aarudir}/libe_sqlite3.so
-%{aarudir}/README.md
-%{aarudir}/Changelog.md
-%{aarudir}/CONTRIBUTING.md
+# %doc/%license MARK these as documentation instead of merely shipping them, so
+# `rpm -qd` lists them and --excludedocs can drop them. On an ABSOLUTE path the
+# marker only tags: the files stay in %{aarudir} beside the binary — upstream's
+# own spec keeps them next to it too (in /opt/Aaru) — they are NOT relocated to
+# %{_docdir}. Same intent as the Debian lane, where debhelper picks Changelog.md
+# up as the package's upstream changelog.
+%doc %{aarudir}/README.md
+%doc %{aarudir}/Changelog.md
+%doc %{aarudir}/CONTRIBUTING.md
 %license %{aarudir}/LICENSE.LGPL
 %license %{aarudir}/LICENSE.MIT
 %{_bindir}/aaru5
@@ -189,6 +195,14 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
 %{_udevrulesdir}/70-aaru5-floppy.rules
 
 %changelog
+* Thu Jul 16 2026 gmipf <gmipf64@gmail.com> - 5.4.2-7
+- Mark README.md, Changelog.md and CONTRIBUTING.md as %%doc. They were already
+  installed, but unmarked, so rpm did not know they were documentation: `rpm -qd
+  aaru5` came back empty and --excludedocs kept them. The files do not move --
+  %%doc on an absolute path only tags. Inherited from upstream's own spec, which
+  ships all three unmarked in /opt/Aaru; the Debian lane already had it right,
+  where debhelper installs Changelog.md as the package's upstream changelog.
+
 * Sun Jul 12 2026 gmipf <gmipf64@gmail.com> - 5.4.2-6
 - Generate the aaru5(1) command reference from the shipped binary at build time
   instead of carrying a hand-written command list. A new generator
