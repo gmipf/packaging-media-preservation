@@ -23,7 +23,7 @@ respective project URLs (see below).
 | [redumper](https://github.com/superg/redumper) | auto-tracked hourly on new `b<N>` tags (binary repackage) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [MPF suite](https://github.com/SabreTools/MPF) | rolling, auto-tracked hourly (binary repackage); meta-package `mpf` pulls in `mpf-check` (validator), `mpf-cli` (headless orchestrator) and `mpf-gui` (Avalonia desktop UI) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [DiscImageCreator suite](https://github.com/saramibreak/DiscImageCreator) | auto-tracked hourly on new master commits (built from source — upstream binary links against EOL OpenSSL 1.1); bundles DIC + EccEdc + DVDAuth + unscrambler in one package | ✅ | ✅ | ✅ | ✅ | ✅ |
-| [Aaru](https://github.com/aaru-dps/Aaru) | auto-tracked hourly on new `v6.0.0-alpha.<N>` tags (binary repackage); CLI + Avalonia GUI ship as one binary, launch the GUI via `aaru gui` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| [Aaru](https://github.com/aaru-dps/Aaru) | auto-tracked hourly on new `v6.0.0-<alpha|beta|rc>.<N>` tags (binary repackage; beta since 2026-07-16); CLI + Avalonia GUI ship as one binary, launch the GUI via `aaru gui` | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Aaru 5.4.x](https://github.com/aaru-dps/Aaru) (`aaru5`) | version-pinned, no auto-tracking (binary repackage); the stable 5.4 CLI that MPF drives, installs as `/usr/bin/aaru5` alongside the rolling `aaru` v6 | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Redumper-GUI](https://github.com/Deterous/Redumper-GUI) | release tags, built from source (vendored crates) | ✅ | ✅ | ✅ | 26.04 only | 13 only |
 | `redumper729` / `redumper732` | version pins, no auto-tracking: the redumper build that Redumper-GUI (729) and MPF (732) bundle. Install one only if you use that frontend — the rolling `redumper` is what you want otherwise. They coexist, each installing as `/usr/bin/redumper<build>` | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -91,7 +91,7 @@ Two things that look like permission errors and are not:
 │   ├── watch-redumper-releases.yml         # hourly watcher for redumper's b<N> tags
 │   ├── watch-mpf-rolling.yml               # hourly watcher for MPF's rolling tag
 │   ├── watch-dic-releases.yml              # hourly watcher for DiscImageCreator master commits
-│   └── watch-aaru-releases.yml             # hourly watcher for Aaru's v6.0.0-alpha.<N> tags
+│   └── watch-aaru-releases.yml             # hourly watcher for Aaru's v6.0.0 pre-release tags
 ├── LICENSE                                 # MIT (recipes only; tools keep their own licenses)
 ├── README.md
 └── fedora/
@@ -225,12 +225,15 @@ upstream releases and let Packit handle the rebuild:
   recompile against OpenSSL 3 ourselves until upstream
   ([saramibreak/DiscImageCreator#321](https://github.com/saramibreak/DiscImageCreator/issues/321))
   migrates or static-links.
-- **aaru** is on the v6.0.0 alpha track; upstream publishes a new
-  `v6.0.0-alpha.<N>` tag every two to six weeks. `watch-aaru-releases.yml`
-  polls hourly, picks the highest numeric `alpha.<N>[.<M>]` tag and
-  rewrites `%global aaruprerel` on a bump. The workflow loud-fails if
-  upstream transitions to stable v6.0.0, a beta/rc, or a v7+ major —
-  the spec's tilde-versioning would need manual revision.
+- **aaru** is on the v6.0.0 pre-release track — beta since 2026-07-16; upstream
+  publishes a new alpha/beta/rc tag every two to six weeks.
+  `watch-aaru-releases.yml` polls hourly, picks the highest tag across the track
+  (alpha < beta < rc, the same order rpm and dpkg give the versions derived from
+  it) and rewrites `%global aaruprerel` on a bump. Moving within the track needs
+  no review: only the tag changes. The workflow loud-fails on stable v6.0.0 or a
+  v7+ major, which reshape the packaging instead of advancing it — `Version`
+  loses its `~pre-release` tilde and the release assets lose their `-<prerel>`
+  infix, so `Source0`/`Source1` stop resolving.
 
 See `.packit.yaml` for the per-tool trigger configuration.
 
