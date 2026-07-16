@@ -91,7 +91,19 @@ packages:
         - bash -c "rpmspec -q --queryformat '%{version}\n' aaru.spec | head -1"
       create-archive:
         - bash -c "spectool -g aaru.spec 1>&2"
-        - bash -c "ls -1 aaru-*-alpha.19_linux_amd64.tar.xz | head -1"
+        # Match the tarball by SHAPE, never by version: spectool fetches whatever
+        # Source0 names, so pinning a version here just means this line has to be
+        # edited in lockstep with the spec -- and it never was. It sat at
+        # `alpha.19` from March until upstream shipped beta.1 (2026-07-16); the
+        # watcher rewrote %global aaruprerel, spectool duly fetched
+        # aaru-6.0.0-beta.1_linux_amd64.tar.xz, this `ls` still looked for
+        # alpha.19, matched nothing, and packit failed with "create-archive did
+        # not output a path". ANY version move would have done it, alpha.20
+        # included -- the version simply had not moved since the line was written.
+        # aaru5 already had the right shape; this is now the same. The `_linux_amd64`
+        # infix keeps it off Source1 (aaru-src-<ver>.tar.xz), which spectool also
+        # fetches into this directory.
+        - bash -c "ls -1 aaru-*_linux_amd64.tar.xz | head -1"
 
   # Stable Aaru 5.x, packaged SEPARATELY from the rolling v6 `aaru` above
   # (different binary name / libdir / manpage — co-installable). MPF only
