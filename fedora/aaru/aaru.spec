@@ -19,11 +19,15 @@
 
 Name:           aaru
 # Tilde-style pre-release (mirrors upstream pkg/rpm/aaru.spec):
-#   6.0.0~alpha.19  <  6.0.0  <  6.0.1
-# Future stable v6.0.0 will sort higher automatically — no clever
-# leading-0 dance in Release needed. No Epoch field: COPR package
-# history was wiped (copr-cli delete-package) before this build, so
-# nothing previously published needs to be sort-overridden.
+#   6.0.0~alpha.19  <  6.0.0~beta.1  <  6.0.0~rc.1  <  6.0.0  <  6.0.1
+# The whole pre-release track sorts itself, so advancing it is just
+# %{aaruprerel} (watch-aaru-releases.yml rewrites that one line): `~`
+# sorts before everything, and rpm compares what follows alphabetically
+# — which is exactly alpha < beta < rc. Future stable v6.0.0 will sort
+# higher automatically — no clever leading-0 dance in Release needed. No
+# Epoch field: COPR package history was wiped (copr-cli delete-package)
+# before this build, so nothing previously published needs to be
+# sort-overridden.
 Version:        %{aaruver}~%{aaruprerel}
 Release:        8%{?dist}
 Summary:        Data preservation suite for optical, magnetic and solid-state media

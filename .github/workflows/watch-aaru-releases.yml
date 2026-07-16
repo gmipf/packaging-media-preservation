@@ -1,18 +1,28 @@
 name: watch-aaru-releases
 
-# Aaru is on the v6.0.0 alpha track — upstream publishes a new alpha
-# tag every 2–6 weeks. We poll hourly, pick the highest `alpha.<N>` tag
-# (including sub-revisions like `alpha.15.1`), and rewrite the
-# `%global aaruprerel` line in the spec. Source0/Source1 URLs are
+# Aaru is on the v6.0.0 PRE-RELEASE track — upstream publishes a new
+# alpha/beta/rc tag every 2–6 weeks. We poll hourly, pick the highest tag
+# across the track (including sub-revisions like `alpha.15.1`), and rewrite
+# the `%global aaruprerel` line in the spec. Source0/Source1 URLs are
 # deterministic from the tag, so no body-parse or asset lookup needed.
 #
-# Loud-fail conditions (manual review required — tilde-versioning and
-# Epoch strategy in the spec assume alpha-only):
-#   * stable v6.0.0 (no -alpha)
-#   * v6.0.0-beta.* or v6.0.0-rc.*
+# Moving WITHIN the track (alpha -> beta -> rc) needs no review: the tag is
+# the only thing that changes. Measured on the alpha.19 -> beta.1 move
+# (2026-07-16, after a 4-month gap): asset names, binary-tarball layout, the
+# binary's NEEDED sonames and every src/ path %install reaches into were all
+# unchanged, and the manpage generator walked the beta binary's real command
+# tree (no fallback). rpm orders the derived versions by itself —
+# 6.0.0~alpha.19 < 6.0.0~beta.1 < 6.0.0~rc.1 < 6.0.0 — so the ranking below
+# only has to agree with rpm, not outsmart it.
+#
+# Loud-fail conditions (manual review required):
+#   * stable v6.0.0 (no pre-release suffix)
 #   * v7.* or higher major
-# When any of these appear among recent releases, the workflow exits
-# nonzero so the cron run is visibly broken in the Actions UI.
+# Both RESHAPE the packaging rather than advance it: Version loses the
+# `%{aaruver}~%{aaruprerel}` tilde form entirely, and the release assets lose
+# their `-<prerel>` infix, so Source0/Source1 stop resolving. That is a human's
+# job, not a sed's. When either appears among recent releases, the workflow
+# exits nonzero so the cron run is visibly broken in the Actions UI.
 
 on:
   schedule:
@@ -30,7 +40,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Sync aaru spec with upstream alpha release
+      - name: Sync aaru spec with upstream pre-release
         id: sync
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -39,31 +49,39 @@ jobs:
           SPEC=fedora/aaru/aaru.spec
           MARKER=fedora/aaru/.upstream-tag
 
-          # Detect any tag that signals upstream has left the alpha track.
+          # Detect a tag that signals upstream has left the pre-release track
+          # altogether (see the header: these reshape Version and the Source
+          # URLs, so a human has to look).
           TRANSITION=$(gh api 'repos/aaru-dps/Aaru/releases?per_page=20' --jq '
             [.[] | select(.draft == false) | .tag_name
-                 | select(test("^v(6\\.0\\.0$|6\\.0\\.0-(beta|rc)|[7-9]\\.)"))]
+                 | select(test("^v(6\\.0\\.0$|[7-9]\\.)"))]
             | .[]
           ')
           if [ -n "$TRANSITION" ]; then
-            echo "::error::Aaru moved past the alpha track — manual spec review required"
+            echo "::error::Aaru left the pre-release track — manual spec review required"
             echo "Transitional tags detected:"
             echo "$TRANSITION"
             exit 1
           fi
 
-          # Pick the highest v6.0.0-alpha.<N>[.<M>] tag by numeric sort
-          # of each dot-separated component after `alpha.`.
+          # Pick the highest v6.0.0-<alpha|beta|rc>.<N>[.<M>] tag: rank the
+          # track first (alpha < beta < rc), then sort the dot-separated
+          # numbers after it. The track ranking deliberately mirrors rpm's own
+          # ordering of the versions we derive from these tags, so the tag we
+          # pick and the EVR we publish can never disagree about which is newer.
           UPSTREAM_TAG=$(gh api 'repos/aaru-dps/Aaru/releases?per_page=20' --jq '
             [.[] | select(.draft == false
-                          and (.tag_name | test("^v6\\.0\\.0-alpha\\.[0-9]+(\\.[0-9]+)?$")))
+                          and (.tag_name | test("^v6\\.0\\.0-(alpha|beta|rc)\\.[0-9]+(\\.[0-9]+)?$")))
                  | .tag_name]
-            | sort_by([. | sub("^v6\\.0\\.0-alpha\\."; "") | split(".") | map(tonumber)])
+            | sort_by([ (. | sub("^v6\\.0\\.0-"; "") | split(".")[0]
+                           | if . == "alpha" then 0 elif . == "beta" then 1 else 2 end),
+                        (. | sub("^v6\\.0\\.0-(alpha|beta|rc)\\."; "")
+                           | split(".") | map(tonumber)) ])
             | last
           ')
 
           if [ -z "$UPSTREAM_TAG" ] || [ "$UPSTREAM_TAG" = "null" ]; then
-            echo "::error::No matching v6.0.0-alpha.<N> tag found in recent releases"
+            echo "::error::No matching v6.0.0-<alpha|beta|rc>.<N> tag found in recent releases"
             exit 1
           fi
 
@@ -77,7 +95,7 @@ jobs:
           echo "Upstream tag changed: $LOCAL_TAG -> $UPSTREAM_TAG"
 
           # Strip `v6.0.0-` prefix to get the prerel value the spec wants
-          # (e.g. `alpha.19` or `alpha.15.1`).
+          # (e.g. `beta.1`, `alpha.19` or `alpha.15.1`).
           PRERELEASE=${UPSTREAM_TAG#v6.0.0-}
 
           echo "$UPSTREAM_TAG" > "$MARKER"
