@@ -243,7 +243,7 @@ See `.packit.yaml` for the per-tool trigger configuration.
 
 ```sh
 sudo dnf copr enable gmipf/media-preservation
-sudo dnf install redumper discimagecreator aaru aaru5 mpf
+sudo dnf install redumper discimagecreator aaru aaru5 mpf redumper-gui
 ```
 
 On enterprise Linux, enable EPEL first:
@@ -268,7 +268,7 @@ a currently-broken Tumbleweed, with no Leap 16.0 chroot.
 ```sh
 sudo zypper addrepo https://download.opensuse.org/repositories/home:gmipf:media-preservation/16.0/home:gmipf:media-preservation.repo
 sudo zypper refresh
-sudo zypper install redumper discimagecreator aaru aaru5 mpf
+sudo zypper install redumper discimagecreator aaru aaru5 mpf redumper-gui
 ```
 
 For Tumbleweed, swap `16.0` for `openSUSE_Tumbleweed` in the repo URL.
