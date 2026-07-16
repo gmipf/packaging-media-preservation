@@ -1,5 +1,5 @@
 %global aaruver       6.0.0
-%global aaruprerel    alpha.19
+%global aaruprerel    beta.1
 %global aarutag       v%{aaruver}-%{aaruprerel}
 %global aarudir       %{_libdir}/aaru
 
@@ -29,7 +29,7 @@ Name:           aaru
 # before this build, so nothing previously published needs to be
 # sort-overridden.
 Version:        %{aaruver}~%{aaruprerel}
-Release:        8%{?dist}
+Release:        1%{?dist}
 Summary:        Data preservation suite for optical, magnetic and solid-state media
 
 License:        GPL-3.0-or-later AND LGPL-2.1-or-later AND MIT
@@ -272,6 +272,9 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
 %{_udevrulesdir}/70-aaru-floppy.rules
 
 %changelog
+* Thu Jul 16 2026 gmipf <gmipf64@gmail.com> - 6.0.0~beta.1-1
+- Automated sync to upstream Aaru v6.0.0-beta.1; Release reset to 1.
+
 * Tue Jul 14 2026 gmipf <gmipf64@gmail.com> - 6.0.0~alpha.19-8
 - Ship the launcher icon in the four small hicolor sizes upstream does not
   provide (16, 22, 24, 48), rendered at build time from upstream's 862x862

@@ -1,5 +1,5 @@
 %global aaruver       6.0.0
-%global aaruprerel    alpha.19
+%global aaruprerel    beta.1
 %global aarutag       v%{aaruver}-%{aaruprerel}
 %global aarudir       %{_libdir}/aaru
 
@@ -288,6 +288,9 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
 %{_datadir}/permissions/permissions.d/aaru
 
 %changelog
+* Thu Jul 16 2026 gmipf <gmipf64@gmail.com> - 6.0.0~beta.1-0
+- Automated sync to upstream Aaru v6.0.0-beta.1.
+
 * Tue Jul 14 2026 gmipf <gmipf64@gmail.com> - 6.0.0~alpha.19-0
 - Ship the launcher icon in the four small hicolor sizes upstream does not
   provide (16, 22, 24, 48), rendered at build time from upstream's 862x862

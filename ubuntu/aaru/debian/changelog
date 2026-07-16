@@ -1,3 +1,9 @@
+aaru (6.0.0~beta.1-1) UNRELEASED; urgency=medium
+
+  * Automated sync to upstream Aaru v6.0.0-beta.1.
+
+ -- gmipf <gmipf64@gmail.com>  Thu, 16 Jul 2026 08:26:59 +0000
+
 aaru (6.0.0~alpha.19-4) UNRELEASED; urgency=medium
 
   * Ship the launcher icon in the four small hicolor sizes upstream does not
