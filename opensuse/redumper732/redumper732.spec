@@ -1,4 +1,10 @@
 %global debug_package %{nil}
+# No debuginfo -> the /usr/lib/.build-id/ links rpm still makes on EL are dead
+# weight, and they collide: this package ships the SAME upstream binary as the
+# rolling `redumper` whenever that reaches this build, so both claim the same
+# build-id path and cannot be installed together (measured on EL10 2026-07-16;
+# Fedora's rpm drops them with debug_package, EL's does not). See redumper.spec.
+%global _build_id_links none
 
 # Pinned-build compatibility package -- this one is MPF's.
 #
@@ -131,6 +137,15 @@ EOF
 %{_datadir}/permissions/permissions.d/redumper%{rdbuild}
 
 %changelog
+* Thu Jul 16 2026 gmipf <gmipf64@gmail.com> - 732-0
+- Set %%global _build_id_links none. With debug_package off these links point at
+  debuginfo that does not exist -- and on EL they made this package collide with
+  the rolling `redumper`, now also at build 732: both ship the same upstream binary, so both claimed
+  /usr/lib/.build-id/db/ea49...ce and `dnf install redumper mpf-cli` (mpf
+  recommends redumper732) failed the transaction test. Fedora's rpm drops the
+  links together with debug_package, EL's does not -- which is why building and
+  testing on Fedora never showed it. Measured on CentOS Stream 10, 2026-07-16.
+
 * Tue Jul 14 2026 gmipf <gmipf64@gmail.com> - 732-0
 - Initial openSUSE (OBS) packaging. Pinned-build compatibility package carrying
   upstream redumper b732 as /usr/bin/redumper732 -- the build MPF's publish-nix.sh

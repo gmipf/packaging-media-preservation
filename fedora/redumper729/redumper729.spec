@@ -1,4 +1,10 @@
 %global debug_package %{nil}
+# No debuginfo -> the /usr/lib/.build-id/ links rpm still makes on EL are dead
+# weight, and they collide: this package ships the SAME upstream binary as the
+# rolling `redumper` whenever that reaches this build, so both claim the same
+# build-id path and cannot be installed together (measured on EL10 2026-07-16;
+# Fedora's rpm drops them with debug_package, EL's does not). See redumper.spec.
+%global _build_id_links none
 
 # Pinned-build compatibility package. Consumers of redumper (redumper-gui,
 # MPF) bundle a SPECIFIC upstream build and are only tested against it --
@@ -18,7 +24,7 @@
 
 Name:           redumper%{rdbuild}
 Version:        %{rdbuild}
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        redumper b%{rdbuild}, the build pinned by redumper-gui
 
 License:        GPL-3.0-only
@@ -77,6 +83,15 @@ install -p -m 0644 %{SOURCE2} README.md
 %caps(cap_sys_rawio=ep) %{_bindir}/redumper%{rdbuild}
 
 %changelog
+* Thu Jul 16 2026 gmipf <gmipf64@gmail.com> - 729-2
+- Set %%global _build_id_links none. With debug_package off these links point at
+  debuginfo that does not exist -- and on EL they made this package collide with
+  the rolling `redumper` when it reaches build 729: both ship the same upstream binary, so both claimed
+  /usr/lib/.build-id/db/ea49...ce and `dnf install redumper mpf-cli` (mpf
+  recommends redumper732) failed the transaction test. Fedora's rpm drops the
+  links together with debug_package, EL's does not -- which is why building and
+  testing on Fedora never showed it. Measured on CentOS Stream 10, 2026-07-16.
+
 * Sun Jul 12 2026 gmipf <gmipf64@gmail.com> - 729-1
 - Initial build. Pinned-build compatibility package carrying upstream
   redumper b729 as /usr/bin/redumper729, for consumers that are coupled to

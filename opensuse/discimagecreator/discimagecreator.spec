@@ -17,6 +17,11 @@
 # Release builds are stripped; auto-generated debuginfo/debugsource
 # subpackages would be empty / fail.
 %global debug_package %{nil}
+# No sibling ships this ELF, so this package cannot hit the build-id collision
+# that made redumper and redumper732 un-co-installable on EL (see redumper.spec).
+# But with debug_package off the links point at debuginfo that does not exist, so
+# they are dead weight regardless -- and uniform with every other spec here.
+%global _build_id_links none
 
 Name:           discimagecreator
 Version:        %{dicsnap}
@@ -267,6 +272,13 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
 %{_datadir}/permissions/permissions.d/discimagecreator
 
 %changelog
+* Thu Jul 16 2026 gmipf <gmipf64@gmail.com> - 20260703121302.efa7d482-0
+- Set %%global _build_id_links none, for uniformity with every other spec here.
+  No sibling ships this ELF, so this package cannot hit the build-id collision
+  that made redumper and redumper732 un-co-installable on EL -- but with
+  debug_package off the links are dead weight regardless (they point at
+  debuginfo that does not exist). Measured on CentOS Stream 10, 2026-07-16.
+
 * Sat Jul 11 2026 gmipf <gmipf64@gmail.com> - 20260703121302.efa7d482-0
 - Apply the udev rule in %%post to drives that are ALREADY connected. The file
   trigger shipped by udev only reloads the rule set, and only at the end of the

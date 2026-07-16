@@ -1,4 +1,14 @@
 %global debug_package %{nil}
+# ...and with debuginfo off, the /usr/lib/.build-id/ links rpm still makes on EL
+# point at debuginfo that does not exist. Worse, they COLLIDE: `redumper` and
+# `redumper<N>` ship the same upstream binary whenever the rolling build equals a
+# pinned one, so both claim the same build-id path and stop being co-installable.
+# Measured 2026-07-16 on EL10 with rolling == 732: `dnf install redumper mpf-cli`
+# (mpf recommends redumper732) died on "/usr/lib/.build-id/db/ea49...ce
+# kollidiert". EL ONLY -- Fedora's rpm drops the links together with
+# debug_package, EL's does not, which is exactly why building and testing on
+# Fedora never showed it. aaru/aaru5/mpf already set this; these did not.
+%global _build_id_links none
 
 Name:           redumper
 Version:        732
@@ -95,6 +105,15 @@ EOF
 %{_mandir}/man1/redumper.1*
 
 %changelog
+* Thu Jul 16 2026 gmipf <gmipf64@gmail.com> - 732-0
+- Set %%global _build_id_links none. With debug_package off these links point at
+  debuginfo that does not exist -- and on EL they made this package collide with
+  the redumper732 pin: both ship the same upstream binary, so both claimed
+  /usr/lib/.build-id/db/ea49...ce and `dnf install redumper mpf-cli` (mpf
+  recommends redumper732) failed the transaction test. Fedora's rpm drops the
+  links together with debug_package, EL's does not -- which is why building and
+  testing on Fedora never showed it. Measured on CentOS Stream 10, 2026-07-16.
+
 * Sun Jul 12 2026 gmipf <gmipf64@gmail.com> - 732-0
 - Automated sync to upstream redumper release b732.
 

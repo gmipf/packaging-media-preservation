@@ -1,6 +1,11 @@
 # Cargo's release profile already sets strip = true, so an auto-generated
 # debuginfo/debugsource pair would be empty and the build would fail on it.
 %global debug_package %{nil}
+# No sibling ships this ELF, so this package cannot hit the build-id collision
+# that made redumper and redumper732 un-co-installable on EL (see redumper.spec).
+# But with debug_package off the links point at debuginfo that does not exist, so
+# they are dead weight regardless -- and uniform with every other spec here.
+%global _build_id_links none
 
 # The redumper build this GUI is tested against. Upstream pins it in its own
 # CI (REDUMPER_VERSION: b729 in .github/workflows/build.yml) and bundles the
@@ -264,6 +269,13 @@ done
 %{_datadir}/icons/hicolor/*/apps/%{name}.png
 
 %changelog
+* Thu Jul 16 2026 gmipf <gmipf64@gmail.com> - 1.0.1-0
+- Set %%global _build_id_links none, for uniformity with every other spec here.
+  No sibling ships this ELF, so this package cannot hit the build-id collision
+  that made redumper and redumper732 un-co-installable on EL -- but with
+  debug_package off the links are dead weight regardless (they point at
+  debuginfo that does not exist). Measured on CentOS Stream 10, 2026-07-16.
+
 * Tue Jul 14 2026 gmipf <gmipf64@gmail.com> - 1.0.1-0
 - Initial openSUSE (OBS) packaging of Redumper GUI v1.0.1 (Rust / egui).
 - Built from source against the distribution's Rust toolchain, from the same
