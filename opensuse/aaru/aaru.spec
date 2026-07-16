@@ -273,11 +273,11 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
 %files
 %dir %{aarudir}
 %attr(0755,root,root) %{aarudir}/aaru
-# %doc/%license MARK these as documentation instead of merely shipping them, so
+# %%doc/%%license MARK these as documentation instead of merely shipping them, so
 # `rpm -qd` lists them and --excludedocs can drop them. On an ABSOLUTE path the
-# marker only tags: the files stay in %{aarudir} beside the binary — upstream's
+# marker only tags: the files stay in %%{aarudir} beside the binary — upstream's
 # own spec keeps them next to it too (in /opt/Aaru) — they are NOT relocated to
-# %{_docdir}. Same intent as the Debian lane, where debhelper picks Changelog.md
+# %%{_docdir}. Same intent as the Debian lane, where debhelper picks Changelog.md
 # up as the package's upstream changelog.
 %doc %{aarudir}/README.md
 %doc %{aarudir}/Changelog.md
