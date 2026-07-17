@@ -1,15 +1,27 @@
 # aaru5 vendor-cap — BLOCKED on the empirical A/B (not a packaging defect)
 
-Status: `aaru5|*|vendor-cap` stays **not-yet** in the ledger — but for a reason worth
-recording, so nobody re-litigates it blindly.
+Status (since 2026-07-17): `aaru5|*|vendor-cap` is **`blocked:5.4.2`** in the ledger —
+red proven, green owed by upstream. It passes through without holding the gate shut,
+and `proof-status.sh` fails loudly the moment aaru5's Version leaves 5.4.2, so the
+blockade cannot quietly outlive its cause. It was `not-yet` before, which made the
+backlog permanent and the enforcement gate unreachable.
 
 ## What is proven
+
+RED (cap stripped): the capability is load-bearing — aaru5 issues a cap-gated
+`ATA PASS-THROUGH(16)` (0x85) SG_IO that returns **EPERM without the cap**
+(strace, fedora lane, 2026-07-15). Detail below; this line is the machine-readable
+handle `proof-status.sh` looks for, not a new claim.
+
 - The cap IS delivered: `getcap /usr/lib64/aaru5/aaru -> cap_sys_rawio=ep`, owned by
   `aaru5-5.4.2-5.fc44` (fedora). The delivery mechanism (Fedora %caps) is proven
   load-bearing on this exact kernel/drive by redumper/discimagecreator and aaru 6.0.
 - strace of the uncapped aaru5 shows it DOES issue a cap-gated opcode: an
   `ATA PASS-THROUGH(16)` (0x85) SG_IO that returns EPERM without the cap. So the cap
   gates real aaru5 drive access.
+
+There is deliberately **no GREEN section**: that is exactly what upstream blocks, and
+the ledger does not ask a blockade for one. It only asks for the RED above.
 
 ## Why the clean D8 A/B could not be run (2026-07-15, mixed CD)
 aaru5 5.4.2 **crashes** on the mixed-mode CD (track1 data + track2 audio) BEFORE it

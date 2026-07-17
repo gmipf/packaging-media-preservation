@@ -90,9 +90,9 @@ git config core.hooksPath .githooks
 ```
 
 It blocks a commit on drift, on a missing mechanism line (coverage), and on a
-proof pointing at an artifact that is not there. It deliberately does **not**
-block on the open backlog: you must be able to commit a new mechanism together
-with the ledger line that admits it is unproven.
+proof whose artifact is missing or does not show its own failure. It deliberately
+does **not** block on the open backlog: you must be able to commit a new mechanism
+together with the ledger line that admits it is unproven.
 
 Three evidence states, and nothing else: `not-yet` (open), `log:<path>` (measured
 red **and** green, artifact saved), and `blocked:<version>:<path>` — red proven,
@@ -100,6 +100,12 @@ green blocked by an upstream bug at exactly that version. A blockade passes
 through without holding the gate shut, and fails loudly the moment the tool's
 version moves, which is the point: marking such a line `proven` instead would sit
 green forever and nobody would ever measure it again.
+
+**The artifact is read, not just resolved.** A proof log must contain a RED half,
+a GREEN half and a `VERDICT:` line; a blockade must contain a RED half and is not
+asked for a GREEN. A run that could not have failed is not evidence — so the
+ledger asks each artifact for its failure, rather than trusting that whoever wrote
+it remembered to produce one.
 
 Two things that look like permission errors and are not:
 

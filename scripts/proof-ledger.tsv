@@ -27,6 +27,17 @@
 #              %caps() / permissions profile changes, the hash moves and the proof
 #              is declared stale -> re-measure.
 #
+# The artifact is READ, not just resolved (since 2026-07-17). A 'proven' log must
+# carry a RED half, a GREEN half and a VERDICT line; a 'blocked' artifact must carry
+# a RED half and is NOT asked for a GREEN -- that is the thing being blocked. Both
+# log conventions in proofs/ count, because both are real measurements:
+#     --- RED (A/B: cap stripped with `setcap -r`, then restored) ---   long form
+#     RED (setcap -r): "not permitted" at D8 lead-in ; permit-errors 1  compact form
+# Why mechanise it: "green != proven" was doctrine, and doctrine lives in whoever
+# remembers it. A green-only log passed exactly like a real A/B. Twice on 2026-07-17
+# a control in this very repo reported success while doing nothing at all -- a run
+# that could not have failed is not evidence, and only the tool can insist on that.
+#
 # Nothing is 'proven' today: the move to OBS and this ledger are new, and we have
 # re-measured nothing under it. That is correct and expected -- the backlog is the
 # point. To close one: measure per the drive-access-verification skill, save the

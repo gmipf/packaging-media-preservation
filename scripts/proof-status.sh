@@ -200,6 +200,30 @@ while IFS='|' read -r tool lane prop date hash ev files; do
         red "  ✗ $tag — Beleg-Artefakt fehlt: $art"; fail=1; continue
     fi
 
+    # ...and it must carry the RED half. "green != proven" was doctrine and nothing
+    # checked it: a green-only log passed exactly like a real A/B. A measurement
+    # that could not have failed proves nothing -- twice over on 2026-07-17 a
+    # control here reported success while doing nothing at all. So the ledger now
+    # asks the artifact for the failure, not just for the success.
+    # Both log conventions in proofs/ are accepted, because both are real:
+    #     --- RED (A/B: cap stripped ...) ---     (long form, own section)
+    #     RED (setcap -r): "not permitted" ...    (compact form, inline in --- A/B ---)
+    # A blockade is NOT asked for a GREEN -- that is precisely what is blocked --
+    # but it IS asked for its RED, or "red is proven" would be a bare assertion.
+    if ! grep -qE '^(--- )?RED[[:space:]:(]' "$REPO/$art"; then
+        red "  ✗ $tag — Beleg ohne RED-Hälfte: $art"
+        red "      Ein Lauf, der nicht scheitern konnte, ist kein Beweis. Gegenversuch nachtragen oder auf not-yet setzen."
+        fail=1; continue
+    fi
+    if [ -z "$bver" ]; then
+        if ! grep -qE '^(--- )?GREEN[[:space:]:(]' "$REPO/$art"; then
+            red "  ✗ $tag — Beleg ohne GREEN-Hälfte: $art"; fail=1; continue
+        fi
+        if ! grep -qE '^VERDICT:' "$REPO/$art"; then
+            red "  ✗ $tag — Beleg ohne VERDICT-Zeile: $art"; fail=1; continue
+        fi
+    fi
+
     # A blockade is pinned to an exact upstream version. Any change -- up OR down --
     # voids it; we compare for INEQUALITY on purpose, so no version-sorting logic
     # (and no tilde/Epoch subtlety) can get this wrong. The version source is the
