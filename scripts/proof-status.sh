@@ -75,7 +75,8 @@ ylw()  { printf '\033[33m%s\033[0m\n' "$1"; }
 #     prose); `+capabilities` is the profile syntax and does not.
 #   * %post / %postun scriptlet bodies  (udev reload+trigger; openSUSE set_permissions)
 mech_slice_spec() {
-    awk '
+    local spec="$1" slice
+    slice=$(awk '
       # %description AND %changelog are free prose that NAME the mechanism ("...the
       # permissions.d profile...", "- cap_sys_rawio granted through..."). Exclude
       # both, or (a) a doc reword and (b) EVERY version bump (which appends a
@@ -88,7 +89,43 @@ mech_slice_spec() {
       !prose && /permissions\.d|\+capabilities|%set_permissions|%verify_permissions/ \
                                        && $0 !~ /^[[:space:]]*#/       { print; next }
       cap                                                            { print }
-    ' "$1"
+    ' "$spec")
+
+    # --- The slice above is RAW spec text, and that was a hole (found 2026-07-17).
+    # The cap directives are written through macros:
+    #     redumper729:  %caps(cap_sys_rawio=ep) %{_bindir}/redumper%{rdbuild}
+    #     redumper732:  %caps(cap_sys_rawio=ep) %{_bindir}/redumper%{rdbuild}
+    # Byte-identical. What tells them apart is `%global rdbuild 729` vs `732`, and
+    # that line lived OUTSIDE the slice -- so aaru/aaru5 and redumper729/redumper732
+    # carried the same fingerprint, and editing `%global rdbuild` would have moved
+    # the capability onto a different binary without the ledger ever noticing.
+    # Same macro blind spot that once made a grep for `Requires: redumper%{rdpin}`
+    # come up empty; fixed there with rpmspec -P, missed here.
+    #
+    # Fix: also hash the %global/%define lines the slice ACTUALLY references, to a
+    # fixed point (a definition may reference further macros). Deliberately NOT all
+    # %global lines: discimagecreator carries `%global commit <sha>`, which moves on
+    # every upstream snapshot and is untouched by the mechanism -- hashing it would
+    # cry wolf on every bump, the exact coupling this design exists to avoid.
+    # Macros with no %global in the spec (%{_bindir}, %{name}, ...) resolve to
+    # nothing and are skipped, which is why a version bump still does not drift.
+    local defs="" seen=" " work="$slice" names newdefs n line
+    for _ in 1 2 3 4 5; do        # bounded; our specs nest one level at most
+        names=$(printf '%s\n' "$work" | grep -oE '%\{\??[A-Za-z_][A-Za-z0-9_]*\}|%[A-Za-z_][A-Za-z0-9_]*' \
+                | tr -d '%{}?' | sort -u)
+        newdefs=""
+        for n in $names; do
+            case "$seen" in *" $n "*) continue ;; esac
+            seen="$seen$n "
+            line=$(awk -v n="$n" '($1=="%global"||$1=="%define") && $2==n {print; exit}' "$spec")
+            [ -n "$line" ] && { defs="$defs$line"$'\n'; newdefs="$newdefs$line"$'\n'; }
+        done
+        [ -z "$newdefs" ] && break
+        work="$newdefs"
+    done
+    # sorted -> stable regardless of discovery order
+    [ -n "$defs" ] && printf '%s' "$defs" | sort
+    printf '%s\n' "$slice"
 }
 
 # --- Fingerprint one entry: concatenate its fragment sources (spec -> sliced,
