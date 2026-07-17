@@ -21,8 +21,8 @@ respective project URLs (see below).
 | Tool | Update mode | [Fedora][copr] | [EPEL][copr] | [openSUSE][obs] | [Ubuntu][obs] | [Debian][obs] |
 |---|---|---|---|---|---|---|
 | [redumper](https://github.com/superg/redumper) | auto-tracked hourly on new `b<N>` tags (binary repackage) | ✅ | ✅ | ✅ | ✅ | ✅ |
-| [MPF suite](https://github.com/SabreTools/MPF) | rolling, auto-tracked hourly (binary repackage); meta-package `mpf` pulls in `mpf-check` (validator), `mpf-cli` (headless orchestrator) and `mpf-gui` (Avalonia desktop UI) | ✅ | ✅ | ✅ | ✅ | ✅ |
-| [DiscImageCreator suite](https://github.com/saramibreak/DiscImageCreator) | auto-tracked hourly on new master commits (built from source — upstream binary links against EOL OpenSSL 1.1); bundles DIC + EccEdc + DVDAuth + unscrambler in one package | ✅ | ✅ | ✅ | ✅ | ✅ |
+| [MPF](https://github.com/SabreTools/MPF) | rolling, auto-tracked hourly (binary repackage); meta-package `mpf` pulls in `mpf-check` (validator), `mpf-cli` (headless orchestrator) and `mpf-gui` (Avalonia desktop UI) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| [DiscImageCreator](https://github.com/saramibreak/DiscImageCreator) | auto-tracked hourly on new master commits (built from source — upstream binary links against EOL OpenSSL 1.1); bundles DIC + EccEdc + DVDAuth + unscrambler in one package | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Aaru](https://github.com/aaru-dps/Aaru) | auto-tracked hourly on new `v6.0.0-<alpha|beta|rc>.<N>` tags (binary repackage; beta since 2026-07-16); CLI + Avalonia GUI ship as one binary, launch the GUI via `aaru gui` | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Aaru 5.4.x](https://github.com/aaru-dps/Aaru) (`aaru5`) | version-pinned, no auto-tracking (binary repackage); the stable 5.4 CLI that MPF drives, installs as `/usr/bin/aaru5` alongside the rolling `aaru` v6 | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Redumper-GUI](https://github.com/Deterous/Redumper-GUI) | release tags, built from source (vendored crates) | ✅ | ✅ | ✅ | 26.04 only | 13 only |
@@ -357,7 +357,7 @@ what OBS builds against); bookworm's 1.63 has no backported rustc. On trixie, ad
 `mpf` is a meta-package; it pulls in `mpf-check` (log validator),
 `mpf-cli` (headless dump orchestrator) and `mpf-gui` (Avalonia desktop
 frontend). Install the individual subpackages if you only need part of
-the suite (`sudo dnf install mpf-check`, etc.). Launch the GUI via
+it (`sudo dnf install mpf-check`, etc.). Launch the GUI via
 `mpf-gui` or the `MPF` desktop entry.
 
 `aaru` ships both the CLI and its Avalonia GUI in one binary — launch
