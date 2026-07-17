@@ -335,7 +335,8 @@ jobs:
       - fedora-all-x86_64
       - epel-all-x86_64
 
-  # redumper-rgui: pinned build, manual only (no watcher — see the package block).
+  # redumper-rgui: coupled to the redumper-gui release (bumped WITH it, not hourly);
+  # watch-consumer-pins.yml guards it and fails loudly on drift, it does not bump it.
   # The ^...$ anchors matter more here than anywhere: `build-redumper` without
   # them would also match `build-redumper-rgui` AND `build-redumper-gui`, and the
   # rolling redumper would get rebuilt under an unchanged NEVRA — exactly the
@@ -351,8 +352,9 @@ jobs:
       - fedora-all-x86_64
       - epel-all-x86_64
 
-  # redumper-mpf: MPF's pinned build, manual only (no watcher). Same anchoring
-  # requirement as redumper-rgui above -- and note that an unanchored `build-redumper`
+  # redumper-mpf: MPF's pinned build, AUTO-tracked hourly by watch-consumer-pins.yml
+  # (fixed name, moving version -> in-place bump). Same anchoring requirement as
+  # redumper-rgui above -- and note that an unanchored `build-redumper`
   # would now match THREE branches, not two.
   - job: copr_build
     trigger: commit
