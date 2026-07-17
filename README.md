@@ -26,7 +26,7 @@ respective project URLs (see below).
 | [Aaru](https://github.com/aaru-dps/Aaru) | auto-tracked hourly on new `v6.0.0-<alpha|beta|rc>.<N>` tags (binary repackage; beta since 2026-07-16); CLI + Avalonia GUI ship as one binary, launch the GUI via `aaru gui` | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Aaru 5.4.x](https://github.com/aaru-dps/Aaru) (`aaru5`) | version-pinned, no auto-tracking (binary repackage); the stable 5.4 CLI that MPF drives, installs as `/usr/bin/aaru5` alongside the rolling `aaru` v6 | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Redumper-GUI](https://github.com/Deterous/Redumper-GUI) | release tags, built from source (vendored crates) | ✅ | ✅ | ✅ | 26.04 only | 13 only |
-| `redumper729` / `redumper732` | version pins, no auto-tracking: the redumper build that Redumper-GUI (729) and MPF (732) bundle. Install one only if you use that frontend — the rolling `redumper` is what you want otherwise. They coexist, each installing as `/usr/bin/redumper<build>` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `redumper-mpf` / `redumper-rgui` | fixed-name pins with a moving version: the redumper build that MPF (`redumper-mpf`) and Redumper-GUI (`redumper-rgui`) bundle. `redumper-mpf` is **auto-tracked hourly** from MPF's `publish-nix.sh` and upgrades in place; `redumper-rgui` moves with the Redumper-GUI release. Install one only if you use that frontend — the rolling `redumper` is what you want otherwise. They coexist, each installing as `/usr/bin/<name>` | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 [copr]: https://copr.fedorainfracloud.org/coprs/gmipf/media-preservation/
 [obs]: https://build.opensuse.org/project/show/home:gmipf:media-preservation
@@ -59,8 +59,8 @@ for optical drives (`/dev/sr*`) via systemd's own rule, and for USB or legacy
 floppy drives via a udev rule these packages ship. It appears the moment the
 package is installed; the drive does not need to be re-plugged.
 
-The capability sits on the **dumping tools** — `redumper`, `redumper729`,
-`redumper732`, `aaru`, `aaru5` and DiscImageCreator — and deliberately **not** on
+The capability sits on the **dumping tools** — `redumper`, `redumper-rgui`,
+`redumper-mpf`, `aaru`, `aaru5` and DiscImageCreator — and deliberately **not** on
 any GUI (`mpf-gui`, `redumper-gui`) or on the MPF frontends, which orchestrate
 those tools rather than talk to a drive. A process holding file capabilities is
 non-dumpable, and the desktop portal service then refuses to authorise it: giving
@@ -364,8 +364,8 @@ it (`sudo dnf install mpf-check`, etc.). Launch the GUI via
 the GUI via `aaru gui` or via the `Aaru` desktop entry. `redumper` and
 `discimagecreator` are CLI-only.
 
-`cap_sys_rawio` is preset on the dumping tools (`redumper`, `redumper729`,
-`redumper732`, `aaru`, `aaru5`, DiscImageCreator) so vendor SCSI passthrough
+`cap_sys_rawio` is preset on the dumping tools (`redumper`, `redumper-rgui`,
+`redumper-mpf`, `aaru`, `aaru5`, DiscImageCreator) so vendor SCSI passthrough
 commands work without sudo — and deliberately **not** on the GUIs or the MPF
 frontends, which drive those tools rather than a drive. Logged in at a local
 desktop seat you also need **no group membership and no root** to read the drives

@@ -21,13 +21,13 @@ depends on `libcap2-bin` so that `setcap` is guaranteed to be there.
 **Verified on real hardware** (2026-07-14, clean Ubuntu 26.04 and Debian 13 VMs
 with a Plextor PX-760A and a NEC USB floppy passed through; the user was in no
 drive group and `sudo` was never invoked): both media dumped, and the installed
-`redumper729` read the Plextor lead-in over the vendor `0xD8` command. A **copy**
+`redumper-rgui` read the Plextor lead-in over the vendor `0xD8` command. A **copy**
 of that same binary — `cp` drops file capabilities — died on the first negative
 LBA with `error: SYSTEM (Operation not permitted)`. The capability is the only
 difference between the two runs.
 
-The capability lands on the **dumping tools** only (`redumper`, `redumper729`,
-`redumper732`, `aaru`, `aaru5`, DiscImageCreator). The GUIs and the MPF frontends
+The capability lands on the **dumping tools** only (`redumper`, `redumper-rgui`,
+`redumper-mpf`, `aaru`, `aaru5`, DiscImageCreator). The GUIs and the MPF frontends
 deliberately get none — a process with file capabilities is non-dumpable, so the
 desktop portal will not authorise it and its file dialogs stop working.
 
@@ -108,7 +108,7 @@ outright. That is a property of the container, not a bug in the package — see 
 
 | Tool | Upstream inputs | Targets |
 |---|---|---|
-| `redumper`, `redumper729`, `redumper732` | release zip + `LICENSE` + `README.md` | all |
+| `redumper`, `redumper-rgui`, `redumper-mpf` | release zip + `LICENSE` + `README.md` | all |
 | `aaru5` | one release tarball | all |
 | `aaru` | binary tarball + source tarball (icons, `.desktop`, MIME xml) | all |
 | `discimagecreator` | DIC + EccEdc + DVDAuth + unscrambler, built from source | all |

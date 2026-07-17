@@ -126,7 +126,7 @@ dumped). Confirmed:
   continuation line parses cleanly.
 - `cap_sys_rawio=ep` lands on exactly the **dumping tools** after `%post`
   (measured with `/usr/sbin/getcap` on the installed package): `redumper`,
-  `redumper729`, `redumper732`, `aaru`, `aaru5`, and DIC's `DiscImageCreator.out`
+  `redumper-rgui`, `redumper-mpf`, `aaru`, `aaru5`, and DIC's `DiscImageCreator.out`
   + `DVDAuth.out` — seven binaries, matching the seven `permctl` entries.
   DIC's `EccEdc`/`unscrambler` are pure file tools and correctly get none.
 - **The MPF frontends and the GUIs get none, on purpose.** They orchestrate the
@@ -134,7 +134,7 @@ dumped). Confirmed:
   non-dumpable, so the desktop portal refuses to authorise it and every file
   dialog dies — that is why `mpf.spec` says *"DO NOT hand MPF a `cap_sys_rawio`
   profile"* in as many words.
-- It survives the vendor path: the installed `redumper729` reads the Plextor
+- It survives the vendor path: the installed `redumper-rgui` reads the Plextor
   lead-in via the `0xD8` command (negative LBAs). A **copy** of the same binary —
   `cp` drops file capabilities — dies on the first one with
   `error: SYSTEM (Operation not permitted)`. The capability is the only difference.
@@ -273,7 +273,7 @@ Three properties make this safe:
   spurious rebuild, and no tool can be forgotten. The list is read from the repo —
   every `opensuse/<tool>/` that has a `_service` — and never hardcoded. It *was* a
   literal list of five names once, and that is exactly how `redumper-gui` and
-  `redumper729` sat outside this lane for a week without anything saying so.
+  `redumper-rgui` sat outside this lane for a week without anything saying so.
   A trigger for a package that does not exist on OBS yet now fails the run loudly,
   which is the intended reading of "you added a recipe but never ran `osc mkpac`".
 - **Watcher pushes cannot self-trigger.** GitHub deliberately does not start
@@ -293,7 +293,7 @@ single `download_files` for the upstream assets.
 | Tool             | Kind                              | Recipe files | Notes |
 |------------------|-----------------------------------|--------------|-------|
 | redumper         | static binary                     | 3            | no shlib deps; stamped manpage |
-| redumper729      | static binary, **pinned build**   | 2            | b729 as `/usr/bin/redumper729`; no manpage, by design |
+| redumper-rgui      | static binary, **pinned build**   | 2            | b729 as `/usr/bin/redumper-rgui`; no manpage, by design |
 | redumper-gui     | **source build** (Rust / egui)    | 4            | vendored crates; 9 icon sizes; **no capability**, by design |
 | aaru5            | NativeAOT binary + sidecar `.so`  | 4            | auto ELF deps; static manpage; udev |
 | aaru             | self-contained .NET (single-file) | 5            | two tarballs; manpage from `--help`; udev; icons/MIME/desktop |
@@ -303,7 +303,7 @@ single `download_files` for the upstream assets.
 Every tool that *talks to a drive* grants its `cap_sys_rawio` capability through
 the **permissions framework** (see *Permissions framework & rpmlint*) instead of
 `%caps`. `redumper-gui` is the deliberate exception and gets **no capability at
-all**: it never touches the drive, it runs `redumper729`, and the kernel grants
+all**: it never touches the drive, it runs `redumper-rgui`, and the kernel grants
 file capabilities from the *executed file* — so the dumper is privileged no matter
 who starts it. Giving the GUI one would be actively harmful: a process that
 executes a file with capabilities is non-dumpable, `xdg-desktop-portal` refuses to
