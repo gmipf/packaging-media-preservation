@@ -1,0 +1,43 @@
+proof: redumper-rgui | fedora | vendor-cap
+date: 2026-07-17
+lane/VM: test-fedora (Fedora Linux 44 KDE Plasma), repo COPR gmipf/media-preservation
+user groups: "gmipf wheel" (NO cdrom/disk/plugdev) -> groupless
+drive: PLEXTOR DVDR PX-760A (USB 0dc4:0061) -> /dev/sr1, audio CD
+       (ID_CDROM_MEDIA_CD=1, 20 audio tracks)
+mechanism: Fedora %caps(cap_sys_rawio=ep) in fedora/redumper-rgui/redumper-rgui.spec
+note: this is the fixed-name pin (was redumper729). The binary path moved from
+      /usr/bin/redumper729 to /usr/bin/redumper-rgui, so the cap now lands on a
+      different file -- which is exactly why this line was re-opened to not-yet
+      and had to be measured again rather than inherited from the old proof.
+
+--- delivery (as installed from COPR, never hand-touched) ---
+$ getcap /usr/bin/redumper-rgui
+/usr/bin/redumper-rgui cap_sys_rawio=ep
+$ rpm -qf /usr/bin/redumper-rgui
+redumper-rgui-729-3.fc44.x86_64
+$ /usr/bin/redumper-rgui --version -> redumper (build: b729)
+
+--- GREEN (cap present): D8 vendor read reaches the drive ---
+$ redumper-rgui disc --verbose --drive=/dev/sr1 --image-path=... --image-name=t
+  inquiry: PLEXTOR - DVDR PX-760A (revision level: 1.07, vendor specific: 08/18/07 15:10)
+  configuration: PLEXTOR (read offset: +30, C2 shift: 295, pre-gap start: -75,
+                 read method: D8, sector order: DATA_C2_SUB)
+- [  0%] LBA:    -75/277131, errors: { SCSIs: 0, C2s: 0, Q: 0 }   # lead-in start via D8
+  ... full lead-in -75..-1 read (75 negative-LBA reads), 0 SCSI errors ...
+\ [  8%] LBA:  22355/277131, errors: { SCSIs: 0, C2s: 0, Q: 38 }  # into the audio data
+counters over the whole run: negative-LBA (D8 lead-in) reads = 75, lines with
+"SCSIs: [1-9]" = 0, "Operation not permitted" = 0
+(run trimmed by `timeout 50`, exit 124 -- the cap question is answered at LBA -75)
+
+--- RED (A/B: cap stripped with `setcap -r`, then restored) ---
+$ setcap -r /usr/bin/redumper-rgui ; getcap -> ''      # cap gone
+$ redumper-rgui disc ... (same command)
+  configuration: PLEXTOR (... read method: D8, ...)
+- [  0%] LBA:    -75/277131, errors: { SCSIs: 0, C2s: 0, Q: 0 }error: SYSTEM (Operation not permitted)
+  exit 255 ; "Operation not permitted" hits = 1     # EPERM at the first D8 read
+$ setcap cap_sys_rawio=ep /usr/bin/redumper-rgui ; getcap -> cap_sys_rawio=ep   # restored
+
+VERDICT: PROVEN. The cap is package-delivered on the correct (renamed) binary and
+is load-bearing: with it the D8 (opcode 0xD8, >=0xC0) lead-in read succeeds
+groupless for the full -75..-1 pre-gap; without it the identical read fails EPERM
+at LBA -75 (kernel blk_verify_command gate).

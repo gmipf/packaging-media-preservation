@@ -1,0 +1,41 @@
+proof: redumper-rgui | opensuse | vendor-cap
+date: 2026-07-17
+lane/VM: test-openSUSE (openSUSE Leap 16.0), repo OBS home:gmipf:media-preservation/16.0
+user groups: "gmipf wheel" (NO cdrom/disk/plugdev) -> groupless
+drive: PLEXTOR DVDR PX-760A (USB 0dc4:0061) -> /dev/sr1, audio CD (20 tracks)
+mechanism: openSUSE permissions framework (permctl) via %set_permissions in
+           opensuse/redumper-rgui/redumper-rgui.spec
+note: fixed-name pin (was redumper729); binary moved to /usr/bin/redumper-rgui, so
+      the permissions.d entry targets a different path and this line was re-measured.
+
+--- delivery (as installed from OBS via zypper, never hand-touched) ---
+zypper install output (permctl setting the cap at install time):
+  /usr/bin/redumper-rgui: setting to root:root 0755 "cap_sys_rawio=ep". (missing capabilities)
+$ /usr/sbin/getcap /usr/bin/redumper-rgui
+/usr/bin/redumper-rgui cap_sys_rawio=ep
+$ rpm -qf /usr/bin/redumper-rgui -> redumper-rgui-729-lp160.1.1.x86_64
+$ /usr/bin/redumper-rgui --version -> redumper (build: b729)
+$ rpm -V redumper-rgui -> "........P  /usr/bin/redumper-rgui"
+  (expected on openSUSE: the header may not carry %caps, permctl sets it at
+   install, so header != disk is normal -- NOT a defect.)
+
+--- GREEN (cap present): D8 vendor read reaches the drive ---
+$ redumper-rgui disc --verbose --drive=/dev/sr1 --image-path=... --image-name=t
+  inquiry: PLEXTOR - DVDR PX-760A (revision level: 1.07, vendor specific: 08/18/07 15:10)
+  configuration: PLEXTOR (read offset: +30, C2 shift: 295, pre-gap start: -75,
+                 read method: D8, sector order: DATA_C2_SUB)
+  lead-in reads (negative LBA, via D8) = 75, "Operation not permitted" = 0,
+  lines with "SCSIs: [1-9]" = 0
+  last progress: \ [  7%] LBA:  21569/277131, errors: { SCSIs: 0, C2s: 0, Q: 37 }
+  (run trimmed by `timeout 50`, exit 124)
+
+--- RED (A/B: cap stripped with `setcap -r`, then restored) ---
+$ sudo setcap -r /usr/bin/redumper-rgui ; /usr/sbin/getcap -> ''      # cap gone
+$ redumper-rgui disc ... (same command)
+- [  0%] LBA:    -75/277131, errors: { SCSIs: 0, C2s: 0, Q: 0 }error: SYSTEM (Operation not permitted)
+  exit 255 ; "Operation not permitted" hits = 1     # EPERM at the first D8 read
+$ sudo setcap cap_sys_rawio=ep /usr/bin/redumper-rgui ; getcap -> cap_sys_rawio=ep   # restored
+
+VERDICT: PROVEN. permctl delivers the cap on the renamed binary at install time and
+it is load-bearing: with it the D8 lead-in read (-75..-1) succeeds groupless;
+without it the identical read fails EPERM at LBA -75.
