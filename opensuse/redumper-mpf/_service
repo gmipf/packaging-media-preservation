@@ -18,12 +18,12 @@
        pinned in the name. The service exists so the RECIPE can be corrected from
        git, not so the binary can advance. -->
   <service name="download_url">
-    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/redumper732/redumper732-rpmlintrc</param>
-    <param name="filename">redumper732-rpmlintrc</param>
+    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/redumper-mpf/redumper-mpf-rpmlintrc</param>
+    <param name="filename">redumper-mpf-rpmlintrc</param>
   </service>
   <service name="download_url">
-    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/redumper732/redumper732.spec</param>
-    <param name="filename">redumper732.spec</param>
+    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/redumper-mpf/redumper-mpf.spec</param>
+    <param name="filename">redumper-mpf.spec</param>
   </service>
   <!-- upstream assets, taken from the Source: URLs of the spec above -->
   <service name="download_files"/>
