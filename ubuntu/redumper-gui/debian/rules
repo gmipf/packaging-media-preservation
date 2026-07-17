@@ -22,7 +22,7 @@ DESTDIR := debian/redumper-gui
 GUIDIR  := /usr/lib/redumper-gui
 
 # The redumper build this GUI is tested against. Upstream pins it in its own CI
-# (REDUMPER_VERSION: b729) and bundles it; we depend on the redumper729 package
+# (REDUMPER_VERSION: b729) and bundles it; we depend on the redumper-rgui package
 # instead and link it in below. Keep in lockstep with debian/control's Depends
 # and with %global rdpin in fedora/redumper-gui/redumper-gui.spec.
 RDPIN := 729

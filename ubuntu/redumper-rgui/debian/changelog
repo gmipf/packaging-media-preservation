@@ -1,7 +1,7 @@
-redumper729 (729-1) UNRELEASED; urgency=medium
+redumper-rgui (729-1) UNRELEASED; urgency=medium
 
   * Initial package. Pinned-build compatibility package carrying upstream
-    redumper b729 as /usr/bin/redumper729, for consumers coupled to that exact
+    redumper b729 as /usr/bin/redumper-rgui, for consumers coupled to that exact
     build. redumper-gui is the first: its upstream bundles b729 and states that
     other versions may not be supported, and it invokes redumper as a sibling of
     its own executable -- which a distribution cannot honour by shipping a
@@ -10,7 +10,7 @@ redumper729 (729-1) UNRELEASED; urgency=medium
     consequence was not a warning anywhere: redumper-gui uploaded, built and
     published on resolute, and was simply not installable -- measured with
     `apt-get install -s redumper-gui` in a clean 26.04 container, which answers
-    "Depends: redumper729 but none of the choices are installable: [no choices]".
+    "Depends: redumper-rgui but none of the choices are installable: [no choices]".
     Launchpad builds a source package against the archive but never asks whether
     the result can be INSTALLED from it, so a missing runtime dependency stays
     green all the way through.

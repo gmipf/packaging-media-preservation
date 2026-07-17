@@ -17,7 +17,7 @@ name: obs-trigger
 #
 # The package list is READ FROM THE REPO (every opensuse/<tool>/ that has a
 # _service), never hardcoded. It used to be a literal list of five names, and that
-# is precisely how redumper-gui and redumper729 came to be missing from this lane
+# is precisely how redumper-gui and redumper-rgui came to be missing from this lane
 # for a week: a new package is added under opensuse/, everything looks green, and
 # nothing anywhere says the trigger never learned about it. A list you have to
 # remember to update is a list that will be wrong.

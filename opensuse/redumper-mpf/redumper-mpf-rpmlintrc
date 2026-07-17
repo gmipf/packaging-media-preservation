@@ -1,6 +1,6 @@
-# rpmlintrc for the media-preservation redumper729 package (personal OBS home:
-# project). redumper729 ships a permissions.d profile that grants cap_sys_rawio
-# to /usr/bin/redumper729 so vendor SCSI passthrough (Plextor read method D8,
+# rpmlintrc for the media-preservation redumper-mpf package (personal OBS home:
+# project). redumper-mpf ships a permissions.d profile that grants cap_sys_rawio
+# to /usr/bin/redumper-mpf so vendor SCSI passthrough (Plextor read method D8,
 # Kreon commands, ...) works without sudo — the exact same capability the
 # rolling redumper package carries, and the same one the Fedora/COPR (%caps) and
 # Ubuntu/PPA (postinst setcap) lanes already ship for this pinned build.

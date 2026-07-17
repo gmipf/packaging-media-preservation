@@ -6,25 +6,30 @@
 # Fedora's rpm drops them with debug_package, EL's does not). See redumper.spec.
 %global _build_id_links none
 
-# Pinned-build compatibility package. Consumers of redumper (redumper-gui,
-# MPF) bundle a SPECIFIC upstream build and are only tested against it --
-# redumper-gui's upstream states plainly that "changing the bundled version
-# of redumper is not recommended as it may not be supported by the GUI".
-# A distribution cannot ship a second /usr/bin/redumper, so instead of
-# bundling the binary inside every consumer, each pinned build gets its own
-# package named after the build number: redumper729 here, redumper726 for
-# MPF. Consumers depend on the one they were tested with, share it when they
-# agree, and the rolling `redumper` package stays untouched for CLI users.
+# Compatibility package: the redumper build Redumper-GUI is version-coupled to.
 #
-# Naming follows the same pattern as `aaru5` next to the rolling `aaru`
-# (and gcc12 / python3.9 / libicu74 in the wider distro world): the build
-# number is IN the name, so the package's contents can never silently change
-# under a consumer that pinned it.
+# Redumper-GUI bundles a SPECIFIC upstream redumper build and its upstream states
+# plainly that "changing the bundled version of redumper is not recommended as it
+# may not be supported by the GUI". A distribution cannot ship a second
+# /usr/bin/redumper, so this package carries that pinned build as
+# /usr/bin/redumper-rgui, and redumper-gui hard-depends on it by this FIXED name.
+# The rolling `redumper` package is left untouched for CLI users.
+#
+# The name is fixed; the VERSION tracks the bundled build. %%global rdbuild below
+# is that build number (and the Version, and the Source tag), and
+# .github/workflows/watch-consumer-pins.yml bumps it hourly from Redumper-GUI's
+# upstream. So when the GUI moves to a new bundled build this package upgrades in
+# place and every installed machine follows on the next upgrade. That is the
+# whole point of keeping the build number OUT of the name: `dnf/zypper/apt
+# upgrade` carries an in-place version bump across installs, but it does NOT
+# follow a rename -- a build-number name would strand every machine on the old
+# pin, silently.
 %global rdbuild 729
 
-Name:           redumper%{rdbuild}
+Name:           redumper-rgui
 Version:        %{rdbuild}
-Release:        2%{?dist}
+Release:        3%{?dist}
+Obsoletes:      redumper729 < 730
 Summary:        redumper b%{rdbuild}, the build pinned by redumper-gui
 
 License:        GPL-3.0-only
@@ -48,7 +53,7 @@ BuildRequires:  unzip
 redumper is a low-level byte-perfect disc dumper for CD, DVD, HD-DVD and
 Blu-ray, used by the Redump and No-Intro preservation projects.
 
-This package ships upstream build b%{rdbuild} as /usr/bin/redumper%{rdbuild}.
+This package ships upstream build b%{rdbuild} as /usr/bin/redumper-rgui.
 It exists so that tools which are version-coupled to a specific redumper
 build get exactly the build they were tested against, no matter which
 version the rolling `redumper` package currently carries. redumper-gui
@@ -72,7 +77,7 @@ unzip -q %{SOURCE0}
 %install
 install -d %{buildroot}%{_bindir}
 install -m 0755 redumper-b%{rdbuild}-linux-x64/bin/redumper \
-    %{buildroot}%{_bindir}/redumper%{rdbuild}
+    %{buildroot}%{_bindir}/redumper-rgui
 
 install -p -m 0644 %{SOURCE1} LICENSE
 install -p -m 0644 %{SOURCE2} README.md
@@ -80,9 +85,18 @@ install -p -m 0644 %{SOURCE2} README.md
 %files
 %license LICENSE
 %doc README.md
-%caps(cap_sys_rawio=ep) %{_bindir}/redumper%{rdbuild}
+%caps(cap_sys_rawio=ep) %{_bindir}/redumper-rgui
 
 %changelog
+* Fri Jul 17 2026 gmipf <gmipf64@gmail.com> - 729-3
+- Renamed redumper729 -> redumper-rgui. The package name no longer carries the
+  build number; the pinned build now lives at a FIXED name (/usr/bin/redumper-rgui)
+  with the build number as the Version. When Redumper-GUI bundles a new redumper
+  build the package upgrades in place instead of a new redumper<N> appearing and
+  the old one being orphaned -- an in-place version bump migrates installed
+  machines, a rename does not. Obsoletes redumper729 so existing installs move
+  over. watch-consumer-pins.yml bumps this hourly; no manual step remains.
+
 * Thu Jul 16 2026 gmipf <gmipf64@gmail.com> - 729-2
 - Set %%global _build_id_links none. With debug_package off these links point at
   debuginfo that does not exist -- and on EL they made this package collide with

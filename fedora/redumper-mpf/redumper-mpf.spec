@@ -6,39 +6,33 @@
 # Fedora's rpm drops them with debug_package, EL's does not). See redumper.spec.
 %global _build_id_links none
 
-# Pinned-build compatibility package -- this one is MPF's.
+# Compatibility package: the redumper build MPF is version-coupled to.
 #
-# Consumers of redumper bundle a SPECIFIC upstream build and are tested against
-# that one. A distribution cannot ship a second /usr/bin/redumper, so instead of
-# bundling the binary inside every consumer, each pinned build gets its own
-# package named after the build number: redumper732 here for MPF, redumper729 for
-# redumper-gui. Consumers depend on the one they were tested with, share it when
-# they agree, and the rolling `redumper` package stays untouched for CLI users.
+# MPF bundles a SPECIFIC upstream redumper build and is tested only against it.
+# A distribution cannot ship a second /usr/bin/redumper, so this package carries
+# that pinned build as /usr/bin/redumper-mpf, and MPF depends on it by this FIXED
+# name. The rolling `redumper` package is left untouched for CLI users.
 #
-# ⚠️ POINTING MPF AT THE ROLLING `redumper` IS NOT AN OPTION, even on a day when
-# the rolling package happens to carry the very same build (it does right now:
-# both are b732). The rolling package MOVES. The moment redumper releases b733,
-# the watcher bumps it and every MPF dump silently runs a dumper build MPF was
-# never tested against -- and MPF has no version check of any kind to notice: it
-# reads whatever version it finds out of the log and writes it into the
-# submission. Today's equality is an accident of timing, not a property to rely
-# on. That mistake was made once already (redumper726 was deleted instead of
-# being advanced to 732); the rule is that the pin FOLLOWS MPF, it never
-# dissolves into the rolling package.
+# The name is fixed; the VERSION tracks the bundled build. %%global rdbuild below
+# is that build number (and the Version, and the Source tag), and
+# .github/workflows/watch-consumer-pins.yml bumps it hourly from MPF's
+# publish-nix.sh. So when MPF moves to b733 this package upgrades in place
+# (redumper-mpf 732 -> 733) and every installed machine follows on the next
+# upgrade. That is the whole point of keeping the build number OUT of the name:
+# `dnf/zypper/apt upgrade` carries an in-place version bump across installs, but
+# it does NOT follow a rename -- a build-number name would strand every machine
+# on the old pin, silently.
 #
-# So: when MPF's publish-nix.sh moves to a new redumper build, a new
-# redumper<N> package is generated and MPF is repointed at it. scripts/status.sh
-# checks exactly that and goes red when it is not true.
-#
-# Naming follows the same pattern as `aaru5` next to the rolling `aaru`
-# (and gcc12 / python3.9 / libicu74 in the wider distro world): the build
-# number is IN the name, so the package's contents can never silently change
-# under a consumer that pinned it.
+# ⚠️ NEVER point MPF at the rolling `redumper`, not even on a day both carry the
+# same build. The rolling package moves on its own; MPF has no version check and
+# would silently dump with an untested build. This pin always matches what MPF
+# bundles, because a watcher keeps its version equal to publish-nix.sh.
 %global rdbuild 732
 
-Name:           redumper%{rdbuild}
+Name:           redumper-mpf
 Version:        %{rdbuild}
-Release:        2%{?dist}
+Release:        3%{?dist}
+Obsoletes:      redumper732 < 733
 Summary:        redumper b%{rdbuild}, the build pinned by MPF
 
 License:        GPL-3.0-only
@@ -62,7 +56,7 @@ BuildRequires:  unzip
 redumper is a low-level byte-perfect disc dumper for CD, DVD, HD-DVD and
 Blu-ray, used by the Redump and No-Intro preservation projects.
 
-This package ships upstream build b%{rdbuild} as /usr/bin/redumper%{rdbuild}.
+This package ships upstream build b%{rdbuild} as /usr/bin/redumper-mpf.
 It exists so that tools which are version-coupled to a specific redumper
 build get exactly the build they were tested against, no matter which
 version the rolling `redumper` package currently carries. It is the build
@@ -86,7 +80,7 @@ unzip -q %{SOURCE0}
 %install
 install -d %{buildroot}%{_bindir}
 install -m 0755 redumper-b%{rdbuild}-linux-x64/bin/redumper \
-    %{buildroot}%{_bindir}/redumper%{rdbuild}
+    %{buildroot}%{_bindir}/redumper-mpf
 
 install -p -m 0644 %{SOURCE1} LICENSE
 install -p -m 0644 %{SOURCE2} README.md
@@ -94,9 +88,19 @@ install -p -m 0644 %{SOURCE2} README.md
 %files
 %license LICENSE
 %doc README.md
-%caps(cap_sys_rawio=ep) %{_bindir}/redumper%{rdbuild}
+%caps(cap_sys_rawio=ep) %{_bindir}/redumper-mpf
 
 %changelog
+* Fri Jul 17 2026 gmipf <gmipf64@gmail.com> - 732-3
+- Renamed redumper732 -> redumper-mpf. The package name no longer carries the
+  build number; the pinned build now lives at a FIXED name (/usr/bin/redumper-mpf)
+  with the build number as the Version. When MPF bundles a new redumper build the
+  package upgrades in place (732 -> 733) instead of a new redumper<N> appearing
+  and the old one being orphaned -- an in-place version bump migrates installed
+  machines on `dnf/zypper/apt upgrade`, a rename does not. Obsoletes redumper732
+  so existing installs move over. watch-consumer-pins.yml bumps this hourly from
+  MPF's publish-nix.sh; no manual step remains.
+
 * Thu Jul 16 2026 gmipf <gmipf64@gmail.com> - 732-2
 - Set %%global _build_id_links none. With debug_package off these links point at
   debuginfo that does not exist -- and on EL they made this package collide with

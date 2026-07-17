@@ -113,7 +113,7 @@ Requires:       zlib
 Requires:       jq
 # The three backends, and why two of them are PINNED and one is not:
 #
-#   redumper732  PINNED to the build MPF's publish-nix.sh bundles. NOT the rolling
+#   redumper-mpf  PINNED to the build MPF's publish-nix.sh bundles. NOT the rolling
 #                `redumper` -- not even on a day when the rolling package carries
 #                the very same build (it does right now: both are b732). The
 #                rolling package MOVES. The day b733 lands, an MPF pointed at it
@@ -133,7 +133,7 @@ Requires:       jq
 #
 # scripts/status.sh compares MPF's bundled builds against these and goes red on
 # drift. The wrapper below seeds the same names into MPF's config.
-Recommends:     redumper732
+Recommends:     redumper-mpf
 Recommends:     aaru5
 Recommends:     discimagecreator
 
@@ -174,9 +174,9 @@ Requires:       jq
 Requires:       hicolor-icon-theme
 Requires:       desktop-file-utils
 # Same three backends as mpf-cli, same reasons -- see the block above it. In
-# short: redumper732 and aaru5 are PINNED to the builds MPF bundles and must not
+# short: redumper-mpf and aaru5 are PINNED to the builds MPF bundles and must not
 # be collapsed into the rolling packages; dic is deliberately not pinned.
-Recommends:     redumper732
+Recommends:     redumper-mpf
 Recommends:     aaru5
 Recommends:     discimagecreator
 # Avalonia 11.x ships only the X11 backend; on Wayland sessions the GUI
@@ -299,7 +299,7 @@ config_dir="\${XDG_CONFIG_HOME:-\$HOME/.config}/mpf"
 config="\$config_dir/config.json"
 aaru_p=aaru5
 dic_p=DiscImageCreator.out
-red_p=redumper732
+red_p=redumper-mpf
 # Without a HOME there is no sane home-relative output directory; leave the
 # key alone rather than rewriting it to a root-owned "/ISO".
 out_p=""

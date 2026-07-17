@@ -1,7 +1,7 @@
 #!/usr/bin/make -f
 #
-# redumper732 — repackage of upstream's statically-linked linux-x64 binary at a
-# PINNED build (b732), installed as /usr/bin/redumper732.
+# redumper-mpf — repackage of upstream's statically-linked linux-x64 binary at a
+# PINNED build (b732), installed as /usr/bin/redumper-mpf.
 #
 # Nothing is compiled, and unlike the rolling redumper package nothing is
 # documented either: this carries no manpage on purpose. It is a compatibility
@@ -16,14 +16,14 @@
 # compile. What does have to happen is the rename: upstream's release zip (which
 # IS the .orig tarball, fetched straight from the URL the spec names) carries the
 # binary under its own name, bin/redumper. A pinned build installs as
-# /usr/bin/redumper732 — that rename is the whole reason it can sit alongside the
+# /usr/bin/redumper-mpf — that rename is the whole reason it can sit alongside the
 # rolling redumper and the other pins.
 #
 # It lives in the OVERRIDE, not in an execute_before_dh_auto_build hook: an empty
 # override REPLACES the step and the hook never fires. Measured — dh_install then
-# looked for bin/redumper732 and found upstream's bin/redumper.
+# looked for bin/redumper-mpf and found upstream's bin/redumper.
 override_dh_auto_build:
-	test ! -e bin/redumper || mv bin/redumper bin/redumper732
+	test ! -e bin/redumper || mv bin/redumper bin/redumper-mpf
 
 override_dh_auto_test:
 

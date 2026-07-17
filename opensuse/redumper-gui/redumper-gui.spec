@@ -13,7 +13,6 @@
 # "is not recommended as it may not be supported by the GUI". A distribution
 # cannot ship that bundled copy -- it would be a second /usr/bin/redumper --
 # so the pinned build lives in its own package and we link it in below.
-%global rdpin   729
 
 %global guidir  %{_libdir}/%{name}
 
@@ -92,19 +91,19 @@ BuildRequires:  hicolor-icon-theme
 # Fedora ships the identical dangling symlinks with no complaint. Measured: the
 # first OBS build died on exactly this, for both links.
 #
-# redumper729 is a hard runtime Requires anyway (below), so this changes nothing
+# redumper-rgui is a hard runtime Requires anyway (below), so this changes nothing
 # about the shipped package. mpf-check is deliberately only a weak Recommends at
 # runtime -- the GUI tests whether MPF.Check sits next to it and skips the step if
 # it does not -- but the LINK still has to resolve while rpm inspects the build
 # root, so the package has to be there for the build and only for the build. That
 # asymmetry is intentional, not an oversight: on a user's machine without
 # mpf-check the link dangles, which is precisely the state the GUI checks for.
-BuildRequires:  redumper%{rdpin}
+BuildRequires:  redumper-rgui
 BuildRequires:  mpf-check
 
 # The pinned dumper -- a hard dependency: without it the GUI has nothing to
-# drive. Not the rolling `redumper` package, deliberately (see rdpin above).
-Requires:       redumper%{rdpin}
+# drive. Not the rolling `redumper` package, deliberately (see the header above).
+Requires:       redumper-rgui
 
 # Post-processing is optional: the GUI checks whether MPF.Check sits next to
 # its own executable and silently skips the step if it does not. The symlink
@@ -144,7 +143,7 @@ drives on the system, runs the dump, streams redumper's log into the
 window, and afterwards compresses the logs into a submission-ready ZIP.
 
 Unlike the upstream release archive, this package does not bundle its own
-copy of redumper. It depends on redumper%{rdpin} -- a package carrying
+copy of redumper. It depends on redumper-rgui -- a package carrying
 exactly the build upstream tests the GUI against -- and executes that one.
 The rolling `redumper` package can be installed next to it for command-line
 use; the two do not conflict.
@@ -183,7 +182,7 @@ install -D -m 0755 target/release/%{name} %{buildroot}%{guidir}/%{name}
 # The two siblings the GUI looks for, by the exact filenames it expects.
 # It runs `dirname(current_exe())/redumper` and `dirname(current_exe())/
 # MPF.Check` -- no PATH fallback (a packaging PR upstream proposes one).
-ln -s %{_bindir}/redumper%{rdpin}      %{buildroot}%{guidir}/redumper
+ln -s %{_bindir}/redumper-rgui      %{buildroot}%{guidir}/redumper
 ln -s %{_libdir}/mpf-check/MPF.Check   %{buildroot}%{guidir}/MPF.Check
 
 install -d %{buildroot}%{_bindir}
@@ -241,7 +240,7 @@ done
 # raw drive access, but it must not:
 #
 #   * Unnecessary: the GUI never talks to the drive. It runs redumper, and
-#     redumper%%{rdpin} carries the capability on its own binary -- the kernel
+#     redumper-rgui carries the capability on its own binary -- the kernel
 #     grants file capabilities from the EXECUTED FILE, so the dumper is fully
 #     privileged no matter who starts it.
 #

@@ -114,7 +114,7 @@ Requires:       openssl-libs
 Requires:       zlib
 %endif
 Requires:       jq
-Recommends:     redumper732
+Recommends:     redumper-mpf
 Recommends:     aaru5
 Recommends:     discimagecreator
 
@@ -154,7 +154,7 @@ Requires:       zlib
 Requires:       jq
 Requires:       hicolor-icon-theme
 Requires:       desktop-file-utils
-Recommends:     redumper732
+Recommends:     redumper-mpf
 Recommends:     aaru5
 Recommends:     discimagecreator
 # Avalonia 11.x ships only the X11 backend; on Wayland sessions the GUI runs
@@ -284,7 +284,7 @@ config_dir="\${XDG_CONFIG_HOME:-\$HOME/.config}/mpf"
 config="\$config_dir/config.json"
 aaru_p=aaru5
 dic_p=DiscImageCreator.out
-red_p=redumper732
+red_p=redumper-mpf
 # Without a HOME there is no sane home-relative output directory; leave the
 # key alone rather than rewriting it to a root-owned "/ISO".
 out_p=""

@@ -79,93 +79,71 @@ osc results "$OBS_PROJECT" 2>&1 | sed -n '1,12p' | sed 's/^/  /'
 # The general rule: a pin is justified by what UPSTREAM says, not by what a consumer
 # happens to bundle. MPF says nothing and has no version check of any kind -- so it
 # gets this watchdog instead of a pinned package.
-hr "MPF-Bundle vs. unsere Pins"
+hr "MPF-Bundle + Pins (feste Namen, wandernde Version)"
 REPO=$(cd "$(dirname "$0")/.." && pwd)
 NIX=$(curl -fsSL https://raw.githubusercontent.com/SabreTools/MPF/master/publish-nix.sh 2>/dev/null)
 if [ -z "$NIX" ]; then
     echo "  publish-nix.sh nicht erreichbar — Bundle-Drift UNGEPRUEFT"
 else
-    # What MPF bundles today.
+    ok()  { printf '  \033[32mok\033[0m    %s\n' "$1"; }
+    bad() { printf '  \033[31mFEHLER\033[0m %s\n' "$1"; }
+
+    # Was MPF heute buendelt.
     MPF_RD=$(printf '%s' "$NIX" | grep -oE 'redumper/releases/download/b[0-9]+' | head -1 | grep -oE '[0-9]+$')
     MPF_AA=$(printf '%s' "$NIX" | grep -oE 'Aaru/releases/download/v[0-9.]+'    | head -1 | sed 's/.*v//')
-    # What our mpf package actually points at (metadata AND the seeded config --
-    # both have to agree, or the package recommends one dumper and configures
-    # another).
-    PTR_META=$(grep -oE '^Recommends: +redumper[0-9]*' "$REPO/fedora/mpf/mpf.spec" | head -1 | grep -oE 'redumper[0-9]*')
-    PTR_SEED=$(grep -oE '^red_p=redumper[0-9]*'        "$REPO/fedora/mpf/mpf.spec" | head -1 | sed 's/^red_p=//')
-    OUR_AA=$(grep -m1 '^Version:' "$REPO/fedora/aaru5/aaru5.spec" | awk '{print $2}')
 
-    ok()   { printf '  \033[32mok\033[0m    %s\n' "$1"; }
-    bad()  { printf '  \033[31mFEHLER\033[0m %s\n' "$1"; }
+    # Unsere Pin-Versionen (fester Name, Version = Build). rpmspec, weil Version ein Makro ist.
+    verof() { rpmspec -q --queryformat '%{version}\n' "$REPO/fedora/$1/$1.spec" 2>/dev/null | head -1; }
+    MPF_PIN=$(verof redumper-mpf)
+    AA_PIN=$(verof aaru5)
 
-    # 1. MPF must point at the PIN that carries the build MPF bundles -- never at
-    #    the rolling `redumper`, not even while the rolling package happens to
-    #    carry that same build.
-    WANT="redumper${MPF_RD}"
-    if [ "$PTR_META" = "$WANT" ] && [ "$PTR_SEED" = "$WANT" ]; then
-        ok "MPF buendelt b${MPF_RD} und zeigt auf ${WANT} (Metadaten + Config-Seed)"
+    # Wohin zeigen die Konsumenten? Feste Namen -- kein Namensbau mehr aus der Build-Nr.
+    PTR_META=$(rpmspec -q --recommends "$REPO/fedora/mpf/mpf.spec"          2>/dev/null | grep -oE '^redumper-mpf'  | head -1)
+    PTR_SEED=$(grep -oE '^red_p=redumper-mpf' "$REPO/fedora/mpf/mpf.spec" | head -1 | sed 's/^red_p=//')
+    RGUI_REQ=$(rpmspec -q --requires "$REPO/fedora/redumper-gui/redumper-gui.spec" 2>/dev/null | grep -oE '^redumper-rgui' | head -1)
+
+    # 1. mpf zeigt auf den FESTEN Namen redumper-mpf (Metadaten UND Config-Seed).
+    if [ "$PTR_META" = redumper-mpf ] && [ "$PTR_SEED" = redumper-mpf ]; then
+        ok "mpf -> redumper-mpf (Recommends + Config-Seed)"
     else
-        bad "MPF buendelt b${MPF_RD}, zeigt aber auf Metadaten=${PTR_META:-?} / Seed=${PTR_SEED:-?}"
-        echo "     -> ${WANT} erzeugen (fedora/ ubuntu/ opensuse/) und MPF darauf umbiegen."
-        echo "        NIEMALS auf das rollende 'redumper' zeigen: es bewegt sich, MPF hat"
-        echo "        KEINE Versionspruefung und wuerde still mit einer ungetesteten Build dumpen."
+        bad "mpf zeigt nicht auf redumper-mpf: Recommends=${PTR_META:-?} Seed=${PTR_SEED:-?}"
     fi
 
-    # 2. The recipe for that pin has to exist in every lane.
-    MISS=""
-    for lane in fedora ubuntu opensuse; do
-        [ -d "$REPO/$lane/$WANT" ] || MISS="$MISS $lane"
+    # 2. redumper-mpf VERSION == der Build, den MPF buendelt. Bei festem Namen ist das
+    #    ein reiner Versions-Bump; weicht es ab, ist watch-consumer-pins hinterher/aus.
+    if [ "$MPF_PIN" = "$MPF_RD" ]; then
+        ok "redumper-mpf Version ${MPF_PIN} == MPF-Bundle b${MPF_RD}"
+    else
+        bad "redumper-mpf ist ${MPF_PIN:-?}, MPF buendelt b${MPF_RD:-?} -> watch-consumer-pins bumpt (oder haengt)"
+    fi
+
+    # 3. redumper-gui zeigt auf den festen Namen redumper-rgui.
+    if [ "$RGUI_REQ" = redumper-rgui ]; then
+        ok "redumper-gui -> redumper-rgui (Requires)"
+    else
+        bad "redumper-gui Requires zeigt nicht auf redumper-rgui: ${RGUI_REQ:-?}"
+    fi
+
+    # 4. Beide Pin-Rezepte in allen drei Lanes.
+    for pin in redumper-mpf redumper-rgui; do
+        MISS=""
+        for lane in fedora ubuntu opensuse; do [ -d "$REPO/$lane/$pin" ] || MISS="$MISS $lane"; done
+        [ -z "$MISS" ] && ok "Rezept ${pin} in allen drei Lanes" || bad "Rezept ${pin} FEHLT in:${MISS}"
     done
-    if [ -z "$MISS" ]; then
-        ok "Rezept ${WANT} in allen drei Lanes vorhanden"
+
+    # 5. Aaru: MPF faehrt nur latest stable = aaru5.
+    if [ "$MPF_AA" = "$AA_PIN" ]; then
+        ok "aaru5 Version ${AA_PIN} == MPF-Bundle Aaru ${MPF_AA}"
     else
-        bad "Rezept ${WANT} FEHLT in:${MISS}"
+        bad "aaru5 ist ${AA_PIN:-?}, MPF buendelt Aaru ${MPF_AA:-?}"
     fi
 
-    # 3. Aaru: MPF runs only the latest stable, which is what aaru5 carries.
-    if [ "$MPF_AA" = "$OUR_AA" ]; then
-        ok "MPF buendelt Aaru ${MPF_AA} und aaru5 liefert ${OUR_AA}"
-    else
-        bad "MPF buendelt Aaru ${MPF_AA:-?}, aaru5 liefert ${OUR_AA:-?}"
-    fi
-
-    # 4. ORPHANED PINS. A redumper<N> nobody points at any more keeps building and
-    #    keeps being published in all three lanes, forever, because nothing ever
-    #    says so. It only becomes an orphan when a CONSUMER moves -- which is
-    #    exactly the moment nobody is looking at the pin.
-    #
-    #    ⚠️ Asked via `rpmspec`, NOT via grep. The specs write their dependency as
-    #    `Requires: redumper%{rdpin}` -- a MACRO. A grep for the literal string
-    #    finds nothing and cheerfully reports redumper729 as an orphan, i.e. it
-    #    tells you to delete a package that redumper-gui hard-depends on. Measured:
-    #    the first version of this check did exactly that. Let rpm expand the spec.
-    USED=$(
-        for s in "$REPO"/fedora/*/[a-z]*.spec; do
-            rpmspec -q --requires   "$s" 2>/dev/null
-            rpmspec -q --recommends "$s" 2>/dev/null
-        done
-        # The Debian lane has no macros, so plain text is honest there.
-        grep -hoE 'redumper[0-9]+' "$REPO"/ubuntu/*/debian/control 2>/dev/null
-    )
-    for dir in "$REPO"/fedora/redumper[0-9]*/; do
-        [ -d "$dir" ] || continue
-        pin=$(basename "$dir")
-        if printf '%s\n' "$USED" | grep -qx "$pin"; then
-            ok "${pin} wird benutzt"
-        else
-            bad "${pin} ist ein WAISENPAKET — kein Konsument zeigt mehr darauf"
-            echo "     -> Rezept entfernen + 'copr-cli delete-package ${pin}' + aus OBS nehmen."
-            echo "        Sonst baut und publiziert es fuer immer weiter, ohne dass es jemand braucht."
-        fi
-    done
+    # KEIN Waisen-Check mehr. Feste Namen, je EIN Konsument pro Pin -> ein Waisenpaket
+    # ist strukturell unmoeglich geworden. Genau das war der Zweck der Umbenennung
+    # von redumper<N> auf redumper-mpf/-rgui (17.07.): der Pin wandert per Versions-
+    # Bump mit, statt dass ein neuer Name entsteht und der alte verwaist.
 fi
 
-# --- silent failure #2: red runs nobody looked at -----------------------------
-# Only a failure that no later green run of the SAME workflow has superseded is
-# worth showing. Listing every failure ever means a long-fixed one stays red for
-# good, and a permanent red is one you learn to look past -- which is the exact
-# blindness this script exists to prevent. Superseded ones are counted, not
-# swallowed: a filter that hides its own work is the same bug wearing green.
 hr "Workflow-Laeufe (letzte 40)"
 RUNS=$(gh run list --limit 40 \
         --json workflowName,conclusion,createdAt,databaseId 2>/dev/null)

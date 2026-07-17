@@ -48,10 +48,10 @@ case "$TOOL" in
   # NOT prefixes of build-redumper in the regex sense — .packit.yaml anchors
   # every branch with ^...$, which is what keeps a push here from also firing
   # the rolling redumper job.
-  redumper729)  PKG=redumper729;   SPEC=fedora/redumper729/redumper729.spec;             BR=build-redumper729 ;;
-  redumper732)  PKG=redumper732;   SPEC=fedora/redumper732/redumper732.spec;             BR=build-redumper732 ;;
+  redumper-rgui)  PKG=redumper-rgui;   SPEC=fedora/redumper-rgui/redumper-rgui.spec;             BR=build-redumper-rgui ;;
+  redumper-mpf)  PKG=redumper-mpf;   SPEC=fedora/redumper-mpf/redumper-mpf.spec;             BR=build-redumper-mpf ;;
   redumper-gui) PKG=redumper-gui;  SPEC=fedora/redumper-gui/redumper-gui.spec;           BR=build-redumper-gui ;;
-  *) echo "usage: $0 <redumper|mpf|dic|aaru|aaru5|redumper729|redumper732|redumper-gui>" >&2; exit 2 ;;
+  *) echo "usage: $0 <redumper|mpf|dic|aaru|aaru5|redumper-rgui|redumper-mpf|redumper-gui>" >&2; exit 2 ;;
 esac
 
 ROOT=$(git rev-parse --show-toplevel)

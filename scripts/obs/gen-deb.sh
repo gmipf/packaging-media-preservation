@@ -69,7 +69,7 @@ REPO=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)
 # network, so the crates must travel with the source) published on OUR release.
 # That is not a re-host of someone else's bytes -- it is this lane's own build
 # input, and the RPM spec names the very same file.
-DEB_TOOLS=(redumper redumper729 redumper732 aaru aaru5 discimagecreator mpf redumper-gui)
+DEB_TOOLS=(redumper redumper-rgui redumper-mpf aaru aaru5 discimagecreator mpf redumper-gui)
 
 gen_one() {
     local tool=$1

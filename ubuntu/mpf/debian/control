@@ -73,7 +73,7 @@ Depends: ${shlibs:Depends},
          zlib1g,
          libunwind8,
          jq
-Recommends: redumper732, aaru5, discimagecreator
+Recommends: redumper-mpf, aaru5, discimagecreator
 Description: Headless dump orchestrator (drives redumper, aaru, discimagecreator)
  MPF.CLI orchestrates the disc-dumping workflow from a terminal: it drives the
  selected backend (redumper, aaru or discimagecreator) through the dump,
@@ -101,7 +101,7 @@ Depends: ${shlibs:Depends},
          jq,
          hicolor-icon-theme,
          desktop-file-utils
-Recommends: redumper732, aaru5, discimagecreator,
+Recommends: redumper-mpf, aaru5, discimagecreator,
             libx11-6, libice6, libsm6, libxext6, libxi6, libxrandr2,
             libxcursor1, libgl1, libfontconfig1, libfreetype6
 Description: Avalonia desktop frontend for the MPF disc-dumping workflow

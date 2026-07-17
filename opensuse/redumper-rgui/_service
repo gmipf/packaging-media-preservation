@@ -18,12 +18,12 @@
        pinned in the name. The service exists so the RECIPE can be corrected from
        git, not so the binary can advance. -->
   <service name="download_url">
-    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/redumper732/redumper732-rpmlintrc</param>
-    <param name="filename">redumper732-rpmlintrc</param>
+    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/redumper-rgui/redumper-rgui-rpmlintrc</param>
+    <param name="filename">redumper-rgui-rpmlintrc</param>
   </service>
   <service name="download_url">
-    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/redumper732/redumper732.spec</param>
-    <param name="filename">redumper732.spec</param>
+    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/redumper-rgui/redumper-rgui.spec</param>
+    <param name="filename">redumper-rgui.spec</param>
   </service>
   <!-- upstream assets, taken from the Source: URLs of the spec above -->
   <service name="download_files"/>
@@ -35,15 +35,15 @@
        the spec's Source: URLs, and the .dsc names those very files: the RPM and
        the .deb are built from the same upstream bytes, downloaded once. -->
   <service name="download_url">
-    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/redumper732/redumper732.dsc</param>
-    <param name="filename">redumper732.dsc</param>
+    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/redumper-rgui/redumper-rgui.dsc</param>
+    <param name="filename">redumper-rgui.dsc</param>
   </service>
   <service name="download_url">
-    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/redumper732/debian.tar.gz</param>
+    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/redumper-rgui/debian.tar.gz</param>
     <param name="filename">debian.tar.gz</param>
   </service>
   <service name="download_url">
-    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/ubuntu/redumper732/debian/changelog</param>
+    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/ubuntu/redumper-rgui/debian/changelog</param>
     <param name="filename">debian.changelog</param>
   </service>
   <!-- END deb -->

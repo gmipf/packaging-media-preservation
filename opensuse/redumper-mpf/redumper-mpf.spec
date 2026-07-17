@@ -6,26 +6,34 @@
 # Fedora's rpm drops them with debug_package, EL's does not). See redumper.spec.
 %global _build_id_links none
 
-# Pinned-build compatibility package. Consumers of redumper (redumper-gui,
-# MPF) bundle a SPECIFIC upstream build and are only tested against it --
-# redumper-gui's upstream states plainly that "changing the bundled version
-# of redumper is not recommended as it may not be supported by the GUI".
-# A distribution cannot ship a second /usr/bin/redumper, so instead of
-# bundling the binary inside every consumer, each pinned build gets its own
-# package named after the build number: redumper729 here, redumper726 for
-# MPF. Consumers depend on the one they were tested with, share it when they
-# agree, and the rolling `redumper` package stays untouched for CLI users.
+# Compatibility package: the redumper build MPF is version-coupled to.
 #
-# Naming follows the same pattern as `aaru5` next to the rolling `aaru`
-# (and gcc12 / python3.9 / libicu74 in the wider distro world): the build
-# number is IN the name, so the package's contents can never silently change
-# under a consumer that pinned it.
-%global rdbuild 729
+# MPF bundles a SPECIFIC upstream redumper build and is tested only against it.
+# A distribution cannot ship a second /usr/bin/redumper, so this package carries
+# that pinned build as /usr/bin/redumper-mpf, and MPF depends on it by this FIXED
+# name. The rolling `redumper` package is left untouched for CLI users.
+#
+# The name is fixed; the VERSION tracks the bundled build. %%global rdbuild below
+# is that build number (and the Version, and the Source tag), and
+# .github/workflows/watch-consumer-pins.yml bumps it hourly from MPF's
+# publish-nix.sh. So when MPF moves to b733 this package upgrades in place
+# (redumper-mpf 732 -> 733) and every installed machine follows on the next
+# upgrade. That is the whole point of keeping the build number OUT of the name:
+# `dnf/zypper/apt upgrade` carries an in-place version bump across installs, but
+# it does NOT follow a rename -- a build-number name would strand every machine
+# on the old pin, silently.
+#
+# ⚠️ NEVER point MPF at the rolling `redumper`, not even on a day both carry the
+# same build. The rolling package moves on its own; MPF has no version check and
+# would silently dump with an untested build. This pin always matches what MPF
+# bundles, because a watcher keeps its version equal to publish-nix.sh.
+%global rdbuild 732
 
-Name:           redumper%{rdbuild}
+Name:           redumper-mpf
 Version:        %{rdbuild}
 Release:        0
-Summary:        redumper b%{rdbuild}, the build pinned by redumper-gui
+Obsoletes:      redumper732 < 733
+Summary:        redumper b%{rdbuild}, the build pinned by MPF
 
 License:        GPL-3.0-only
 URL:            https://github.com/superg/redumper
@@ -70,11 +78,11 @@ Requires(verify): permissions
 redumper is a low-level byte-perfect disc dumper for CD, DVD, HD-DVD and
 Blu-ray, used by the Redump and No-Intro preservation projects.
 
-This package ships upstream build b%{rdbuild} as /usr/bin/redumper%{rdbuild}.
+This package ships upstream build b%{rdbuild} as /usr/bin/redumper-mpf.
 It exists so that tools which are version-coupled to a specific redumper
 build get exactly the build they were tested against, no matter which
-version the rolling `redumper` package currently carries. redumper-gui
-depends on it and calls it directly.
+version the rolling `redumper` package currently carries. It is the build
+MPF bundles, and the mpf packages point their configuration at it.
 
 It installs alongside the rolling `redumper` package without conflicting.
 For interactive use prefer that one -- it tracks upstream and carries the
@@ -95,7 +103,7 @@ unzip -q %{SOURCE0}
 %install
 install -d %{buildroot}%{_bindir}
 install -m 0755 redumper-b%{rdbuild}-linux-x64/bin/redumper \
-    %{buildroot}%{_bindir}/redumper%{rdbuild}
+    %{buildroot}%{_bindir}/redumper-mpf
 
 install -p -m 0644 %{SOURCE1} LICENSE
 install -p -m 0644 %{SOURCE2} README.md
@@ -104,44 +112,55 @@ install -p -m 0644 %{SOURCE2} README.md
 # passthrough (Plextor read method D8, Kreon commands, ...). The capability
 # lives on the continuation line beginning with " +capabilities".
 install -d %{buildroot}%{_datadir}/permissions/permissions.d
-cat > %{buildroot}%{_datadir}/permissions/permissions.d/redumper%{rdbuild} <<'EOF'
+cat > %{buildroot}%{_datadir}/permissions/permissions.d/redumper-mpf <<'EOF'
 # redumper needs raw SCSI passthrough for vendor drive commands.
-/usr/bin/redumper729 root:root 0755
+/usr/bin/redumper-mpf root:root 0755
  +capabilities cap_sys_rawio=ep
 EOF
 
 %post
-%set_permissions %{_bindir}/redumper%{rdbuild}
+%set_permissions %{_bindir}/redumper-mpf
 
 %verifyscript
-%verify_permissions -e %{_bindir}/redumper%{rdbuild}
+%verify_permissions -e %{_bindir}/redumper-mpf
 
 %files
 %license LICENSE
 %doc README.md
-%{_bindir}/redumper%{rdbuild}
-%{_datadir}/permissions/permissions.d/redumper%{rdbuild}
+%{_bindir}/redumper-mpf
+%{_datadir}/permissions/permissions.d/redumper-mpf
 
 %changelog
-* Thu Jul 16 2026 gmipf <gmipf64@gmail.com> - 729-0
+* Fri Jul 17 2026 gmipf <gmipf64@gmail.com> - 732-3
+- Renamed redumper732 -> redumper-mpf. The package name no longer carries the
+  build number; the pinned build now lives at a FIXED name (/usr/bin/redumper-mpf)
+  with the build number as the Version. When MPF bundles a new redumper build the
+  package upgrades in place (732 -> 733) instead of a new redumper<N> appearing
+  and the old one being orphaned -- an in-place version bump migrates installed
+  machines on `dnf/zypper/apt upgrade`, a rename does not. Obsoletes redumper732
+  so existing installs move over. watch-consumer-pins.yml bumps this hourly from
+  MPF's publish-nix.sh; no manual step remains.
+
+* Thu Jul 16 2026 gmipf <gmipf64@gmail.com> - 732-0
 - Set %%global _build_id_links none. With debug_package off these links point at
   debuginfo that does not exist -- and on EL they made this package collide with
-  the rolling `redumper` when it reaches build 729: both ship the same upstream binary, so both claimed
+  the rolling `redumper`, now also at build 732: both ship the same upstream binary, so both claimed
   /usr/lib/.build-id/db/ea49...ce and `dnf install redumper mpf-cli` (mpf
   recommends redumper732) failed the transaction test. Fedora's rpm drops the
   links together with debug_package, EL's does not -- which is why building and
   testing on Fedora never showed it. Measured on CentOS Stream 10, 2026-07-16.
 
-* Tue Jul 14 2026 gmipf <gmipf64@gmail.com> - 729-0
+* Tue Jul 14 2026 gmipf <gmipf64@gmail.com> - 732-0
 - Initial openSUSE (OBS) packaging. Pinned-build compatibility package carrying
-  upstream redumper b729 as /usr/bin/redumper729, for consumers coupled to that
-  exact build. redumper-gui is the first: its upstream bundles b729 and states
-  that other versions may not be supported, and it invokes redumper as a sibling
-  of its own executable -- which a distribution package cannot honor by shipping
-  a second /usr/bin/redumper.
-- Co-installable with the rolling `redumper` package; no file overlaps, so a user
-  can have the newest redumper on PATH and still run the GUI against the build it
-  was tested with.
+  upstream redumper b732 as /usr/bin/redumper732 -- the build MPF's publish-nix.sh
+  bundles. The mpf packages point their configuration at it, so an MPF dump runs
+  the dumper build its upstream actually tested with.
+- The pin exists even though the rolling `redumper` package carries the very same
+  build today. That equality is an accident of timing: the rolling package moves,
+  and the day b733 lands, an MPF pointed at it would silently dump with a build it
+  was never tested against -- MPF has no version check of any kind to notice.
+- Co-installable with the rolling `redumper` and with redumper729 (redumper-gui's
+  pin); the build number is in the binary name, so no files overlap.
 - cap_sys_rawio granted through the openSUSE permissions framework
   (permissions.d profile + %%set_permissions / %%verify_permissions), the
   distro-native equivalent of the Fedora spec's %%caps entry.

@@ -34,11 +34,11 @@ Architecture: amd64
 # finds exactly zero of them. They are listed by hand, read out of the built
 # binary's embedded loader strings — the same trap as with the .NET GUI in mpf.
 #
-# redumper729 is the pinned dumper this GUI is tested against (see debian/rules
+# redumper-rgui is the pinned dumper this GUI is tested against (see debian/rules
 # and the package description); it is a hard dependency, not a suggestion.
 Depends: ${shlibs:Depends},
          ${misc:Depends},
-         redumper729,
+         redumper-rgui,
          libgl1,
          libegl1,
          libx11-6,
@@ -65,7 +65,7 @@ Description: desktop frontend for the redumper optical-disc dumper
  Unlike the upstream release archive, this package ships no copy of redumper.
  Upstream bundles a pinned build next to the GUI executable and runs its
  sibling by that name; a distribution cannot add a second /usr/bin/redumper, so
- the pinned build is packaged separately as redumper729 and symlinked into the
+ the pinned build is packaged separately as redumper-rgui and symlinked into the
  GUI's private directory. The rolling redumper package installs alongside it
  for command-line use; the two do not conflict.
  .

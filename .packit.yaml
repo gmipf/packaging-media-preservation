@@ -133,7 +133,7 @@ packages:
   # build: they simply both depend on redumper<N>. There is no name under which a
   # second copy of the same build could even come into existence, and
   # /usr/bin/redumper<N> exists exactly once. If redumper-gui ever moves to b732,
-  # it just starts depending on redumper732 next to MPF — nothing is duplicated.
+  # it just starts depending on redumper-mpf next to MPF — nothing is duplicated.
   #
   # ⚠️ The flip side, and the only real hazard here: the moment NO consumer points
   # at a redumper<N> any more, that package is an ORPHAN. It will keep building and
@@ -149,38 +149,38 @@ packages:
   # redumper-gui's pin. Its upstream bundles b729 and states that other versions
   # may not be supported, and it invokes redumper as a sibling of its own binary,
   # which a distro cannot honour by shipping a second /usr/bin/redumper.
-  redumper729:
+  redumper-rgui:
     paths:
-      - fedora/redumper729/
-    specfile_path: redumper729.spec
+      - fedora/redumper-rgui/
+    specfile_path: redumper-rgui.spec
     upstream_project_url: https://github.com/superg/redumper
     actions:
       # MANDATORY, not cosmetic. Without it Packit derives the version from the
       # ARCHIVE NAME and rewrites Version: with it -- measured 2026-07-13, COPR
-      # build 10712779 shipped as `redumper729-redumper.gui.1.0.1-1` instead of
-      # `redumper729-729-1`. The spec is the source of truth for the version;
+      # build 10712779 shipped as `redumper-rgui-redumper.gui.1.0.1-1` instead of
+      # `redumper-rgui-729-1`. The spec is the source of truth for the version;
       # read it from there. (The rolling `redumper` block has had this all along.)
       get-current-version:
-        - bash -c "rpmspec -q --queryformat '%{version}\n' redumper729.spec | head -1"
+        - bash -c "rpmspec -q --queryformat '%{version}\n' redumper-rgui.spec | head -1"
       create-archive:
-        - bash -c "spectool -g redumper729.spec 1>&2"
+        - bash -c "spectool -g redumper-rgui.spec 1>&2"
         - bash -c "ls -1 redumper-b729-linux-x64.zip"
 
   # MPF's pin. b732 is what MPF's publish-nix.sh bundles. It stays pinned even
   # while the rolling `redumper` carries the same build (it does today): the
   # rolling package moves, MPF has no version check, and an MPF pointed at it
   # would silently dump with an untested build the day b733 lands.
-  redumper732:
+  redumper-mpf:
     paths:
-      - fedora/redumper732/
-    specfile_path: redumper732.spec
+      - fedora/redumper-mpf/
+    specfile_path: redumper-mpf.spec
     upstream_project_url: https://github.com/superg/redumper
     actions:
-      # See redumper729 above -- same mandatory version read from the spec.
+      # See redumper-rgui above -- same mandatory version read from the spec.
       get-current-version:
-        - bash -c "rpmspec -q --queryformat '%{version}\n' redumper732.spec | head -1"
+        - bash -c "rpmspec -q --queryformat '%{version}\n' redumper-mpf.spec | head -1"
       create-archive:
-        - bash -c "spectool -g redumper732.spec 1>&2"
+        - bash -c "spectool -g redumper-mpf.spec 1>&2"
         - bash -c "ls -1 redumper-b732-linux-x64.zip"
 
   # Source0 is the VENDORED tarball published as a release asset on THIS repo
@@ -194,7 +194,7 @@ packages:
     specfile_path: redumper-gui.spec
     upstream_project_url: https://github.com/Deterous/Redumper-GUI
     actions:
-      # See redumper729 above -- same trap, and this package is where it bit:
+      # See redumper-rgui above -- same trap, and this package is where it bit:
       # the archive is named redumper-gui-1.0.1-vendored.tar.xz, from which
       # Packit inferred the version `redumper.gui.1.0.1` and stamped it into
       # BOTH new packages. Always read the version from the spec.
@@ -335,15 +335,15 @@ jobs:
       - fedora-all-x86_64
       - epel-all-x86_64
 
-  # redumper729: pinned build, manual only (no watcher — see the package block).
+  # redumper-rgui: pinned build, manual only (no watcher — see the package block).
   # The ^...$ anchors matter more here than anywhere: `build-redumper` without
-  # them would also match `build-redumper729` AND `build-redumper-gui`, and the
+  # them would also match `build-redumper-rgui` AND `build-redumper-gui`, and the
   # rolling redumper would get rebuilt under an unchanged NEVRA — exactly the
   # aaru/aaru5 incident of 2026-07-11.
   - job: copr_build
     trigger: commit
-    branch: ^build-redumper729$
-    packages: [redumper729]
+    branch: ^build-redumper-rgui$
+    packages: [redumper-rgui]
     update_release: false
     owner: gmipf
     project: media-preservation
@@ -351,13 +351,13 @@ jobs:
       - fedora-all-x86_64
       - epel-all-x86_64
 
-  # redumper732: MPF's pinned build, manual only (no watcher). Same anchoring
-  # requirement as redumper729 above -- and note that an unanchored `build-redumper`
+  # redumper-mpf: MPF's pinned build, manual only (no watcher). Same anchoring
+  # requirement as redumper-rgui above -- and note that an unanchored `build-redumper`
   # would now match THREE branches, not two.
   - job: copr_build
     trigger: commit
-    branch: ^build-redumper732$
-    packages: [redumper732]
+    branch: ^build-redumper-mpf$
+    packages: [redumper-mpf]
     update_release: false
     owner: gmipf
     project: media-preservation

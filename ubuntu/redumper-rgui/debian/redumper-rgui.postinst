@@ -16,9 +16,9 @@ set -e
 case "$1" in
     configure)
         if command -v setcap >/dev/null 2>&1; then
-            setcap cap_sys_rawio+ep /usr/bin/redumper732 2>/dev/null || \
-                echo "redumper732: could not set cap_sys_rawio (filesystem may not" \
-                     "support file capabilities); run redumper732 with sudo or add" \
+            setcap cap_sys_rawio+ep /usr/bin/redumper-rgui 2>/dev/null || \
+                echo "redumper-rgui: could not set cap_sys_rawio (filesystem may not" \
+                     "support file capabilities); run redumper-rgui with sudo or add" \
                      "the capability manually." >&2
         fi
         ;;
