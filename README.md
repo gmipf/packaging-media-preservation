@@ -71,6 +71,36 @@ drives, add yourself to the `cdrom` group. A headless floppy dump needs root: th
 floppy node stays `root:disk`, and the `disk` group would expose every block
 device on the system, so it is not a safe substitute.
 
+### The proof ledger — and how to keep it honest
+
+None of the above is a claim you have to take on trust, and none of it is allowed
+to rot quietly. `scripts/proof-ledger.tsv` carries one line per (tool, lane,
+mechanism), each with a fingerprint of exactly the recipe fragments that deliver
+it — the udev rule, the `%post`/`postinst` body, the `%caps()` directive, the
+openSUSE permissions profile. `scripts/proof-status.sh` recomputes that
+fingerprint from the live tree and shouts when it moved: touch the scriptlet and
+the proof is declared stale. It is keyed on the **mechanism**, never the version,
+so a `redumper` b731→b732 bump does not cry wolf.
+
+**Install the hook once per clone** — otherwise the ledger is a script somebody
+has to remember to run, which is the failure mode it exists to remove:
+
+```sh
+git config core.hooksPath .githooks
+```
+
+It blocks a commit on drift, on a missing mechanism line (coverage), and on a
+proof pointing at an artifact that is not there. It deliberately does **not**
+block on the open backlog: you must be able to commit a new mechanism together
+with the ledger line that admits it is unproven.
+
+Three evidence states, and nothing else: `not-yet` (open), `log:<path>` (measured
+red **and** green, artifact saved), and `blocked:<version>:<path>` — red proven,
+green blocked by an upstream bug at exactly that version. A blockade passes
+through without holding the gate shut, and fails loudly the moment the tool's
+version moves, which is the point: marking such a line `proven` instead would sit
+green forever and nobody would ever measure it again.
+
 Two things that look like permission errors and are not:
 
 - **The desktop may have auto-mounted the medium** (GNOME does, KDE does not) —

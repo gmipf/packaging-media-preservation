@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+#
+# Enforces the proof ledger on every commit. Install once per clone:
+#
+#     git config core.hooksPath .githooks
+#
+# WHAT THIS BLOCKS (and only this):
+#   * DRIFT     — a recipe fragment changed under a standing proof. The proof is
+#                 stale; measure again or the green is a lie.
+#   * COVERAGE  — a %caps() / udev rule / setcap-postinst / permissions profile
+#                 with no ledger line at all.
+#   * a proof or blockade pointing at an artifact that does not exist.
+#   * a blockade whose upstream version moved.
+#
+# WHAT THIS DOES NOT BLOCK:
+#   * the open backlog. A 'not-yet' row is not a failure -- you must be able to
+#     commit a new mechanism together with the ledger line that says it is unproven.
+#
+# That split is the whole reason this hook can exist today. The original plan was
+# "prove everything, THEN switch enforcement on", which chained two unrelated
+# things to one switch: drift+coverage (mechanical, waits for nobody) and
+# completeness (which waited on an upstream bug in aaru5 that will never resolve
+# on our schedule). A gate whose arming depends on a stranger never arms.
+#
+# Escape hatch: `git commit --no-verify` -- correct exactly once, when the commit
+# IS the re-measurement and the ledger is being updated in the same breath.
+set -uo pipefail
+
+root=$(git rev-parse --show-toplevel) || exit 0
+[ -x "$root/scripts/proof-status.sh" ] || exit 0
+
+if ! "$root/scripts/proof-status.sh"; then
+    echo
+    echo "pre-commit: das Beweis-Ledger ist nicht sauber (siehe oben) — Commit abgebrochen." >&2
+    echo "            Beweis nachgemessen? Dann Zeile setzen + 'scripts/proof-status.sh --refresh'." >&2
+    echo "            Bewusste Ausnahme? 'git commit --no-verify'." >&2
+    exit 1
+fi

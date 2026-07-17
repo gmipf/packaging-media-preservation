@@ -24,6 +24,25 @@
 #                   This is the completeness half: you cannot add a %caps() or a
 #                   *.rules file and leave it silently unproven.
 #
+# Three evidence states, and nothing else:
+#   not-yet                        open obligation. Never proven. Not drift-checked.
+#   log:<path>                     proven by a real red+green run; <path> must exist.
+#   blocked:<version>:<path>       red is proven (the mechanism is delivered and
+#                                  load-bearing), green is blocked BY UPSTREAM at
+#                                  exactly <version>. Passes through: not counted as
+#                                  open, not counted as proven. The moment the tool's
+#                                  Version differs from <version> the entry FAILS
+#                                  loudly -- upstream moved, the blockade must be
+#                                  re-judged. That auto-recheck is the whole point:
+#                                  a plain 'proven' would sit green forever and
+#                                  nobody would ever measure it again.
+#
+# Both log: and blocked: MUST point at a file that exists. Until 2026-07-17 this
+# field was never opened -- any string that was not 'not-yet' counted as a proof.
+# Measured: a row pointing at log:proofs/DOES-NOT-EXIST.log reported "bewiesen &
+# frisch" and the script exited 0. It verified the recipe it HASHES and not the
+# proof it CLAIMS.
+#
 # Usage:
 #   scripts/proof-status.sh            verify (drift + coverage); exit 1 on any problem
 #   scripts/proof-status.sh --refresh  recompute mech_hash for every entry and rewrite
@@ -113,7 +132,7 @@ if [ "${1:-}" = "--refresh" ]; then
 fi
 
 # ---------------------------------------------------------------- verify mode
-fail=0; proven=0; open=0
+fail=0; proven=0; open=0; blocked=0
 
 hr "Beweis-Ledger — offen vs. bewiesen, und Drift"
 while IFS='|' read -r tool lane prop date hash ev files; do
@@ -124,6 +143,47 @@ while IFS='|' read -r tool lane prop date hash ev files; do
     if [ "$ev" = "not-yet" ]; then
         ylw "  ☐ $tag — offen (im neuen System noch nicht bewiesen)"; open=$((open+1)); continue
     fi
+
+    # Parse the evidence field. Unknown shape -> fail closed: a state we cannot
+    # interpret must never silently pass as a proof.
+    art=""; bver=""
+    case "$ev" in
+        log:*)     art=${ev#log:} ;;
+        blocked:*) rest=${ev#blocked:}; bver=${rest%%:*}; art=${rest#*:}
+                   if [ -z "$bver" ] || [ "$art" = "$rest" ]; then
+                       red "  ✗ $tag — kaputtes blocked-Feld: '$ev' (erwartet blocked:<version>:<pfad>)"; fail=1; continue
+                   fi ;;
+        *)         red "  ✗ $tag — unbekannter evidence-Zustand: '$ev'"
+                   red "      erlaubt: not-yet | log:<pfad> | blocked:<version>:<pfad>"; fail=1; continue ;;
+    esac
+
+    # The artifact must exist. This is the check whose absence let a phantom log
+    # stand as a proof for two days.
+    if [ ! -f "$REPO/$art" ]; then
+        red "  ✗ $tag — Beleg-Artefakt fehlt: $art"; fail=1; continue
+    fi
+
+    # A blockade is pinned to an exact upstream version. Any change -- up OR down --
+    # voids it; we compare for INEQUALITY on purpose, so no version-sorting logic
+    # (and no tilde/Epoch subtlety) can get this wrong. The version source is the
+    # tool's Fedora spec: the debian lane's mech_files is a postinst, which carries
+    # no version at all, so the row cannot answer this question by itself.
+    if [ -n "$bver" ]; then
+        vspec="$REPO/fedora/$tool/$tool.spec"
+        if [ ! -f "$vspec" ]; then
+            red "  ✗ $tag — blocked, aber die Versionsquelle fehlt: fedora/$tool/$tool.spec"; fail=1; continue
+        fi
+        cur=$(awk '/^Version:[[:space:]]/{print $2; exit}' "$vspec")
+        if [ -z "$cur" ]; then
+            red "  ✗ $tag — blocked, aber fedora/$tool/$tool.spec hat keine lesbare Version:-Zeile"; fail=1; continue
+        fi
+        if [ "$cur" != "$bver" ]; then
+            red "  ✗ $tag — $tool steht auf $cur, blockiert war $bver: UPSTREAM HAT SICH BEWEGT."
+            red "      Blockade neu bewerten — messen und auf log:<pfad> setzen, oder blocked: auf $cur nachziehen."
+            fail=1; continue
+        fi
+    fi
+
     live=$(mech_hash "$files")
     if [[ "$live" == MISSING-FILE:* ]] || printf '%s' "$live" | grep -q MISSING; then
         red "  ✗ $tag — Mechanismus-Datei fehlt: $files"; fail=1; continue
@@ -135,7 +195,12 @@ while IFS='|' read -r tool lane prop date hash ev files; do
         red "  ✗ $tag — DRIFT: Rezept ($hash -> $live). Beweis veraltet, NEU MESSEN."
         fail=1; continue
     fi
-    grn "  ✓ $tag — bewiesen & frisch ($ev)"; proven=$((proven+1))
+    if [ -n "$bver" ]; then
+        ylw "  ⊘ $tag — blockiert bei $tool $bver: Rot bewiesen, Grün fremdverschuldet ($art)"
+        blocked=$((blocked+1))
+    else
+        grn "  ✓ $tag — bewiesen & frisch ($ev)"; proven=$((proven+1))
+    fi
 done < <(data_rows)
 
 # ---------------------------------------------------------------- coverage
@@ -181,10 +246,12 @@ grn "  Abdeckung geprüft: udev-Regeln · Fedora %caps() · Debian setcap · ope
 
 # ---------------------------------------------------------------- verdict
 hr "Fazit"
-printf '  bewiesen & frisch: %d   offen (noch zu messen): %d\n' "$proven" "$open"
+printf '  bewiesen & frisch: %d   blockiert (upstream): %d   offen (noch zu messen): %d\n' \
+       "$proven" "$blocked" "$open"
 if [ "$fail" -eq 0 ]; then
     grn "Kein Drift, jedes Mechanismus-Fragment hat eine Ledger-Zeile."
     [ "$open" -gt 0 ] && ylw "  $open offen — im neuen System noch nichts bewiesen; das ist die Backlog, kein Fehler."
+    [ "$blocked" -gt 0 ] && ylw "  $blocked blockiert — Rot bewiesen, Grün wartet auf Upstream. Fällt automatisch auf, sobald sich die Version bewegt."
     exit 0
 else
     red "Ein Beweis ist veraltet, unfertig (AUTO) oder ein Fragment fehlt im Ledger — oben."

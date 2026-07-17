@@ -3,11 +3,24 @@
 # scripts/proof-status.sh. This is the "new system": every line carries a hash of
 # the recipe fragments that DELIVER its mechanism, so a proof cannot silently rot.
 #
-# Two states, nothing in between:
+# Three states, nothing in between:
 #   not-yet  — an OPEN obligation. The mechanism exists in the tree, but it has NOT
 #              been proven under this system yet. mech_hash = '-', date = '-',
 #              evidence = 'not-yet'. Listed loudly; NOT drift-checked (there is no
 #              proof to invalidate). This is where EVERY line starts.
+#   blocked  — red IS proven (the mechanism is delivered and load-bearing), green is
+#              blocked BY UPSTREAM at exactly one version.
+#              evidence = 'blocked:<version>:<path>'. Passes through: not counted as
+#              open, not counted as proven, does not hold the gate shut. Drift-checked
+#              like a proof, PLUS: the moment the tool's Version differs from
+#              <version>, the entry fails loudly and demands a re-judgement.
+#              That auto-recheck is the entire reason this state exists instead of
+#              just marking such a line 'proven': a fake green would sit there
+#              forever and nobody would ever measure it again -- which is exactly
+#              the information drift this ledger exists to prevent. It also keeps
+#              'proven' meaning ONE thing. The moment it can also mean "we judged it
+#              fine", a reader must check every green to see which kind it is, and
+#              the human eye is back in the loop.
 #   proven   — measured, with a saved log. evidence = 'log:<path>', date = the
 #              measurement date, mech_hash = the recipe state AT that measurement.
 #              From then on it IS drift-checked: if the udev rule / scriptlet /
@@ -39,7 +52,7 @@
 #
 tool|lane|property|date|mech_hash|evidence|mech_files
 aaru|fedora|vendor-cap|2026-07-15|d25558dd2be6c8a7|log:proofs/aaru-fedora-vendor-cap.log|fedora/aaru/aaru.spec
-aaru5|fedora|vendor-cap|-|-|not-yet|fedora/aaru5/aaru5.spec
+aaru5|fedora|vendor-cap|2026-07-15|d25558dd2be6c8a7|blocked:5.4.2:proofs/aaru5-vendor-cap-BLOCKED.md|fedora/aaru5/aaru5.spec
 discimagecreator|fedora|vendor-cap|2026-07-15|29f02cf76d8c8c86|log:proofs/discimagecreator-fedora-vendor-cap.log|fedora/discimagecreator/discimagecreator.spec
 redumper|fedora|vendor-cap|2026-07-15|fb0579d39f362d6f|log:proofs/redumper-fedora-vendor-cap.log|fedora/redumper/redumper.spec
 redumper729|fedora|vendor-cap|2026-07-15|c410bfe6ba837d66|log:proofs/redumper729-fedora-vendor-cap.log|fedora/redumper729/redumper729.spec
@@ -51,13 +64,13 @@ redumper|debian|vendor-cap|2026-07-15|5111b9c6410cdef5|log:proofs/redumper-debia
 redumper729|debian|vendor-cap|2026-07-15|f13c96c5b5291288|log:proofs/redumper729-debian-vendor-cap.log|ubuntu/redumper729/debian/redumper729.postinst
 redumper732|debian|vendor-cap|2026-07-15|6ae71229e0797607|log:proofs/redumper732-debian-vendor-cap.log|ubuntu/redumper732/debian/redumper732.postinst
 aaru|debian|vendor-cap|2026-07-15|94e4f73523de3c9f|log:proofs/aaru-debian-vendor-cap.log|ubuntu/aaru/debian/aaru.postinst
-aaru5|debian|vendor-cap|-|-|not-yet|ubuntu/aaru5/debian/aaru5.postinst
+aaru5|debian|vendor-cap|2026-07-15|c21169016f0524f8|blocked:5.4.2:proofs/aaru5-vendor-cap-BLOCKED.md|ubuntu/aaru5/debian/aaru5.postinst
 discimagecreator|debian|vendor-cap|2026-07-15|107cee8d2ac3123a|log:proofs/discimagecreator-debian-vendor-cap.log|ubuntu/discimagecreator/debian/discimagecreator.postinst
 aaru|debian|node-floppy|2026-07-15|3acd67a788d0e67e|log:proofs/aaru-debian-node-floppy.log|ubuntu/aaru/debian/70-aaru-floppy.rules,ubuntu/aaru/debian/aaru.postinst
 aaru5|debian|node-floppy|2026-07-15|0f686134f9f0f1df|log:proofs/aaru5-debian-node-floppy.log|ubuntu/aaru5/debian/70-aaru5-floppy.rules,ubuntu/aaru5/debian/aaru5.postinst
 discimagecreator|debian|node-floppy|2026-07-15|be200a5686a803a5|log:proofs/discimagecreator-debian-node-floppy.log|ubuntu/discimagecreator/debian/70-discimagecreator-floppy.rules,ubuntu/discimagecreator/debian/discimagecreator.postinst
 aaru|opensuse|vendor-cap|2026-07-15|b76d84bbf7f64920|log:proofs/aaru-opensuse-vendor-cap.log|opensuse/aaru/aaru.spec
-aaru5|opensuse|vendor-cap|-|-|not-yet|opensuse/aaru5/aaru5.spec
+aaru5|opensuse|vendor-cap|2026-07-15|8c1a53eaa2259acb|blocked:5.4.2:proofs/aaru5-vendor-cap-BLOCKED.md|opensuse/aaru5/aaru5.spec
 discimagecreator|opensuse|vendor-cap|2026-07-15|221060894e921f5b|log:proofs/discimagecreator-opensuse-vendor-cap.log|opensuse/discimagecreator/discimagecreator.spec
 redumper|opensuse|vendor-cap|2026-07-15|776b3afa06906366|log:proofs/redumper-opensuse-vendor-cap.log|opensuse/redumper/redumper.spec
 redumper729|opensuse|vendor-cap|2026-07-15|ccfa36ff7f89d3b6|log:proofs/redumper729-opensuse-vendor-cap.log|opensuse/redumper729/redumper729.spec
