@@ -11,7 +11,7 @@
 %global _build_id_links none
 
 Name:           redumper
-Version:        732
+Version:        733
 Release:        0
 Summary:        A low-level byte-perfect CD disc dumper
 
@@ -105,6 +105,9 @@ EOF
 %{_mandir}/man1/redumper.1*
 
 %changelog
+* Fri Jul 17 2026 gmipf <gmipf64@gmail.com> - 733-0
+- Automated sync to upstream redumper release b733.
+
 * Thu Jul 16 2026 gmipf <gmipf64@gmail.com> - 732-0
 - Set %%global _build_id_links none. With debug_package off these links point at
   debuginfo that does not exist -- and on EL they made this package collide with
