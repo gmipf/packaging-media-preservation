@@ -12,7 +12,7 @@
 
 Name:           redumper
 Version:        733
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        A low-level byte-perfect CD disc dumper
 
 License:        GPL-3.0-only
@@ -23,6 +23,14 @@ URL:            https://github.com/superg/redumper
 # built by upstream's own CI matching the same toolchain we previously
 # used for our source build.
 Source0:        %{url}/releases/download/b%{version}/redumper-b%{version}-linux-x64.zip
+
+# arm64 counterpart of Source0. We bundle BOTH arch ZIPs into the one SRPM
+# because packit builds a single SRPM that COPR/OBS then build across every
+# arch chroot; an arch-conditional Source: would bake one arch's binary into
+# the SRPM, so the aarch64 build would ship the x86 binary. We carry both and
+# select in %%install via %%ifarch. Same %%{version} macro => the watcher bumps
+# both URLs in lockstep on every upstream release.
+Source4:        %{url}/releases/download/b%{version}/redumper-b%{version}-linux-arm64.zip
 
 # LICENSE + README aren't shipped in the release zip; fetched separately
 # from the same tag so %%license / %%doc work without a full source clone.
@@ -44,7 +52,7 @@ Source2:        https://raw.githubusercontent.com/superg/redumper/b%{version}/RE
 # examples guidance that help2man would strip out.
 Source3:        redumper.1
 
-ExclusiveArch:  x86_64
+ExclusiveArch:  x86_64 aarch64
 BuildRequires:  unzip
 
 %description
@@ -58,7 +66,11 @@ vendor SCSI passthrough commands work without sudo.
 
 %prep
 %setup -q -c -T
+%ifarch aarch64
+unzip -q %{SOURCE4}
+%else
 unzip -q %{SOURCE0}
+%endif
 
 %build
 # Self-contained statically linked binary; nothing to compile, and the manpage
@@ -66,7 +78,11 @@ unzip -q %{SOURCE0}
 
 %install
 install -d %{buildroot}%{_bindir}
+%ifarch aarch64
+install -m 0755 redumper-b%{version}-linux-arm64/bin/redumper %{buildroot}%{_bindir}/redumper
+%else
 install -m 0755 redumper-b%{version}-linux-x64/bin/redumper %{buildroot}%{_bindir}/redumper
+%endif
 
 install -p -m 0644 %{SOURCE1} LICENSE
 install -p -m 0644 %{SOURCE2} README.md
@@ -80,6 +96,17 @@ install -D -m 0644 %{SOURCE3} %{buildroot}%{_mandir}/man1/redumper.1
 %{_mandir}/man1/redumper.1*
 
 %changelog
+* Sat Jul 18 2026 gmipf <gmipf64@gmail.com> - 733-2
+- Add aarch64 (arm64) support. Bundle the upstream linux-arm64 release ZIP
+  alongside linux-x64 (both carry the same %%{version} macro, so watchers bump
+  them in lockstep) and pick the matching binary per build arch via %%ifarch.
+  ExclusiveArch is now x86_64 aarch64. Rationale: packit builds ONE SRPM that
+  COPR/OBS build across every arch chroot, so an arch-conditional Source: would
+  bake one arch's binary into the SRPM; bundling both and selecting at %%install
+  is the only correct way. arm64 ships UNTESTED -- no hardware drive-access
+  proof exists for it; the repackaging path is architecture-neutral but this is
+  deliberately not claimed as proven.
+
 * Fri Jul 17 2026 gmipf <gmipf64@gmail.com> - 733-1
 - Automated sync to upstream redumper release b733; Release reset to 1.
 
