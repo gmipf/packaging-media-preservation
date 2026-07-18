@@ -21,7 +21,11 @@ Vcs-Git: https://github.com/gmipf/packaging-media-preservation.git
 Vcs-Browser: https://github.com/gmipf/packaging-media-preservation
 
 Package: aaru
-Architecture: amd64
+# arm64: the orig tarball (Debtransform-Tar) is the linux_amd64 binary tarball;
+# the linux_arm64 tarball travels as a Debtransform-Files extra and debian/rules
+# extracts it over the tree on an arm64 build. arm64 ships UNTESTED (no hardware
+# drive-access proof).
+Architecture: amd64 arm64
 # Self-contained single-file .NET binary: dh_shlibdeps only sees the apphost's
 # own NEEDED entries (libc/libstdc++), not the runtime libraries the extracted
 # .NET runtime loads by dlopen at run time, so those are declared by hand

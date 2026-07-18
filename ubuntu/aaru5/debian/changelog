@@ -1,3 +1,13 @@
+aaru5 (5.4.2-4) UNRELEASED; urgency=medium
+
+  * Add aarch64 (arm64) support: the linux_arm64 upstream tarball (NativeAOT
+    binary + libe_sqlite3.so sidecar) travels as a Debtransform-Files extra and
+    debian/rules extracts it over the tree on arm64 builds (Architecture is now
+    amd64 arm64). Ships UNTESTED on arm64 -- no hardware drive-access proof; the
+    repackage path is architecture-neutral.
+
+ -- gmipf <gmipf64@gmail.com>  Sat, 18 Jul 2026 01:40:00 +0000
+
 aaru5 (5.4.2-3) UNRELEASED; urgency=medium
 
   * Apply the shipped udev rule in postinst to drives that are ALREADY

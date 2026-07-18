@@ -329,6 +329,8 @@ jobs:
     targets:
       - fedora-all-x86_64
       - epel-all-x86_64
+      - fedora-all-aarch64
+      - epel-all-aarch64
 
   # aaru5: stable 5.x, own trigger branch. Manually pinned; bump Release
   # via scripts/build-tool.sh on a manual rebuild.
@@ -342,6 +344,8 @@ jobs:
     targets:
       - fedora-all-x86_64
       - epel-all-x86_64
+      - fedora-all-aarch64
+      - epel-all-aarch64
 
   # redumper-rgui: coupled to the redumper-gui release (bumped WITH it, not hourly);
   # watch-consumer-pins.yml guards it and fails loudly on drift, it does not bump it.

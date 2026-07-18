@@ -29,7 +29,7 @@ Name:           aaru
 # before this build, so nothing previously published needs to be
 # sort-overridden.
 Version:        %{aaruver}~%{aaruprerel}
-Release:        2%{?dist}
+Release:        3%{?dist}
 Summary:        Data preservation suite for optical, magnetic and solid-state media
 
 License:        GPL-3.0-or-later AND LGPL-2.1-or-later AND MIT
@@ -42,6 +42,12 @@ URL:            https://github.com/aaru-dps/Aaru
 # at build time, which COPR's enable_net=on does not actually grant
 # for external hosts like api.nuget.org — so we repackage instead.
 Source0:        %{url}/releases/download/%{aarutag}/aaru-%{aaruver}-%{aaruprerel}_linux_amd64.tar.xz
+# arm64 counterpart of Source0 (the self-contained .NET single-file binary +
+# docs). Bundled alongside amd64 so the one SRPM builds correctly on every arch
+# chroot; the matching tarball is extracted in %%prep via %%ifarch. Same version
+# macros => the watcher bumps both in lockstep. On the Debian lane it travels as
+# a Debtransform-Files binary extra and debian/rules swaps it in on arm64.
+Source5:        %{url}/releases/download/%{aarutag}/aaru-%{aaruver}-%{aaruprerel}_linux_arm64.tar.xz
 Source1:        %{url}/releases/download/%{aarutag}/aaru-src-%{aaruver}-%{aaruprerel}.tar.xz
 # Curated manpage template (.TH/NAME/.../FILES/SEE ALSO) with a marker
 # where the build-time generator splices in the live --help reference.
@@ -54,7 +60,7 @@ Source3:        aaru-manpage.sh
 # by `aaru5` (stable) or `discimagecreator`, keeping all three co-installable.
 Source4:        70-aaru-floppy.rules
 
-ExclusiveArch:  x86_64
+ExclusiveArch:  x86_64 aarch64
 BuildRequires:  tar
 BuildRequires:  xz
 # Provides %%{_udevrulesdir}.
@@ -149,7 +155,11 @@ and therefore no ACL; dump as root there.
 # rootless and gets extracted into a `src/` subdir so the two file
 # sets don't collide.
 %setup -q -c -T
+%ifarch aarch64
+tar -xJf %{SOURCE5}
+%else
 tar -xJf %{SOURCE0}
+%endif
 mkdir -p src
 tar -xJf %{SOURCE1} -C src
 
@@ -278,6 +288,17 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
 %{_udevrulesdir}/70-aaru-floppy.rules
 
 %changelog
+* Sat Jul 18 2026 gmipf <gmipf64@gmail.com> - 6.0.0~beta.1-3
+- Add aarch64 (arm64) support. Bundle the upstream linux_arm64 binary tarball
+  alongside linux_amd64 (same version macros, so the watcher bumps both in
+  lockstep) and extract the matching one per build arch via %%ifarch;
+  ExclusiveArch is now x86_64 aarch64. packit builds ONE SRPM that COPR/OBS build
+  across every arch chroot, so bundling both and selecting at %%prep is the only
+  correct way. The build-time manpage generator runs the arm64 binary natively on
+  the aarch64 builders. arm64 ships UNTESTED -- no hardware drive-access proof
+  exists for it; the repackaging path is architecture-neutral but this is
+  deliberately not claimed as proven.
+
 * Thu Jul 16 2026 gmipf <gmipf64@gmail.com> - 6.0.0~beta.1-2
 - Mark README.md, Changelog.md and CONTRIBUTING.md as %%doc. They were already
   installed, but unmarked, so rpm did not know they were documentation: `rpm -qd

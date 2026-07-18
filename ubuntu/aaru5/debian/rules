@@ -27,7 +27,18 @@ UPSTREAM_VERSION := $(shell dpkg-parsechangelog -SVersion | sed -e 's/-[^-]*$$//
 #
 # SOURCE_DATE_EPOCH (set by dpkg-buildpackage from the changelog) is honoured by
 # the generator for the .TH date, so rebuilds stay byte-identical.
+# On arm64, swap in the linux_arm64 build before generating the manpage. The
+# .orig tarball (Debtransform-Tar) is the linux_amd64 tarball, so ./aaru and
+# ./libe_sqlite3.so are the x86-64 build; the arm64 tarball travels as a
+# Debtransform-Files extra (obs-build covers it with --include-binaries) and is
+# extracted over the tree here, replacing BOTH the binary and its arch-specific
+# sidecar. The generator then runs the arm64 binary natively on the arm64
+# builder (the hard guard below still fails loudly on a silent fallback).
+# arm64 ships UNTESTED.
 override_dh_auto_build:
+ifeq ($(DEB_HOST_ARCH),arm64)
+	tar -xJf aaru-*_linux_arm64.tar.xz
+endif
 	sh debian/aaru5-manpage.sh ./aaru debian/aaru5.1.in $(UPSTREAM_VERSION) \
 	    > debian/aaru5.1
 # The generator has a rescue path (curated page, no command reference) for build

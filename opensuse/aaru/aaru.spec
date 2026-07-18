@@ -33,6 +33,11 @@ URL:            https://github.com/aaru-dps/Aaru
 # OBS build roots are hermetic (no network), so both are fetched by the
 # _service (download_files) and committed as package sources.
 Source0:        %{url}/releases/download/%{aarutag}/aaru-%{aaruver}-%{aaruprerel}_linux_amd64.tar.xz
+# arm64 counterpart of Source0 (self-contained .NET binary + docs). Bundled so
+# the one package source builds on every enabled arch; picked in %%prep via
+# %%ifarch. Same version macros => the _service fetches and the watcher bumps
+# both in lockstep. Travels the Debian lane as a Debtransform-Files binary extra.
+Source5:        %{url}/releases/download/%{aarutag}/aaru-%{aaruver}-%{aaruprerel}_linux_arm64.tar.xz
 Source1:        %{url}/releases/download/%{aarutag}/aaru-src-%{aaruver}-%{aaruprerel}.tar.xz
 # Curated manpage template (.TH/NAME/.../FILES/SEE ALSO) with a marker
 # where the build-time generator splices in the live --help reference.
@@ -45,7 +50,7 @@ Source3:        aaru-manpage.sh
 # by `aaru5` (stable) or `discimagecreator`, keeping all three co-installable.
 Source4:        70-aaru-floppy.rules
 
-ExclusiveArch:  x86_64
+ExclusiveArch:  x86_64 aarch64
 BuildRequires:  tar
 BuildRequires:  xz
 # Provides %%{_udevrulesdir}.
@@ -158,7 +163,11 @@ root there.
 # rootless and gets extracted into a `src/` subdir so the two file
 # sets don't collide.
 %setup -q -c -T
+%ifarch aarch64
+tar -xJf %{SOURCE5}
+%else
 tar -xJf %{SOURCE0}
+%endif
 mkdir -p src
 tar -xJf %{SOURCE1} -C src
 
@@ -294,6 +303,13 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
 %{_datadir}/permissions/permissions.d/aaru
 
 %changelog
+* Sat Jul 18 2026 gmipf <gmipf64@gmail.com> - 6.0.0~beta.1-0
+- Add aarch64 (arm64) support: bundle the upstream linux_arm64 binary tarball
+  alongside linux_amd64 and extract the matching one per build arch via %%ifarch;
+  ExclusiveArch now x86_64 aarch64. The build-time manpage generator runs the
+  arm64 binary natively on the aarch64 builder. Ships UNTESTED on arm64 (no
+  hardware drive-access proof); the repackage path is architecture-neutral.
+
 * Thu Jul 16 2026 gmipf <gmipf64@gmail.com> - 6.0.0~beta.1-0
 - Mark README.md, Changelog.md and CONTRIBUTING.md as %%doc. They were already
   installed, but unmarked, so rpm did not know they were documentation: `rpm -qd

@@ -24,7 +24,11 @@ Vcs-Git: https://github.com/gmipf/packaging-media-preservation.git
 Vcs-Browser: https://github.com/gmipf/packaging-media-preservation
 
 Package: aaru5
-Architecture: amd64
+# arm64: the orig tarball (Debtransform-Tar) is the linux_amd64 tarball; the
+# linux_arm64 tarball travels as a Debtransform-Files extra and debian/rules
+# extracts it over the tree (binary + libe_sqlite3.so sidecar) on an arm64 build.
+# arm64 ships UNTESTED (no hardware drive-access proof).
+Architecture: amd64 arm64
 # ${shlibs:Depends}: unlike redumper, the Aaru 5.4.x NativeAOT binary is
 # dynamically linked against the standard C/C++ runtime, so dh_shlibdeps
 # resolves its real runtime dependencies straight from the ELF (mirrors how
