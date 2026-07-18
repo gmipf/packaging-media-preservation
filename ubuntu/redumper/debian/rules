@@ -18,7 +18,18 @@
 
 # The upstream binary is prebuilt and statically linked — there is nothing to
 # configure, compile or test.
+#
+# On arm64, swap in the linux-arm64 binary. The .orig tarball (Debtransform-Tar)
+# is the linux-x64 zip, so bin/redumper arrives as the x86-64 build; the arm64
+# zip travels as a Debtransform-Files extra (obs-build covers it with
+# --include-binaries) and is unpacked here. On amd64 there is nothing to do.
+# This runs AFTER dpkg-source has built the source package from the pristine
+# tree, so overwriting bin/redumper here does not perturb the .dsc.
 override_dh_auto_build:
+ifeq ($(DEB_HOST_ARCH),arm64)
+	unzip -o redumper-b*-linux-arm64.zip
+	install -m 0755 redumper-b*-linux-arm64/bin/redumper bin/redumper
+endif
 
 override_dh_auto_test:
 

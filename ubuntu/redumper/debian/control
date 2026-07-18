@@ -14,9 +14,12 @@ Vcs-Git: https://github.com/gmipf/packaging-media-preservation.git
 Vcs-Browser: https://github.com/gmipf/packaging-media-preservation
 
 Package: redumper
-Architecture: amd64
-# No ${shlibs:Depends}: the upstream linux-x64 binary is fully statically
-# linked (dh_shlibdeps finds no shared-library dependencies at all).
+# arm64: the orig tarball (Debtransform-Tar) carries the linux-x64 binary;
+# debian/rules swaps in the linux-arm64 build (a Debtransform-Files extra) on
+# an arm64 build. arm64 ships UNTESTED (no hardware drive-access proof).
+Architecture: amd64 arm64
+# No ${shlibs:Depends}: the upstream binary is fully statically linked
+# (dh_shlibdeps finds no shared-library dependencies at all).
 Depends: ${misc:Depends}, libcap2-bin
 Description: low-level byte-perfect optical disc dumper
  redumper is a low-level byte-perfect disc dumper for CD, DVD, HD-DVD and
@@ -25,8 +28,9 @@ Description: low-level byte-perfect optical disc dumper
  drives. It is one of the dumpers used by the Redump and No-Intro disc
  preservation projects.
  .
- This package repackages the upstream statically-linked linux-x64 release
- binary unchanged. On install the binary is given the cap_sys_rawio file
+ This package repackages the matching upstream statically-linked release
+ binary unchanged (linux-x64 on amd64, linux-arm64 on arm64). On install the
+ binary is given the cap_sys_rawio file
  capability so vendor SCSI passthrough commands work without sudo; drive
  node access still requires a local desktop seat (uaccess) or membership of
  the cdrom group.

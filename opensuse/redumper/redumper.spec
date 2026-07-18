@@ -28,6 +28,14 @@ URL:            https://github.com/superg/redumper
 # rpmbuild then resolves each Source: to its basename in SOURCES.
 Source0:        %{url}/releases/download/b%{version}/redumper-b%{version}-linux-x64.zip
 
+# arm64 counterpart of Source0. Both arch ZIPs are bundled and the matching
+# one is picked per build arch via %%ifarch (see %%prep / %%install). OBS builds
+# ONE package source across every enabled arch, so an arch-conditional Source:
+# would commit only one arch's binary; carrying both keeps the aarch64 build
+# honest. Same %%{version} macro => the _service fetches and the watcher bumps
+# both in lockstep.
+Source4:        %{url}/releases/download/b%{version}/redumper-b%{version}-linux-arm64.zip
+
 # LICENSE + README aren't shipped in the release zip; fetched separately
 # from the same tag so %%license / %%doc work without a full source clone.
 Source1:        https://raw.githubusercontent.com/superg/redumper/b%{version}/LICENSE
@@ -43,7 +51,7 @@ Source2:        https://raw.githubusercontent.com/superg/redumper/b%{version}/RE
 # Local source, left alone by the service.
 Source3:        redumper.1
 
-ExclusiveArch:  x86_64
+ExclusiveArch:  x86_64 aarch64
 BuildRequires:  unzip
 
 # openSUSE grants file capabilities through the permissions framework
@@ -66,7 +74,11 @@ work without sudo.
 
 %prep
 %setup -q -c -T
+%ifarch aarch64
+unzip -q %{SOURCE4}
+%else
 unzip -q %{SOURCE0}
+%endif
 
 %build
 # Self-contained statically linked binary; nothing to compile, and the manpage
@@ -74,7 +86,11 @@ unzip -q %{SOURCE0}
 
 %install
 install -d %{buildroot}%{_bindir}
+%ifarch aarch64
+install -m 0755 redumper-b%{version}-linux-arm64/bin/redumper %{buildroot}%{_bindir}/redumper
+%else
 install -m 0755 redumper-b%{version}-linux-x64/bin/redumper %{buildroot}%{_bindir}/redumper
+%endif
 
 install -p -m 0644 %{SOURCE1} LICENSE
 install -p -m 0644 %{SOURCE2} README.md
@@ -105,6 +121,12 @@ EOF
 %{_mandir}/man1/redumper.1*
 
 %changelog
+* Sat Jul 18 2026 gmipf <gmipf64@gmail.com> - 733-0
+- Add aarch64 (arm64) support: bundle the upstream linux-arm64 ZIP alongside
+  linux-x64 and pick per build arch via %%ifarch; ExclusiveArch now
+  x86_64 aarch64. Ships UNTESTED on arm64 (no hardware drive-access proof);
+  the repackage path is architecture-neutral.
+
 * Fri Jul 17 2026 gmipf <gmipf64@gmail.com> - 733-0
 - Automated sync to upstream redumper release b733.
 
