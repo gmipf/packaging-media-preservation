@@ -12,7 +12,7 @@
 
 Name:           redumper
 Version:        733
-Release:        2%{?dist}
+Release:        3%{?dist}
 Summary:        A low-level byte-perfect CD disc dumper
 
 License:        GPL-3.0-only
