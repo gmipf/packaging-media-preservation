@@ -1,3 +1,12 @@
+redumper-mpf (732-2) UNRELEASED; urgency=medium
+
+  * Add aarch64 (arm64) support: the linux-arm64 upstream binary travels as a
+    Debtransform-Files extra and debian/rules swaps it in on arm64 builds
+    (Architecture is now amd64 arm64). Ships UNTESTED on arm64 -- no hardware
+    drive-access proof; the repackage path is architecture-neutral.
+
+ -- gmipf <gmipf64@gmail.com>  Sat, 18 Jul 2026 01:20:00 +0000
+
 redumper-mpf (732-1) UNRELEASED; urgency=medium
 
   * Initial package. Pinned-build compatibility package carrying upstream

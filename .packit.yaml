@@ -359,6 +359,8 @@ jobs:
     targets:
       - fedora-all-x86_64
       - epel-all-x86_64
+      - fedora-all-aarch64
+      - epel-all-aarch64
 
   # redumper-mpf: MPF's pinned build, AUTO-tracked hourly by watch-consumer-pins.yml
   # (fixed name, moving version -> in-place bump). Same anchoring requirement as
@@ -374,6 +376,8 @@ jobs:
     targets:
       - fedora-all-x86_64
       - epel-all-x86_64
+      - fedora-all-aarch64
+      - epel-all-aarch64
 
   # redumper-gui: Rust/egui frontend. MSRV 1.92 (from eframe/egui 0.35, measured)
   # is satisfied on Fedora 43+ (1.96) and on EL 8/9/10 (1.92 — exactly the floor,

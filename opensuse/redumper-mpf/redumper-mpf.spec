@@ -49,10 +49,18 @@ URL:            https://github.com/superg/redumper
 # they are committed as package sources. rpmbuild then resolves each Source:
 # to its basename in SOURCES.
 Source0:        %{url}/releases/download/b%{rdbuild}/redumper-b%{rdbuild}-linux-x64.zip
+
+# arm64 counterpart of Source0. Both arch ZIPs are bundled and the matching one
+# is picked per build arch via %%ifarch (see %%prep / %%install). OBS builds ONE
+# package source across every enabled arch, so an arch-conditional Source: would
+# commit only one arch's binary; carrying both keeps the aarch64 build honest.
+# Same %%{rdbuild} macro => the _service fetches and the watcher bumps both in
+# lockstep. It also travels the Debian lane as a Debtransform-Files extra.
+Source4:        %{url}/releases/download/b%{rdbuild}/redumper-b%{rdbuild}-linux-arm64.zip
 Source1:        https://raw.githubusercontent.com/superg/redumper/b%{rdbuild}/LICENSE
 Source2:        https://raw.githubusercontent.com/superg/redumper/b%{rdbuild}/README.md
 
-ExclusiveArch:  x86_64
+ExclusiveArch:  x86_64 aarch64
 BuildRequires:  unzip
 
 # openSUSE grants file capabilities through the permissions framework
@@ -95,15 +103,24 @@ without sudo, exactly as in the rolling package.
 
 %prep
 %setup -q -c -T
+%ifarch aarch64
+unzip -q %{SOURCE4}
+%else
 unzip -q %{SOURCE0}
+%endif
 
 %build
 # Self-contained statically linked binary; nothing to compile.
 
 %install
 install -d %{buildroot}%{_bindir}
+%ifarch aarch64
+install -m 0755 redumper-b%{rdbuild}-linux-arm64/bin/redumper \
+    %{buildroot}%{_bindir}/redumper-mpf
+%else
 install -m 0755 redumper-b%{rdbuild}-linux-x64/bin/redumper \
     %{buildroot}%{_bindir}/redumper-mpf
+%endif
 
 install -p -m 0644 %{SOURCE1} LICENSE
 install -p -m 0644 %{SOURCE2} README.md
@@ -131,6 +148,12 @@ EOF
 %{_datadir}/permissions/permissions.d/redumper-mpf
 
 %changelog
+* Sat Jul 18 2026 gmipf <gmipf64@gmail.com> - 732-0
+- Add aarch64 (arm64) support: bundle the upstream linux-arm64 ZIP alongside
+  linux-x64 and pick per build arch via %%ifarch; ExclusiveArch now
+  x86_64 aarch64. Ships UNTESTED on arm64 (no hardware drive-access proof);
+  the repackage path is architecture-neutral.
+
 * Fri Jul 17 2026 gmipf <gmipf64@gmail.com> - 732-3
 - Renamed redumper732 -> redumper-mpf. The package name no longer carries the
   build number; the pinned build now lives at a FIXED name (/usr/bin/redumper-mpf)

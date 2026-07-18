@@ -14,8 +14,11 @@ Vcs-Git: https://github.com/gmipf/packaging-media-preservation.git
 Vcs-Browser: https://github.com/gmipf/packaging-media-preservation
 
 Package: redumper-rgui
-Architecture: amd64
-# No ${shlibs:Depends}: the upstream linux-x64 binary is fully statically
+# arm64: the orig tarball (Debtransform-Tar) carries the linux-x64 binary;
+# debian/rules swaps in the linux-arm64 build (a Debtransform-Files extra) on an
+# arm64 build. arm64 ships UNTESTED (no hardware drive-access proof).
+Architecture: amd64 arm64
+# No ${shlibs:Depends}: the upstream binary is fully statically
 # linked (dh_shlibdeps finds no shared-library dependencies at all).
 Depends: ${misc:Depends}, libcap2-bin
 Description: redumper b729, the build pinned by redumper-gui

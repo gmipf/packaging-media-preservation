@@ -22,8 +22,20 @@
 # It lives in the OVERRIDE, not in an execute_before_dh_auto_build hook: an empty
 # override REPLACES the step and the hook never fires. Measured — dh_install then
 # looked for bin/redumper-mpf and found upstream's bin/redumper.
+#
+# On arm64 the same rename happens, but from the linux-arm64 binary: the .orig
+# tarball (Debtransform-Tar) is the linux-x64 zip, so bin/redumper is the x86-64
+# build; the arm64 zip travels as a Debtransform-Files extra (obs-build covers it
+# with --include-binaries), and we unpack it and install its binary as
+# bin/redumper-mpf. This runs AFTER dpkg-source has built the source package, so
+# it does not perturb the .dsc. arm64 ships UNTESTED (no hardware proof).
 override_dh_auto_build:
+ifeq ($(DEB_HOST_ARCH),arm64)
+	unzip -o redumper-b*-linux-arm64.zip
+	install -m 0755 redumper-b*-linux-arm64/bin/redumper bin/redumper-mpf
+else
 	test ! -e bin/redumper || mv bin/redumper bin/redumper-mpf
+endif
 
 override_dh_auto_test:
 

@@ -31,7 +31,7 @@
 
 Name:           redumper-mpf
 Version:        %{rdbuild}
-Release:        3%{?dist}
+Release:        4%{?dist}
 Obsoletes:      redumper732 < 733
 Summary:        redumper b%{rdbuild}, the build pinned by MPF
 
@@ -41,10 +41,18 @@ URL:            https://github.com/superg/redumper
 # Repackage of the upstream prebuilt linux-x64 release ZIP -- the exact same
 # artifact the rolling `redumper` package repackages, only at a pinned tag.
 Source0:        %{url}/releases/download/b%{rdbuild}/redumper-b%{rdbuild}-linux-x64.zip
+
+# arm64 counterpart of Source0. Both arch ZIPs are bundled and the matching one
+# is picked per build arch via %%ifarch (see %%prep / %%install). packit/OBS build
+# ONE package source across every enabled arch chroot, so an arch-conditional
+# Source: would bake one arch's binary into it and the aarch64 build would ship
+# the x86 binary. Carrying both keeps the aarch64 build honest. Same %%{rdbuild}
+# macro => the watcher bumps both URLs in lockstep.
+Source4:        %{url}/releases/download/b%{rdbuild}/redumper-b%{rdbuild}-linux-arm64.zip
 Source1:        https://raw.githubusercontent.com/superg/redumper/b%{rdbuild}/LICENSE
 Source2:        https://raw.githubusercontent.com/superg/redumper/b%{rdbuild}/README.md
 
-ExclusiveArch:  x86_64
+ExclusiveArch:  x86_64 aarch64
 BuildRequires:  unzip
 
 # Co-installable with the rolling `redumper` by construction: the binary is
@@ -72,15 +80,24 @@ without sudo, exactly as in the rolling package.
 
 %prep
 %setup -q -c -T
+%ifarch aarch64
+unzip -q %{SOURCE4}
+%else
 unzip -q %{SOURCE0}
+%endif
 
 %build
 # Self-contained statically linked binary; nothing to compile.
 
 %install
 install -d %{buildroot}%{_bindir}
+%ifarch aarch64
+install -m 0755 redumper-b%{rdbuild}-linux-arm64/bin/redumper \
+    %{buildroot}%{_bindir}/redumper-mpf
+%else
 install -m 0755 redumper-b%{rdbuild}-linux-x64/bin/redumper \
     %{buildroot}%{_bindir}/redumper-mpf
+%endif
 
 install -p -m 0644 %{SOURCE1} LICENSE
 install -p -m 0644 %{SOURCE2} README.md
@@ -91,6 +108,17 @@ install -p -m 0644 %{SOURCE2} README.md
 %caps(cap_sys_rawio=ep) %{_bindir}/redumper-mpf
 
 %changelog
+* Sat Jul 18 2026 gmipf <gmipf64@gmail.com> - 732-4
+- Add aarch64 (arm64) support. Bundle the upstream linux-arm64 release ZIP
+  alongside linux-x64 (both carry the same %%{rdbuild} macro, so the watcher
+  bumps them in lockstep) and pick the matching binary per build arch via
+  %%ifarch. ExclusiveArch is now x86_64 aarch64. packit builds ONE SRPM that
+  COPR/OBS build across every arch chroot, so an arch-conditional Source: would
+  bake one arch's binary into the SRPM; bundling both and selecting at %%install
+  is the only correct way. arm64 ships UNTESTED -- no hardware drive-access proof
+  exists for it; the repackaging path is architecture-neutral but this is
+  deliberately not claimed as proven.
+
 * Fri Jul 17 2026 gmipf <gmipf64@gmail.com> - 732-3
 - Renamed redumper732 -> redumper-mpf. The package name no longer carries the
   build number; the pinned build now lives at a FIXED name (/usr/bin/redumper-mpf)
