@@ -19,7 +19,7 @@ Vcs-Git: https://github.com/gmipf/packaging-media-preservation.git
 Vcs-Browser: https://github.com/gmipf/packaging-media-preservation
 
 Package: discimagecreator
-Architecture: amd64
+Architecture: amd64 arm64
 # Compiled from source and dynamically linked, so ${shlibs:Depends} resolves the
 # libarchive / openssl / zlib runtime from the ELF automatically (no hand-declared
 # runtime deps as the self-contained .NET tools need). libcap2-bin is for the

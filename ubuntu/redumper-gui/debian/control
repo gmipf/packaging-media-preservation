@@ -28,7 +28,7 @@ Vcs-Git: https://github.com/gmipf/packaging-media-preservation.git
 Vcs-Browser: https://github.com/gmipf/packaging-media-preservation
 
 Package: redumper-gui
-Architecture: amd64
+Architecture: amd64 arm64
 # Every GUI library is dlopen'd at run time (winit for X11/Wayland, glutin for
 # GL/EGL), so none of them appears in the binary's DT_NEEDED and ${shlibs:Depends}
 # finds exactly zero of them. They are listed by hand, read out of the built

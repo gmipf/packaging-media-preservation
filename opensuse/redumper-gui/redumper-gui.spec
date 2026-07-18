@@ -62,7 +62,7 @@ Source2:        redumper-gui.1
 # Debian lanes, and offered upstream.
 Patch0:         0001-default-dump-folder-must-be-writable.patch
 
-ExclusiveArch:  x86_64
+ExclusiveArch:  x86_64 aarch64
 
 # The real MSRV is 1.92, NOT the 1.85 that `edition = "2024"` alone implies:
 # eframe/egui 0.35 pull it up. Measured, not inferred -- and upstream declares no
@@ -268,6 +268,14 @@ done
 %{_datadir}/icons/hicolor/*/apps/%{name}.png
 
 %changelog
+* Sat Jul 18 2026 gmipf <gmipf64@gmail.com> - 1.0.1-0
+- Add aarch64 (arm64) support: ExclusiveArch is now x86_64 aarch64. This package
+  is BUILT FROM SOURCE (Rust, from the vendored crate tarball), so there is no
+  arch-specific archive to bundle -- cargo compiles natively on the aarch64
+  builders. arm64 ships UNTESTED -- no hardware drive-access proof exists for it;
+  nothing in the packaging is architecture-specific, but this is deliberately not
+  claimed as proven.
+
 * Thu Jul 16 2026 gmipf <gmipf64@gmail.com> - 1.0.1-0
 - Set %%global _build_id_links none, for uniformity with every other spec here.
   No sibling ships this ELF, so this package cannot hit the build-id collision

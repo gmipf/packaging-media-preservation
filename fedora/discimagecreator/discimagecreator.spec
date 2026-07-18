@@ -31,7 +31,7 @@
 
 Name:           discimagecreator
 Version:        %{dicsnap}
-Release:        4%{?dist}
+Release:        5%{?dist}
 Summary:        Low-level disc dumper plus EccEdc / DVDAuth / unscrambler helpers
 License:        Apache-2.0 AND GPL-3.0-or-later AND GPL-2.0-or-later
 URL:            https://github.com/saramibreak/DiscImageCreator
@@ -47,7 +47,7 @@ Source4:        discimagecreator.1
 # rule shipped by `aaru` (v6) or `aaru5` (stable), keeping all three
 # co-installable.
 Source5:        70-discimagecreator-floppy.rules
-ExclusiveArch:  x86_64
+ExclusiveArch:  x86_64 aarch64
 
 BuildRequires:  gcc-c++
 BuildRequires:  make
@@ -261,6 +261,14 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
 %{_udevrulesdir}/70-discimagecreator-floppy.rules
 
 %changelog
+* Sat Jul 18 2026 gmipf <gmipf64@gmail.com> - 20260703121302.efa7d482-5
+- Add aarch64 (arm64) support: ExclusiveArch is now x86_64 aarch64. Unlike the
+  repackaged tools this one is BUILT FROM SOURCE, so there is no arch-specific
+  archive to bundle -- the four upstream sources are simply compiled natively on
+  the aarch64 builders. arm64 ships UNTESTED -- no hardware drive-access proof
+  exists for it; nothing in the packaging is architecture-specific, but this is
+  deliberately not claimed as proven.
+
 * Thu Jul 16 2026 gmipf <gmipf64@gmail.com> - 20260703121302.efa7d482-4
 - Set %%global _build_id_links none, for uniformity with every other spec here.
   No sibling ships this ELF, so this package cannot hit the build-id collision

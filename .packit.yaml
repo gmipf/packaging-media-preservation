@@ -318,6 +318,8 @@ jobs:
     targets:
       - fedora-all-x86_64
       - epel-all-x86_64
+      - fedora-all-aarch64
+      - epel-all-aarch64
 
   # aaru: spec-supplied (6.0.0-0.alpha.19.1) is monotonic; on next
   # upstream alpha bump the Release segment goes up.
@@ -399,3 +401,5 @@ jobs:
     targets:
       - fedora-all-x86_64
       - epel-all-x86_64
+      - fedora-all-aarch64
+      - epel-all-aarch64

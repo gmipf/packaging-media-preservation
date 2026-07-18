@@ -1,8 +1,8 @@
 Format: 3.0 (quilt)
 Source: redumper-gui
 Binary: redumper-gui
-Architecture: amd64
-Version: 1.0.1-3
+Architecture: amd64 arm64
+Version: 1.0.1-4
 Maintainer: gmipf <gmipf64@gmail.com>
 Homepage: https://github.com/Deterous/Redumper-GUI
 Standards-Version: 4.6.2

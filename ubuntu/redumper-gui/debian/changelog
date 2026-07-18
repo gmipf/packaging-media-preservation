@@ -1,3 +1,11 @@
+redumper-gui (1.0.1-4) UNRELEASED; urgency=medium
+
+  * Add aarch64 (arm64) support: Architecture is now amd64 arm64. Built from
+    source, so nothing is bundled per-arch -- it simply compiles natively on the
+    arm64 builders. Ships UNTESTED on arm64 -- no hardware drive-access proof.
+
+ -- gmipf <gmipf64@gmail.com>  Sat, 18 Jul 2026 02:20:00 +0000
+
 redumper-gui (1.0.1-3) UNRELEASED; urgency=medium
 
   * Put the fallback dump folder in the user's HOME (~/Dumps), not in
