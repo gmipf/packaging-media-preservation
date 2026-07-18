@@ -23,6 +23,12 @@
 #              the human eye is back in the loop.
 #   proven   — measured, with a saved log. evidence = 'log:<path>', date = the
 #              measurement date, mech_hash = the recipe state AT that measurement.
+#              The 'arch' column says WHERE it was measured, and the log file name
+#              repeats it. That column exists because since 2026-07-18 every package
+#              also ships aarch64: the mechanism files are identical on both arches,
+#              but a capability surviving on one CPU is not evidence about the other,
+#              and a proof whose file name does not say which machine it came from
+#              will eventually be read as covering both. It does not.
 #              From then on it IS drift-checked: if the udev rule / scriptlet /
 #              %caps() / permissions profile changes, the hash moves and the proof
 #              is declared stale -> re-measure.
@@ -76,31 +82,31 @@
 #               fragments (%caps(), %post/%postun, openSUSE permissions profile),
 #               everything else (.rules, postinst) is hashed whole.
 #
-tool|lane|property|date|mech_hash|evidence|mech_files
-aaru|fedora|vendor-cap|2026-07-15|b999c8ae1138c9f5|log:proofs/aaru-fedora-vendor-cap.log|fedora/aaru/aaru.spec
-aaru5|fedora|vendor-cap|2026-07-15|e350b8066d99ac41|blocked:5.4.2:proofs/aaru5-vendor-cap-BLOCKED.md|fedora/aaru5/aaru5.spec
-discimagecreator|fedora|vendor-cap|2026-07-15|b9b33d96bab25e61|log:proofs/discimagecreator-fedora-vendor-cap.log|fedora/discimagecreator/discimagecreator.spec
-redumper|fedora|vendor-cap|2026-07-15|fb0579d39f362d6f|log:proofs/redumper-fedora-vendor-cap.log|fedora/redumper/redumper.spec
-redumper-rgui|fedora|vendor-cap|2026-07-17|baea572f33459419|log:proofs/redumper-rgui-fedora-vendor-cap.log|fedora/redumper-rgui/redumper-rgui.spec
-redumper-mpf|fedora|vendor-cap|2026-07-17|e197168dc1f3b88c|log:proofs/redumper-mpf-fedora-vendor-cap.log|fedora/redumper-mpf/redumper-mpf.spec
-aaru|fedora|node-floppy|2026-07-15|30ea05e5c84e003a|log:proofs/aaru-fedora-node-floppy.log|fedora/aaru/70-aaru-floppy.rules,fedora/aaru/aaru.spec
-aaru5|fedora|node-floppy|2026-07-15|e89c652cc880fe3e|log:proofs/aaru5-fedora-node-floppy.log|fedora/aaru5/70-aaru5-floppy.rules,fedora/aaru5/aaru5.spec
-discimagecreator|fedora|node-floppy|2026-07-15|89b9544ad31019f0|log:proofs/discimagecreator-fedora-node-floppy.log|fedora/discimagecreator/70-discimagecreator-floppy.rules,fedora/discimagecreator/discimagecreator.spec
-redumper|debian|vendor-cap|2026-07-15|5111b9c6410cdef5|log:proofs/redumper-debian-vendor-cap.log|ubuntu/redumper/debian/redumper.postinst
-redumper-rgui|debian|vendor-cap|2026-07-17|0e8578b2c1070b04|log:proofs/redumper-rgui-debian-vendor-cap.log|ubuntu/redumper-rgui/debian/redumper-rgui.postinst
-redumper-mpf|debian|vendor-cap|2026-07-17|f95d1286074e0120|log:proofs/redumper-mpf-debian-vendor-cap.log|ubuntu/redumper-mpf/debian/redumper-mpf.postinst
-aaru|debian|vendor-cap|2026-07-15|94e4f73523de3c9f|log:proofs/aaru-debian-vendor-cap.log|ubuntu/aaru/debian/aaru.postinst
-aaru5|debian|vendor-cap|2026-07-15|c21169016f0524f8|blocked:5.4.2:proofs/aaru5-vendor-cap-BLOCKED.md|ubuntu/aaru5/debian/aaru5.postinst
-discimagecreator|debian|vendor-cap|2026-07-15|107cee8d2ac3123a|log:proofs/discimagecreator-debian-vendor-cap.log|ubuntu/discimagecreator/debian/discimagecreator.postinst
-aaru|debian|node-floppy|2026-07-15|3acd67a788d0e67e|log:proofs/aaru-debian-node-floppy.log|ubuntu/aaru/debian/70-aaru-floppy.rules,ubuntu/aaru/debian/aaru.postinst
-aaru5|debian|node-floppy|2026-07-15|0f686134f9f0f1df|log:proofs/aaru5-debian-node-floppy.log|ubuntu/aaru5/debian/70-aaru5-floppy.rules,ubuntu/aaru5/debian/aaru5.postinst
-discimagecreator|debian|node-floppy|2026-07-15|be200a5686a803a5|log:proofs/discimagecreator-debian-node-floppy.log|ubuntu/discimagecreator/debian/70-discimagecreator-floppy.rules,ubuntu/discimagecreator/debian/discimagecreator.postinst
-aaru|opensuse|vendor-cap|2026-07-15|fb04b2c21b965da6|log:proofs/aaru-opensuse-vendor-cap.log|opensuse/aaru/aaru.spec
-aaru5|opensuse|vendor-cap|2026-07-15|bebcd1ad78937252|blocked:5.4.2:proofs/aaru5-vendor-cap-BLOCKED.md|opensuse/aaru5/aaru5.spec
-discimagecreator|opensuse|vendor-cap|2026-07-15|beb10c9e033d5af7|log:proofs/discimagecreator-opensuse-vendor-cap.log|opensuse/discimagecreator/discimagecreator.spec
-redumper|opensuse|vendor-cap|2026-07-15|776b3afa06906366|log:proofs/redumper-opensuse-vendor-cap.log|opensuse/redumper/redumper.spec
-redumper-rgui|opensuse|vendor-cap|2026-07-17|7df6e2e85b248834|log:proofs/redumper-rgui-opensuse-vendor-cap.log|opensuse/redumper-rgui/redumper-rgui.spec
-redumper-mpf|opensuse|vendor-cap|2026-07-17|5e9f878ba666f767|log:proofs/redumper-mpf-opensuse-vendor-cap.log|opensuse/redumper-mpf/redumper-mpf.spec
-aaru|opensuse|node-floppy|2026-07-15|e6a316029155c287|log:proofs/aaru-opensuse-node-floppy.log|opensuse/aaru/70-aaru-floppy.rules,opensuse/aaru/aaru.spec
-aaru5|opensuse|node-floppy|2026-07-15|b33098b557096e98|log:proofs/aaru5-opensuse-node-floppy.log|opensuse/aaru5/70-aaru5-floppy.rules,opensuse/aaru5/aaru5.spec
-discimagecreator|opensuse|node-floppy|2026-07-15|392c2901588ee621|log:proofs/discimagecreator-opensuse-node-floppy.log|opensuse/discimagecreator/70-discimagecreator-floppy.rules,opensuse/discimagecreator/discimagecreator.spec
+tool|lane|arch|property|date|mech_hash|evidence|mech_files
+aaru|fedora|x86_64|vendor-cap|2026-07-15|b999c8ae1138c9f5|log:proofs/aaru-fedora-vendor-cap-x86_64.log|fedora/aaru/aaru.spec
+aaru5|fedora|x86_64|vendor-cap|2026-07-15|e350b8066d99ac41|blocked:5.4.2:proofs/aaru5-vendor-cap-BLOCKED-x86_64.md|fedora/aaru5/aaru5.spec
+discimagecreator|fedora|x86_64|vendor-cap|2026-07-15|b9b33d96bab25e61|log:proofs/discimagecreator-fedora-vendor-cap-x86_64.log|fedora/discimagecreator/discimagecreator.spec
+redumper|fedora|x86_64|vendor-cap|2026-07-15|fb0579d39f362d6f|log:proofs/redumper-fedora-vendor-cap-x86_64.log|fedora/redumper/redumper.spec
+redumper-rgui|fedora|x86_64|vendor-cap|2026-07-17|baea572f33459419|log:proofs/redumper-rgui-fedora-vendor-cap-x86_64.log|fedora/redumper-rgui/redumper-rgui.spec
+redumper-mpf|fedora|x86_64|vendor-cap|2026-07-17|e197168dc1f3b88c|log:proofs/redumper-mpf-fedora-vendor-cap-x86_64.log|fedora/redumper-mpf/redumper-mpf.spec
+aaru|fedora|x86_64|node-floppy|2026-07-15|30ea05e5c84e003a|log:proofs/aaru-fedora-node-floppy-x86_64.log|fedora/aaru/70-aaru-floppy.rules,fedora/aaru/aaru.spec
+aaru5|fedora|x86_64|node-floppy|2026-07-15|e89c652cc880fe3e|log:proofs/aaru5-fedora-node-floppy-x86_64.log|fedora/aaru5/70-aaru5-floppy.rules,fedora/aaru5/aaru5.spec
+discimagecreator|fedora|x86_64|node-floppy|2026-07-15|89b9544ad31019f0|log:proofs/discimagecreator-fedora-node-floppy-x86_64.log|fedora/discimagecreator/70-discimagecreator-floppy.rules,fedora/discimagecreator/discimagecreator.spec
+redumper|debian|x86_64|vendor-cap|2026-07-15|5111b9c6410cdef5|log:proofs/redumper-debian-vendor-cap-x86_64.log|ubuntu/redumper/debian/redumper.postinst
+redumper-rgui|debian|x86_64|vendor-cap|2026-07-17|0e8578b2c1070b04|log:proofs/redumper-rgui-debian-vendor-cap-x86_64.log|ubuntu/redumper-rgui/debian/redumper-rgui.postinst
+redumper-mpf|debian|x86_64|vendor-cap|2026-07-17|f95d1286074e0120|log:proofs/redumper-mpf-debian-vendor-cap-x86_64.log|ubuntu/redumper-mpf/debian/redumper-mpf.postinst
+aaru|debian|x86_64|vendor-cap|2026-07-15|94e4f73523de3c9f|log:proofs/aaru-debian-vendor-cap-x86_64.log|ubuntu/aaru/debian/aaru.postinst
+aaru5|debian|x86_64|vendor-cap|2026-07-15|c21169016f0524f8|blocked:5.4.2:proofs/aaru5-vendor-cap-BLOCKED-x86_64.md|ubuntu/aaru5/debian/aaru5.postinst
+discimagecreator|debian|x86_64|vendor-cap|2026-07-15|107cee8d2ac3123a|log:proofs/discimagecreator-debian-vendor-cap-x86_64.log|ubuntu/discimagecreator/debian/discimagecreator.postinst
+aaru|debian|x86_64|node-floppy|2026-07-15|3acd67a788d0e67e|log:proofs/aaru-debian-node-floppy-x86_64.log|ubuntu/aaru/debian/70-aaru-floppy.rules,ubuntu/aaru/debian/aaru.postinst
+aaru5|debian|x86_64|node-floppy|2026-07-15|0f686134f9f0f1df|log:proofs/aaru5-debian-node-floppy-x86_64.log|ubuntu/aaru5/debian/70-aaru5-floppy.rules,ubuntu/aaru5/debian/aaru5.postinst
+discimagecreator|debian|x86_64|node-floppy|2026-07-15|be200a5686a803a5|log:proofs/discimagecreator-debian-node-floppy-x86_64.log|ubuntu/discimagecreator/debian/70-discimagecreator-floppy.rules,ubuntu/discimagecreator/debian/discimagecreator.postinst
+aaru|opensuse|x86_64|vendor-cap|2026-07-15|fb04b2c21b965da6|log:proofs/aaru-opensuse-vendor-cap-x86_64.log|opensuse/aaru/aaru.spec
+aaru5|opensuse|x86_64|vendor-cap|2026-07-15|bebcd1ad78937252|blocked:5.4.2:proofs/aaru5-vendor-cap-BLOCKED-x86_64.md|opensuse/aaru5/aaru5.spec
+discimagecreator|opensuse|x86_64|vendor-cap|2026-07-15|beb10c9e033d5af7|log:proofs/discimagecreator-opensuse-vendor-cap-x86_64.log|opensuse/discimagecreator/discimagecreator.spec
+redumper|opensuse|x86_64|vendor-cap|2026-07-15|776b3afa06906366|log:proofs/redumper-opensuse-vendor-cap-x86_64.log|opensuse/redumper/redumper.spec
+redumper-rgui|opensuse|x86_64|vendor-cap|2026-07-17|7df6e2e85b248834|log:proofs/redumper-rgui-opensuse-vendor-cap-x86_64.log|opensuse/redumper-rgui/redumper-rgui.spec
+redumper-mpf|opensuse|x86_64|vendor-cap|2026-07-17|5e9f878ba666f767|log:proofs/redumper-mpf-opensuse-vendor-cap-x86_64.log|opensuse/redumper-mpf/redumper-mpf.spec
+aaru|opensuse|x86_64|node-floppy|2026-07-15|e6a316029155c287|log:proofs/aaru-opensuse-node-floppy-x86_64.log|opensuse/aaru/70-aaru-floppy.rules,opensuse/aaru/aaru.spec
+aaru5|opensuse|x86_64|node-floppy|2026-07-15|b33098b557096e98|log:proofs/aaru5-opensuse-node-floppy-x86_64.log|opensuse/aaru5/70-aaru5-floppy.rules,opensuse/aaru5/aaru5.spec
+discimagecreator|opensuse|x86_64|node-floppy|2026-07-15|392c2901588ee621|log:proofs/discimagecreator-opensuse-node-floppy-x86_64.log|opensuse/discimagecreator/70-discimagecreator-floppy.rules,opensuse/discimagecreator/discimagecreator.spec

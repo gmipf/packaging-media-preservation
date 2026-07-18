@@ -156,12 +156,12 @@ if [ "${1:-}" = "--refresh" ]; then
         case "$line" in
             '#'*|''|'tool|lane|'*) printf '%s\n' "$line" >> "$tmp"; continue ;;
         esac
-        IFS='|' read -r tool lane prop date oldhash ev files <<< "$line"
+        IFS='|' read -r tool lane arch prop date oldhash ev files <<< "$line"
         # Only compute for a freshly-proven row (mech_hash=AUTO). Leave not-yet
         # rows ('-') and already-recorded proofs untouched -- we do NOT silently
         # re-baseline a standing proof, that would hide the very drift we watch for.
         if [ "$oldhash" = "AUTO" ]; then h=$(mech_hash "$files"); else h="$oldhash"; fi
-        printf '%s|%s|%s|%s|%s|%s|%s\n' "$tool" "$lane" "$prop" "$date" "$h" "$ev" "$files" >> "$tmp"
+        printf '%s|%s|%s|%s|%s|%s|%s|%s\n' "$tool" "$lane" "$arch" "$prop" "$date" "$h" "$ev" "$files" >> "$tmp"
     done < "$LEDGER"
     mv "$tmp" "$LEDGER"
     grn "proof-ledger.tsv refreshed — mech_hash filled for AUTO (freshly proven) rows."
@@ -172,9 +172,9 @@ fi
 fail=0; proven=0; open=0; blocked=0
 
 hr "Beweis-Ledger — offen vs. bewiesen, und Drift"
-while IFS='|' read -r tool lane prop date hash ev files; do
+while IFS='|' read -r tool lane arch prop date hash ev files; do
     [ -n "${tool:-}" ] || continue
-    tag="$tool/$lane/$prop"
+    tag="$tool/$lane/$arch/$prop"
     # not-yet: an OPEN obligation. Nothing to drift-check -- it was never proven.
     # Listed loudly so the backlog is visible, but it is NOT a failure.
     if [ "$ev" = "not-yet" ]; then
@@ -267,7 +267,7 @@ done < <(data_rows)
 # ---------------------------------------------------------------- coverage
 hr "Mechanismus-Abdeckung — kein Fragment ohne Beweis"
 # Every proof's referenced files, flattened, for membership tests.
-referenced=$(data_rows | cut -d'|' -f7 | tr ',' '\n' | sort -u)
+referenced=$(data_rows | cut -d'|' -f8 | tr ',' '\n' | sort -u)
 is_ref() { printf '%s\n' "$referenced" | grep -qxF "$1"; }
 
 # 1) every udev rule (node access) must be referenced
