@@ -257,13 +257,19 @@ jobs:
   # job WITHOUT owner/project so Packit uses a throwaway per-PR project
   # ({namespace}-{repo}-{pr_id}), never production.
   #
-  # TARGETS: every job builds fedora-all-x86_64 + epel-all-x86_64 (x86_64 only --
-  # all specs are ExclusiveArch: x86_64, since redumper/aaru/aaru5/mpf repackage
-  # x86_64-only upstream binaries and there are no arm64/ppc64le assets to
-  # repackage). epel-all auto-tracks every active EPEL major (8/9/10 today, 11+
+  # TARGETS: x86_64 on fedora-all + epel-all for every job. aarch64 is being
+  # added per-package as each spec learns to bundle the upstream linux-arm64
+  # asset and select it via %ifarch (redumper first -- see its spec). A job
+  # only gains fedora-all-aarch64 + epel-all-aarch64 once ITS spec is
+  # ExclusiveArch: x86_64 aarch64; adding the target before that would ask COPR
+  # to build an x86_64-only SRPM on an aarch64 chroot. Enabling the chroot on
+  # the COPR project is NOT enough on its own -- Packit's targets here are the
+  # real gate, and it (re)enables whatever chroots these aliases expand to.
+  # epel-all auto-tracks every active EPEL major (8/9/10 today, 11+
   # automatically) so nothing is version-pinned. The epel builds run on the
   # CentOS Stream N + EPEL buildroot, so a single .elN package covers RHEL,
-  # CentOS Stream, AlmaLinux, Rocky and Oracle N alike.
+  # CentOS Stream, AlmaLinux, Rocky and Oracle N alike. arm64 ships UNTESTED
+  # (no hardware drive-access proof); the repackage path is arch-neutral.
   #
   # openSUSE is intentionally NOT built on COPR: COPR only offers Leap 15.6
   # (EOL 2026-04-30) plus a currently-broken Tumbleweed, and has no Leap 16.0
@@ -282,6 +288,8 @@ jobs:
     targets:
       - fedora-all-x86_64
       - epel-all-x86_64
+      - fedora-all-aarch64
+      - epel-all-aarch64
 
   - job: copr_build
     trigger: commit
