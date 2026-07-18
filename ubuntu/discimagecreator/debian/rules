@@ -55,6 +55,17 @@ override_dh_auto_configure:
 	# uses uint32_t without <cstdint>.
 	sed -i '1i #include <cstdint>' \
 	    EccEdc-$(ECCEDCVER)/EccEdc/_external/ecm.cpp
+	# Upstream gates its pointer-sized integer typedefs (INT_PTR / UINT_PTR /
+	# LONG_PTR / ULONG_PTR) on __x86_64__, with the #else branch defining them as
+	# plain int/unsigned int. That asks which ISA this is when it means how wide a
+	# pointer is, so arm64 -- equally LP64 -- gets 32-bit types to hold 64-bit
+	# pointers and the build dies in defineForLinux.h with "cast from
+	# 'PDISK_PARTITION_INFO' to 'UINT_PTR' {aka 'unsigned int'} loses precision".
+	# Widen the gate to cover aarch64 (the fix upstream should take is a
+	# pointer-width test). grep-guard first so an upstream restructure fails loudly.
+	grep -q '^#if defined(__x86_64__)$$' DiscImageCreator/_linux/defineForLinux.h
+	sed -i 's/^#if defined(__x86_64__)$$/#if defined(__x86_64__) || defined(__aarch64__)/' \
+	    DiscImageCreator/_linux/defineForLinux.h
 	# Upstream meson.build stages Release_ANSI data into the build tree via
 	# fs.copyfile() (needs meson >= 0.64). jammy ships meson 0.61, which aborts
 	# configure there. The calls are pure build-tree convenience — redundant with

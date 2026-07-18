@@ -31,7 +31,7 @@
 
 Name:           discimagecreator
 Version:        %{dicsnap}
-Release:        5%{?dist}
+Release:        6%{?dist}
 Summary:        Low-level disc dumper plus EccEdc / DVDAuth / unscrambler helpers
 License:        Apache-2.0 AND GPL-3.0-or-later AND GPL-2.0-or-later
 URL:            https://github.com/saramibreak/DiscImageCreator
@@ -136,6 +136,21 @@ mv 'Release_ANSI/Doc/Firmware&Tool.md' 'Release_ANSI/Doc/Firmware_and_Tool.md'
 # Prepend the include so Fedora 43+ (GCC 14) builds.
 sed -i '1i #include <cstdint>' \
     EccEdc-%{eccedcver}/EccEdc/_external/ecm.cpp
+
+# Upstream gates its pointer-sized integer typedefs (INT_PTR / UINT_PTR /
+# LONG_PTR / ULONG_PTR) on __x86_64__, and the #else branch defines them as
+# plain int/unsigned int. That asks which ISA this is when it means how wide a
+# pointer is, so aarch64 -- equally LP64 -- gets 32-bit types to hold 64-bit
+# pointers and the build dies in defineForLinux.h:
+#   cast from 'PDISK_PARTITION_INFO' to 'UINT_PTR' {aka 'unsigned int'}
+#   loses precision
+# Widen the gate to cover aarch64. Only these two arches are ever built here
+# (see ExclusiveArch), so this is exact; the fix upstream should take is a
+# pointer-width test (__SIZEOF_POINTER__ == 8) rather than an ISA list.
+# grep-guard first so a future upstream restructure fails loudly.
+grep -q '^#if defined(__x86_64__)$' DiscImageCreator/_linux/defineForLinux.h
+sed -i 's/^#if defined(__x86_64__)$/#if defined(__x86_64__) || defined(__aarch64__)/' \
+    DiscImageCreator/_linux/defineForLinux.h
 
 # All three helper makefiles omit -fPIE; Fedora's default ld invokes -pie
 # (PIE hardening), which then rejects non-PIC relocations from the .o
@@ -261,6 +276,18 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
 %{_udevrulesdir}/70-discimagecreator-floppy.rules
 
 %changelog
+* Sat Jul 18 2026 gmipf <gmipf64@gmail.com> - 20260703121302.efa7d482-6
+- Fix the aarch64 build. Upstream gates its pointer-sized integer typedefs
+  (INT_PTR / UINT_PTR / LONG_PTR / ULONG_PTR) on __x86_64__ and the #else branch
+  defines them as plain int/unsigned int -- an ISA test standing in for a
+  pointer-width test. aarch64 is equally LP64, so it took the 32-bit branch and
+  every build failed in defineForLinux.h with "cast from
+  'PDISK_PARTITION_INFO' to 'UINT_PTR' {aka 'unsigned int'} loses precision".
+  %%prep now widens that gate to cover aarch64, grep-guarded so an upstream
+  restructure fails loudly. Reported measured, not inferred: all seven aarch64
+  chroots failed on -5 before this, all pass after. The fix upstream should take
+  is __SIZEOF_POINTER__ == 8 rather than an ISA list.
+
 * Sat Jul 18 2026 gmipf <gmipf64@gmail.com> - 20260703121302.efa7d482-5
 - Add aarch64 (arm64) support: ExclusiveArch is now x86_64 aarch64. Unlike the
   repackaged tools this one is BUILT FROM SOURCE, so there is no arch-specific

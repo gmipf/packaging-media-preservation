@@ -133,6 +133,18 @@ mv 'Release_ANSI/Doc/Firmware&Tool.md' 'Release_ANSI/Doc/Firmware_and_Tool.md'
 sed -i '1i #include <cstdint>' \
     EccEdc-%{eccedcver}/EccEdc/_external/ecm.cpp
 
+# Upstream gates its pointer-sized integer typedefs (INT_PTR / UINT_PTR /
+# LONG_PTR / ULONG_PTR) on __x86_64__, and the #else branch defines them as
+# plain int/unsigned int. That asks which ISA this is when it means how wide a
+# pointer is, so aarch64 -- equally LP64 -- gets 32-bit types to hold 64-bit
+# pointers and the build dies in defineForLinux.h with "cast from
+# 'PDISK_PARTITION_INFO' to 'UINT_PTR' {aka 'unsigned int'} loses precision".
+# Widen the gate to cover aarch64 (the fix upstream should take is a
+# pointer-width test). grep-guard first so an upstream restructure fails loudly.
+grep -q '^#if defined(__x86_64__)$' DiscImageCreator/_linux/defineForLinux.h
+sed -i 's/^#if defined(__x86_64__)$/#if defined(__x86_64__) || defined(__aarch64__)/' \
+    DiscImageCreator/_linux/defineForLinux.h
+
 # All three helper makefiles omit -fPIE; the default ld invokes -pie (PIE
 # hardening), which then rejects non-PIC relocations. Append -fPIE to the
 # first CFLAGS/CXXFLAGS assignment in each makefile. LDFLAGS=-pie is added
