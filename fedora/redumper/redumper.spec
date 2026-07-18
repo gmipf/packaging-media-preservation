@@ -11,8 +11,8 @@
 %global _build_id_links none
 
 Name:           redumper
-Version:        733
-Release:        3%{?dist}
+Version:        734
+Release:        1%{?dist}
 Summary:        A low-level byte-perfect CD disc dumper
 
 License:        GPL-3.0-only
@@ -96,6 +96,9 @@ install -D -m 0644 %{SOURCE3} %{buildroot}%{_mandir}/man1/redumper.1
 %{_mandir}/man1/redumper.1*
 
 %changelog
+* Sat Jul 18 2026 gmipf <gmipf64@gmail.com> - 734-1
+- Automated sync to upstream redumper release b734; Release reset to 1.
+
 * Sat Jul 18 2026 gmipf <gmipf64@gmail.com> - 733-2
 - Add aarch64 (arm64) support. Bundle the upstream linux-arm64 release ZIP
   alongside linux-x64 (both carry the same %%{version} macro, so watchers bump

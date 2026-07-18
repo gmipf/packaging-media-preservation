@@ -1,3 +1,9 @@
+redumper (734-1) UNRELEASED; urgency=medium
+
+  * Automated sync to upstream redumper release b734.
+
+ -- gmipf <gmipf64@gmail.com>  Sat, 18 Jul 2026 12:31:54 +0000
+
 redumper (733-2) UNRELEASED; urgency=medium
 
   * Add aarch64 (arm64) support: the linux-arm64 upstream binary travels as a

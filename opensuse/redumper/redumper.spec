@@ -11,7 +11,7 @@
 %global _build_id_links none
 
 Name:           redumper
-Version:        733
+Version:        734
 Release:        0
 Summary:        A low-level byte-perfect CD disc dumper
 
@@ -121,6 +121,9 @@ EOF
 %{_mandir}/man1/redumper.1*
 
 %changelog
+* Sat Jul 18 2026 gmipf <gmipf64@gmail.com> - 734-0
+- Automated sync to upstream redumper release b734.
+
 * Sat Jul 18 2026 gmipf <gmipf64@gmail.com> - 733-0
 - Add aarch64 (arm64) support: bundle the upstream linux-arm64 ZIP alongside
   linux-x64 and pick per build arch via %%ifarch; ExclusiveArch now
