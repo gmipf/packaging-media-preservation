@@ -1,3 +1,14 @@
+mpf (3.8.3~20260717142924.2cb07a1a-2) UNRELEASED; urgency=medium
+
+  * Add aarch64 (arm64) support: the linux-arm64 ZIPs of all three tools travel
+    as Debtransform-Files extras and debian/rules unpacks the arch-matching trio
+    on arm64 builds, overwriting the amd64 MPF.Check that arrives via the .orig
+    tarball (mpf-check/-cli/-gui are now amd64 arm64; the mpf metapackage stays
+    Architecture: all). Ships UNTESTED on arm64 -- no hardware drive-access
+    proof; the repackage path is architecture-neutral.
+
+ -- gmipf <gmipf64@gmail.com>  Sat, 18 Jul 2026 02:10:00 +0000
+
 mpf (3.8.3~20260717142924.2cb07a1a-1) UNRELEASED; urgency=medium
 
   * Automated rolling-snapshot sync to upstream MPF commit 2cb07a1a (published 20260717142924 UTC).

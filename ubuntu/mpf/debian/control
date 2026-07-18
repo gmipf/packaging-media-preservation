@@ -36,7 +36,7 @@ Description: Media Preservation Frontend suite (metapackage)
  only need part of the suite.
 
 Package: mpf-check
-Architecture: amd64
+Architecture: amd64 arm64
 # Self-contained .NET binary: dh_shlibdeps sees only the apphost's own NEEDED,
 # so the dlopened .NET runtime libs are declared by hand (parity with the RPM).
 # ${dep:icu} is filled per-series at build (libicu74 noble / libicu70 jammy).
@@ -63,7 +63,7 @@ Description: Validator that generates Redump !submissionInfo.txt from dump logs
  release.
 
 Package: mpf-cli
-Architecture: amd64
+Architecture: amd64 arm64
 Depends: ${shlibs:Depends},
          ${misc:Depends},
          ${dep:icu},
@@ -89,7 +89,7 @@ Description: Headless dump orchestrator (drives redumper, aaru, discimagecreator
  Self-contained .NET binary, repackaged from the upstream rolling release.
 
 Package: mpf-gui
-Architecture: amd64
+Architecture: amd64 arm64
 Depends: ${shlibs:Depends},
          ${misc:Depends},
          ${dep:icu},

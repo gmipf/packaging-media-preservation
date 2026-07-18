@@ -301,6 +301,8 @@ jobs:
     targets:
       - fedora-all-x86_64
       - epel-all-x86_64
+      - fedora-all-aarch64
+      - epel-all-aarch64
 
   # discimagecreator: master-commit snapshot version
   # (<YYYYMMDDHHMMSS>.<short-SHA>, the UTC commit timestamp) is monotonic by

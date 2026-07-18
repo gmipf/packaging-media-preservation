@@ -18,10 +18,21 @@
 #
 # Nothing is downloaded here and nothing may be: the build root has no network,
 # on OBS just as in a COPR chroot.
+# On arm64 the arch-matching trio is unpacked instead. MPF.Check is the .orig
+# tarball, so dpkg-source has already laid down the x86-64 build at the top of
+# the tree -- the arm64 Check zip (a Debtransform-Files extra, like the other
+# two) is unzipped OVER it. The CLI and GUI come from their arm64 zips directly.
+# arm64 ships UNTESTED (no hardware drive-access proof).
 execute_before_dh_auto_build:
 	mkdir -p cli gui
+ifeq ($(DEB_HOST_ARCH),arm64)
+	unzip -q -o MPF.Check_net10.0_linux-arm64_release.zip
+	unzip -q -o MPF.CLI_net10.0_linux-arm64_release.zip -d cli
+	unzip -q -o MPF.Avalonia_net10.0_linux-arm64_release.zip -d gui
+else
 	unzip -q -o MPF.CLI_net10.0_linux-x64_release.zip -d cli
 	unzip -q -o MPF.Avalonia_net10.0_linux-x64_release.zip -d gui
+endif
 	# Upstream bundles its own dumpers under Programs/. They go: these packages
 	# point MPF at the system-installed ones (see the Recommends in control), and
 	# shipping a second, unmanaged copy is exactly what we are here to avoid.

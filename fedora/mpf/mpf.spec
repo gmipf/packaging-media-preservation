@@ -17,7 +17,7 @@ Version:        %{mpfver}~%{mpfsnap}
 # lives in the changelog. (Stuck at 5 here from pre-fix manual bumps of
 # the 71dafe3d snapshot — already shipped as -5, so left as-is to avoid
 # a downgrade; the next snapshot resets it.)
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        Media Preservation Frontend suite (mpf-check, mpf-cli, mpf-gui)
 
 License:        MIT
@@ -26,6 +26,16 @@ URL:            https://github.com/SabreTools/MPF
 Source0:        %{url}/releases/download/%{rolltag}/MPF.Check_net10.0_linux-x64_release.zip
 Source1:        %{url}/releases/download/%{rolltag}/MPF.CLI_net10.0_linux-x64_release.zip
 Source2:        %{url}/releases/download/%{rolltag}/MPF.Avalonia_net10.0_linux-x64_release.zip
+
+# arm64 counterparts of Source0-2. All three arch pairs are bundled because
+# packit builds ONE SRPM that COPR/OBS then build across every arch chroot -- an
+# arch-conditional Source: would bake one arch's binaries into the SRPM and the
+# aarch64 build would ship x86 binaries. The matching trio is unzipped in %%prep
+# via %%ifarch. Same %%{rolltag} as the x64 set, so the rolling watcher picks up
+# both in one go. On the Debian lane they travel as Debtransform-Files extras.
+Source15:       %{url}/releases/download/%{rolltag}/MPF.Check_net10.0_linux-arm64_release.zip
+Source16:       %{url}/releases/download/%{rolltag}/MPF.CLI_net10.0_linux-arm64_release.zip
+Source17:       %{url}/releases/download/%{rolltag}/MPF.Avalonia_net10.0_linux-arm64_release.zip
 
 Source3:        mpf-gui.desktop
 Source4:        mpf-check.1
@@ -40,7 +50,7 @@ Source6:        mpf-gui.1
 # artwork -- so nothing is lost, and 16/22/24/48 are gained.
 Source14:       mpf-512.png
 
-ExclusiveArch:  x86_64
+ExclusiveArch:  x86_64 aarch64
 BuildRequires:  unzip
 # Renders the hicolor icon sizes from Source14 (see %%install).
 BuildRequires:  ImageMagick
@@ -219,6 +229,20 @@ release.
 %prep
 %setup -q -c -T
 
+# Unpack the arch-matching trio (see the Source15-17 block above).
+%ifarch aarch64
+unzip -q %{SOURCE15}
+
+mkdir cli
+pushd cli
+unzip -q %{SOURCE16}
+popd
+
+mkdir gui
+pushd gui
+unzip -q %{SOURCE17}
+popd
+%else
 unzip -q %{SOURCE0}
 
 mkdir cli
@@ -230,6 +254,7 @@ mkdir gui
 pushd gui
 unzip -q %{SOURCE2}
 popd
+%endif
 
 # Drop the bundled Programs/Creator/ folder (~1.5 MB code + data) from
 # CLI and GUI zips. The Fedora package relies on the system-installed
@@ -449,6 +474,17 @@ install -m 0644 %{SOURCE6} %{buildroot}%{_mandir}/man1/mpf-gui.1
 %{_datadir}/icons/hicolor/*/apps/mpf.png
 
 %changelog
+* Sat Jul 18 2026 gmipf <gmipf64@gmail.com> - 3.8.3~20260717142924.2cb07a1a-2
+- Add aarch64 (arm64) support. Bundle the upstream linux-arm64 release ZIPs of
+  all three tools (Check, CLI, Avalonia) alongside the linux-x64 set and unzip
+  the arch-matching trio in %%prep via %%ifarch; ExclusiveArch is now x86_64
+  aarch64. packit builds ONE SRPM that COPR/OBS build across every arch chroot,
+  so an arch-conditional Source: would bake one arch's binaries into the SRPM;
+  bundling both sets is the only correct way. Both sets come from the same
+  %%{rolltag}, so the rolling watcher picks them up together. arm64 ships
+  UNTESTED -- no hardware drive-access proof exists for it; the repackaging path
+  is architecture-neutral but this is deliberately not claimed as proven.
+
 * Fri Jul 17 2026 gmipf <gmipf64@gmail.com> - 3.8.3~20260717142924.2cb07a1a-1
 - Automated rolling-snapshot sync to upstream MPF commit 2cb07a1a
   (rolling tag, published 20260717142924 UTC); Release reset to 1.

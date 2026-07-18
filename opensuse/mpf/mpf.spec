@@ -22,6 +22,16 @@ Source0:        %{url}/releases/download/%{rolltag}/MPF.Check_net10.0_linux-x64_
 Source1:        %{url}/releases/download/%{rolltag}/MPF.CLI_net10.0_linux-x64_release.zip
 Source2:        %{url}/releases/download/%{rolltag}/MPF.Avalonia_net10.0_linux-x64_release.zip
 
+# arm64 counterparts of Source0-2. OBS builds ONE package source across every
+# enabled arch, so an arch-conditional Source: would commit only one arch's
+# binaries; carrying both trios keeps the aarch64 build honest. The matching trio
+# is unzipped in %%prep via %%ifarch. Same %%{rolltag} as the x64 set, so the
+# _service fetches and the rolling watcher bumps both together. On the Debian
+# lane they travel as Debtransform-Files extras swapped by debian/rules.
+Source15:       %{url}/releases/download/%{rolltag}/MPF.Check_net10.0_linux-arm64_release.zip
+Source16:       %{url}/releases/download/%{rolltag}/MPF.CLI_net10.0_linux-arm64_release.zip
+Source17:       %{url}/releases/download/%{rolltag}/MPF.Avalonia_net10.0_linux-arm64_release.zip
+
 Source3:        mpf-gui.desktop
 Source4:        mpf-check.1
 Source5:        mpf-cli.1
@@ -35,7 +45,7 @@ Source6:        mpf-gui.1
 # artwork -- so nothing is lost, and 16/22/24/48 are gained.
 Source14:       mpf-512.png
 
-ExclusiveArch:  x86_64
+ExclusiveArch:  x86_64 aarch64
 BuildRequires:  unzip
 # Renders the hicolor icon sizes from Source14 (see %%install). On openSUSE the
 # package is ImageMagick, same name as on Fedora/EL.
@@ -206,6 +216,20 @@ release.
 %prep
 %setup -q -c -T
 
+# Unpack the arch-matching trio (see the Source15-17 block above).
+%ifarch aarch64
+unzip -q %{SOURCE15}
+
+mkdir cli
+pushd cli
+unzip -q %{SOURCE16}
+popd
+
+mkdir gui
+pushd gui
+unzip -q %{SOURCE17}
+popd
+%else
 unzip -q %{SOURCE0}
 
 mkdir cli
@@ -217,6 +241,7 @@ mkdir gui
 pushd gui
 unzip -q %{SOURCE2}
 popd
+%endif
 
 # Drop the bundled Programs/Creator/ folder (~1.5 MB code + data) from
 # CLI and GUI zips. The package relies on the system-installed
@@ -433,6 +458,12 @@ install -m 0644 %{SOURCE6} %{buildroot}%{_mandir}/man1/mpf-gui.1
 %{_datadir}/icons/hicolor/*/apps/mpf.png
 
 %changelog
+* Sat Jul 18 2026 gmipf <gmipf64@gmail.com> - 3.8.3~20260717142924.2cb07a1a-0
+- Add aarch64 (arm64) support: bundle the upstream linux-arm64 ZIPs of all three
+  tools (Check, CLI, Avalonia) alongside linux-x64 and unzip the arch-matching
+  trio via %%ifarch; ExclusiveArch now x86_64 aarch64. Ships UNTESTED on arm64
+  (no hardware drive-access proof); the repackage path is architecture-neutral.
+
 * Fri Jul 17 2026 gmipf <gmipf64@gmail.com> - 3.8.3~20260717142924.2cb07a1a-0
 - Automated rolling-snapshot sync to upstream MPF commit 2cb07a1a (published 20260717142924 UTC).
 
