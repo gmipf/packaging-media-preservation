@@ -1,3 +1,11 @@
+# Local assistant/tooling configuration. This repo is PUBLIC, and these hold
+# machine-local settings, hooks, scheduled tasks and MCP server definitions --
+# including credentials in some setups. They were untracked but not ignored,
+# which is the dangerous middle state: one `git add -A` and they are published.
+# Ignore them so that cannot happen by accident.
+.claude/
+.mcp.json
+
 # Local Debian/Ubuntu test-build artifacts (scripts/deb-build.sh output).
 .deb-out/
 
