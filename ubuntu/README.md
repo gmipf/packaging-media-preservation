@@ -12,6 +12,20 @@ ICU runtime carries its soname in the package name (`libicu70` vs `libicu72`), s
 `debian/rules` resolves that dependency from the **build root** at build time
 (`dpkg-query`) instead of from a table of series. Each target gets the one it has.
 
+Every target is built for **amd64 and arm64** (`control` says
+`Architecture: amd64 arm64`). The repackaged tools need both upstream arch
+archives, and only one of them can be the `.orig`: the amd64 archive is the
+`Debtransform-Tar`, and the arm64 one rides along as a `Debtransform-Files`
+extra, which `debian/rules` unpacks over the tree on an arm64 build. That step
+runs *after* `dpkg-source -b` has captured the tree, so the source package stays
+arch-neutral and carries no quilt patch for it. `unzip`/`xz-utils` are in
+`Build-Depends` for that reason. The two source-built tools just compile per arch.
+
+> **arm64 is built and published, but not hardware-tested** — the drive-access
+> measurements were made on x86_64. The `postinst` `setcap` and the udev rule are
+> the same files on both arches, but nobody has dumped a disc from an ARM machine,
+> so it is deliberately not claimed as verified.
+
 ## File capabilities come from the `postinst`
 
 This lane has no `%caps` (Fedora) and no permissions framework (openSUSE): each

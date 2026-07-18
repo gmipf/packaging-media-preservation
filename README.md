@@ -33,8 +33,17 @@ respective project URLs (see below).
 
 **Fedora** / **EPEL** link to the COPR project; **openSUSE**, **Ubuntu** and
 **Debian** all link to the one OBS project (Leap 16.0, Tumbleweed,
-Ubuntu 22.04/24.04/26.04, Debian 12+13 — x86_64). For the versions currently
-shipping and full install instructions, see those pages.
+Ubuntu 22.04/24.04/26.04, Debian 12+13). Everything is built for **x86_64 and
+aarch64 / arm64**. One wrinkle: Tumbleweed's ARM builds come from a second
+repository, **`openSUSE_Tumbleweed_ARM`** — Factory's x86_64 and ARM ports are
+separate OBS projects, and one repository cannot serve both. For the versions
+currently shipping and full install instructions, see those pages.
+
+> **aarch64 is built and published, but not hardware-tested.** The drive-access
+> results below were measured on x86_64 only. Nothing in the packaging is
+> architecture-specific — the capability, udev and permissions mechanisms are the
+> same files on both — but no one has run a dump from an ARM machine, so this is
+> deliberately not claimed as verified. Reports welcome.
 
 Redumper-GUI needs rustc ≥ 1.92 (eframe/egui). Debian 13 clears the floor through
 `trixie-backports` (rustc 1.94.1, which OBS builds against — the package's
@@ -207,9 +216,15 @@ debian.tar.gz,_service}` in the same commit, then ask OBS to re-run its source
 services. Nothing is uploaded — OBS fetches the recipe and the upstream archives
 itself.
 
-Each package is built for `fedora-all-x86_64` and `epel-all-x86_64` — x86_64
-only, since every spec is `ExclusiveArch: x86_64` and the repackaged tools have
-no non-x86_64 upstream binaries. `epel-all` auto-tracks every active EPEL major
+Each package is built for `fedora-all` and `epel-all` on **x86_64 and aarch64**.
+Every spec is `ExclusiveArch: x86_64 aarch64`. The repackaged tools bundle *both*
+upstream arch archives as separate `Source:` lines and pick the matching one in
+`%prep` / `%install` via `%ifarch` — packit builds ONE SRPM that COPR then builds
+on every arch chroot, so an arch-conditional `Source:` would bake a single arch's
+binary into the SRPM and the aarch64 build would ship the x86 one. Both URLs share
+the same version macro, so a watcher bump carries them in lockstep. The two
+source-built tools (DiscImageCreator, Redumper-GUI) simply compile per arch.
+`epel-all` auto-tracks every active EPEL major
 (8/9/10 today, 11+ automatically), and the EPEL builds run on the CentOS
 Stream N + EPEL buildroot, so one `.elN` package covers RHEL, CentOS Stream,
 AlmaLinux, Rocky and Oracle Linux N.

@@ -25,7 +25,8 @@ here is red.
 
 > **Status: LIVE on OBS.** All eight packages are published from
 > **[`home:gmipf:media-preservation`](https://build.opensuse.org/project/show/home:gmipf:media-preservation)**
-> and build for **openSUSE Leap 16.0** and **Tumbleweed** (x86_64) — including the
+> and build for **openSUSE Leap 16.0** and **Tumbleweed**, each on **x86_64 and
+> aarch64** — including the
 > `discimagecreator` meson source build, which clears the hermetic-build gate (no
 > network in the OBS build root). The mechanism that differs from the Fedora
 > lane, the **permissions-framework capability handling**, works as intended: the
@@ -175,7 +176,35 @@ and its build targets. Full walkthrough: **[ACCOUNT-SETUP.md](ACCOUNT-SETUP.md)*
 In short: OBS logins are SUSE IDP accounts (sign up via the link on
 build.opensuse.org, *not* `accounts.opensuse.org`); create `home:<user>`, add the
 repositories **`16.0`** (openSUSE Leap 16.0 — the name is the bare version, not
-`openSUSE_Leap_16.0`) and **`openSUSE_Tumbleweed`**, arch `x86_64`; then point
+`openSUSE_Leap_16.0`) and **`openSUSE_Tumbleweed`**. Arches are set per repository
+in the **project `_meta`**, and that is the real gate — a package builds for an
+arch only if the meta offers it *and* the recipe allows it (`ExclusiveArch` / deb
+`Architecture:`). `16.0` and the Debian/Ubuntu repositories take `x86_64` and
+`aarch64` together.
+
+**Tumbleweed needs a second repository for ARM, and merging the two is a trap.**
+Its x86_64 build path, `openSUSE:Factory/snapshot`, offers only `x86_64` and
+`i586`; aarch64 lives in a different project, `openSUSE:Factory:ARM/standard`.
+The obvious move — adding that as a second `<path>` to the existing Tumbleweed
+repository and listing both arches — **breaks the x86_64 builds**: a repository's
+path list applies to *all* of its arches, so the merged set poisoned x86_64
+dependency resolution and every Tumbleweed package went `broken` with
+*"unresolvable preinstalls: nothing provides rpm"*. Measured, then reverted.
+The working shape is one repository per arch family:
+
+```xml
+<repository name="openSUSE_Tumbleweed">
+  <path project="openSUSE:Factory" repository="snapshot"/>
+  <arch>x86_64</arch>
+</repository>
+<repository name="openSUSE_Tumbleweed_ARM">
+  <path project="openSUSE:Factory:ARM" repository="standard"/>
+  <arch>aarch64</arch>
+</repository>
+```
+
+The cost is a second download URL: Tumbleweed users on ARM add the
+`openSUSE_Tumbleweed_ARM` repository, everyone else `openSUSE_Tumbleweed`. Then point
 `osc` at the API (`osc -A https://api.opensuse.org ls`), which prompts for
 credentials and writes `~/.config/osc/oscrc`. **That file holds the OBS
 credentials — never display, dump (`--dump-full`) or commit it.**
