@@ -305,6 +305,33 @@ done < <(find "$REPO/opensuse" -name '*.spec' | sort)
 
 grn "  Abdeckung geprüft: udev-Regeln · Fedora %caps() · Debian setcap · openSUSE %set_permissions"
 
+# ------------------------------------------------------- architecture coverage
+# Which architectures do we SHIP, and which have a drive-access proof? Derived,
+# not maintained: shipped arches come out of the specs' ExclusiveArch, proven
+# arches out of the ledger's arch column. Add riscv64 to a spec tomorrow and this
+# reports it unproven the same day -- a hand-written list would not.
+#
+# This does NOT fail the run. An unproven arch is an open obligation, and open
+# obligations never blocked here (that decoupling is what let the gate close at
+# all). It is stated so nobody reads "24 proven" as "every arch we ship".
+hr "Architektur-Abdeckung — bewiesen vs. nur gebaut"
+shipped=$(grep -rhE '^ExclusiveArch:' "$REPO"/fedora/*/*.spec 2>/dev/null \
+          | sed 's/^ExclusiveArch:[[:space:]]*//' | tr ' ' '\n' | grep -v '^$' | sort -u)
+# Only rows that actually carry evidence count. A not-yet row is an OPEN
+# obligation, not a proof -- counting it here reported an architecture as proven
+# the moment someone wrote down that it still had to be measured. Caught by the
+# control that added exactly such a row and expected it NOT to turn green.
+provenarch=$(data_rows | awk -F'|' '$7 != "not-yet" { print $3 }' | sort -u)
+while IFS= read -r a; do
+    [ -n "$a" ] || continue
+    if printf '%s\n' "$provenarch" | grep -qxF "$a"; then
+        grn "  $a — Laufwerksbeweise im Ledger"
+    else
+        ylw "  $a — ausgeliefert, aber KEIN Laufwerksbeweis (nur build-bewiesen)"
+        ylw "      Mechanismus ist arch-neutral (dieselben Dateien), das ist aber kein Beweis."
+    fi
+done <<< "$shipped"
+
 # ---------------------------------------------------------------- verdict
 hr "Fazit"
 printf '  bewiesen & frisch: %d   blockiert (upstream): %d   offen (noch zu messen): %d\n' \
