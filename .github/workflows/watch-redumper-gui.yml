@@ -1,0 +1,278 @@
+name: watch-redumper-gui
+
+# redumper-gui was the ONE package here with no watcher, and that gap is why the
+# full-automation rule exists (2026-07-19). The coupling was documented, in prose,
+# in watch-consumer-pins.yml: "redumper-gui is not hourly-tracked; when it is
+# rebuilt to a new upstream release, bump redumper-rgui in the SAME change." Every
+# word of that was correct and it was still useless, because it assumed a human
+# would notice a release. Nobody did. v1.0.2 sat published for two days while we
+# shipped 1.0.1, and the coupled pin went stale with it. Nothing turned red.
+#
+# This watcher does the whole job, and the coupling moves out of the comment into
+# code: it reads REDUMPER_VERSION out of the upstream release's OWN build.yml and
+# bumps redumper-rgui in the same commit.
+#
+# It is the heaviest watcher here, because redumper-gui is the only package built
+# FROM SOURCE. No build root has network -- not COPR's mock chroot, not OBS's --
+# so the crates must travel inside the source archive. That vendoring therefore
+# happens HERE, in CI, and the result is published as a release asset on this
+# repo before anything is committed. The built-in GITHUB_TOKEN can do that in its
+# own repository, so there is no credential to install, rotate or let expire --
+# which is the whole reason the tarball lives on a release and not on a branch of
+# a fork (see the publish block in scripts/rust-vendor-tarball.sh).
+#
+# Everything expensive sits behind the tag check, so the usual hourly run does one
+# API call and stops.
+#
+# THE ONE THING THIS CANNOT DECIDE: if a new release raises the Rust floor above
+# what a target we ship to can offer, that target has to be switched off for the
+# new version (decision of 2026-07-19: the last package built for it stays in the
+# repo and keeps being delivered). The COPR side of that lives in .packit.yaml and
+# the OBS side lives in package meta, which no token here can write. So the gate
+# below MEASURES and REPORTS it and lets the bump proceed -- a target that falls
+# behind goes red in the build farm, which is visible, rather than silently
+# shipping a package that cannot compile. That reporting step is a STEPPING STONE
+# and is not the finished state.
+
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.commit.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Look for a new upstream release
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          MARKER=fedora/redumper-gui/.upstream-tag
+
+          # Stable releases only. A prerelease must not bump a package that
+          # carries a hard Requires on a pinned dumper -- and `sort_by` on the
+          # numeric triple, not on the string, so v1.0.10 sorts above v1.0.9.
+          TAG=$(gh api 'repos/Deterous/Redumper-GUI/releases?per_page=20' --jq '
+            [ .[]
+              | select(.draft == false and .prerelease == false
+                       and (.tag_name | test("^v[0-9]+\\.[0-9]+\\.[0-9]+$")))
+              | .tag_name ]
+            | sort_by(. | ltrimstr("v") | split(".") | map(tonumber))
+            | last
+          ')
+
+          if [ -z "$TAG" ] || [ "$TAG" = "null" ]; then
+            echo "::error::No v<x.y.z> release found in the 20 most recent -- upstream may have changed its tag naming"
+            exit 1
+          fi
+
+          LOCAL=$(cat "$MARKER" 2>/dev/null || echo none)
+          if [ "$TAG" = "$LOCAL" ]; then
+            echo "Tag unchanged ($LOCAL) -- nothing to do"
+            exit 0
+          fi
+
+          echo "Upstream release moved: $LOCAL -> $TAG"
+          echo "tag=$TAG"            >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}"    >> "$GITHUB_OUTPUT"
+
+      # ---- everything below runs ONLY on a real new release ----
+
+      - name: Check the Rust floor against the targets we ship to
+        if: steps.check.outputs.tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.check.outputs.tag }}
+        run: |
+          set -euo pipefail
+          # Same derivation the vendoring script uses: the lowest rustc among the
+          # `ship` rows. One fact, one place (scripts/rust-targets.tsv).
+          FLOOR=$(awk -F'\t' '$1 !~ /^#/ && $4 == "ship" { print $3 }' scripts/rust-targets.tsv \
+                  | sort -V | head -1)
+          DECL=$(gh api "repos/Deterous/Redumper-GUI/contents/Cargo.toml?ref=${TAG}" --jq .content \
+                 | base64 -d | grep -oP '^rust-version\s*=\s*"\K[^"]+' | head -1 || true)
+
+          if [ -z "$DECL" ]; then
+            echo "upstream declares no rust-version at ${TAG}; the vendoring script injects the floor (${FLOOR})"
+            exit 0
+          fi
+          echo "upstream rust-version ${DECL}, our shipping floor ${FLOOR}"
+
+          # DECL > FLOOR ?  (string compare first: sort -V calls 1.92 and 1.92 equal)
+          if [ "$DECL" != "$FLOOR" ] \
+             && [ "$(printf '%s\n%s\n' "$DECL" "$FLOOR" | sort -V | tail -1)" = "$DECL" ]; then
+            LOST=$(awk -F'\t' -v d="$DECL" '
+              $1 !~ /^#/ && $4 == "ship" {
+                split($3, a, "."); split(d, b, ".")
+                if (a[1] < b[1] || (a[1] == b[1] && a[2] < b[2])) printf "%s(%s) ", $2, $3
+              }' scripts/rust-targets.tsv)
+            echo "::warning::${TAG} raises the Rust floor to ${DECL}; these targets can no longer build it: ${LOST}"
+            echo "::warning::Per the 2026-07-19 decision they must be switched off for this version and keep delivering the last package they could build. COPR: the targets list in .packit.yaml. OBS: 'build disable' in the package meta (osc, no token here can write it). Then flip those rows to 'out' in scripts/rust-targets.tsv."
+          else
+            echo "floor holds -- every shipping target can still build this release"
+          fi
+
+      - name: Vendor the crates and publish the tarball
+        if: steps.check.outputs.tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.check.outputs.version }}
+        run: |
+          set -euo pipefail
+          # The runner image ships a current stable Rust, so nothing is installed
+          # for cargo itself -- one third-party action less in a public repo.
+          cargo --version
+          cargo install --locked cargo-vendor-filterer
+          bash scripts/rust-vendor-tarball.sh redumper-gui "$VERSION" --publish
+
+      - name: Advance all three lanes and the coupled pin
+        id: bump
+        if: steps.check.outputs.tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.check.outputs.tag }}
+          VERSION: ${{ steps.check.outputs.version }}
+        run: |
+          set -euo pipefail
+          SPEC=fedora/redumper-gui/redumper-gui.spec
+          MSG="Automated sync to upstream redumper-gui release ${TAG}."
+
+          # ---- fedora ----
+          sed -i "s|^Version:.*|Version:        ${VERSION}|" "$SPEC"
+          grep -q "^Version:        ${VERSION}$" "$SPEC" || { echo "::error::Version rewrite did not land"; exit 1; }
+          sed -i "s/^Release:.*/Release:        1%{?dist}/" "$SPEC"
+          CL=$(mktemp)
+          {
+            printf '* %s gmipf <gmipf64@gmail.com> - %s-1\n' \
+              "$(LC_ALL=C date -u +'%a %b %d %Y')" "$VERSION"
+            printf -- '- %s Release reset to 1.\n\n' "$MSG"
+          } > "$CL"
+          sed -i "/^%changelog/r $CL" "$SPEC"; rm -f "$CL"
+          printf '%s\n' "$TAG" > fedora/redumper-gui/.upstream-tag
+
+          # ---- opensuse (verified rewrites) and debian ----
+          bash scripts/opensuse-bump.sh redumper-gui "$VERSION" "$TAG" "$MSG" Version="$VERSION"
+          bash scripts/deb/bump-changelog.sh ubuntu/redumper-gui "$VERSION" "$MSG"
+          printf '%s\n' "$TAG" > ubuntu/redumper-gui/.upstream-tag
+
+          # ---- the coupled pin, read from THIS release, not from main ----
+          # Upstream bundles a specific redumper build and its README says other
+          # versions "may not be supported by the GUI". That build is declared in
+          # its own CI as REDUMPER_VERSION, and it is read AT THE TAG: main may
+          # already point at a build this release was never tested with.
+          RD=$(gh api "repos/Deterous/Redumper-GUI/contents/.github/workflows/build.yml?ref=${TAG}" --jq .content \
+               | base64 -d | grep -oP '^\s*REDUMPER_VERSION:\s*b\K[0-9]+' | head -1 || true)
+          if [ -z "$RD" ]; then
+            echo "::error::could not read REDUMPER_VERSION from Deterous/Redumper-GUI build.yml at ${TAG} -- upstream changed how it pins its bundled dumper. The GUI has a hard Requires on redumper-rgui, so shipping without resolving this would point it at an untested dumper."
+            exit 1
+          fi
+          command -v rpmspec >/dev/null || sudo apt-get install -y -qq rpm >/dev/null
+          OLD_PIN=$(grep -oP '^%global rdbuild \K[0-9]+' fedora/redumper-rgui/redumper-rgui.spec)
+          if [ "$OLD_PIN" != "$RD" ]; then
+            echo "bundled dumper moved: b${OLD_PIN} -> b${RD}"
+            bash scripts/bump-pin.sh redumper-rgui "$RD"
+            echo "pin_moved=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "bundled dumper unchanged at b${RD}"
+          fi
+
+          # ---- regenerate the deb artifacts for whatever moved ----
+          bash scripts/obs/gen-deb.sh redumper-gui
+          [ "$OLD_PIN" = "$RD" ] || bash scripts/obs/gen-deb.sh redumper-rgui
+
+      - name: Dry-run %prep before committing anything
+        if: steps.check.outputs.tag
+        env:
+          VERSION: ${{ steps.check.outputs.version }}
+        run: |
+          set -euo pipefail
+          # The check that was skipped by hand on 2026-07-19, made mechanical.
+          # Upstream had implemented our patch itself in 1.0.2, so the patch no
+          # longer applied -- and that was discovered by ALL 14 COPR chroots and
+          # every OBS target going red, minutes after the push, when `rpmbuild -bp`
+          # would have said the same thing in seconds. A new release is exactly
+          # when a carried patch stops applying, so prove %prep unpacks and patches
+          # BEFORE this is committed. Loud on failure: this is a real breakage, not
+          # a handoff to a human.
+          sudo apt-get install -y -qq rpm >/dev/null
+          T=$(mktemp -d)
+          spectool -g -R --define "_topdir $T" fedora/redumper-gui/redumper-gui.spec \
+            || { echo "::error::could not fetch Source0 -- is the release asset published?"; exit 1; }
+          cp fedora/redumper-gui/redumper-gui.desktop fedora/redumper-gui/redumper-gui.1 "$T/SOURCES/" 2>/dev/null || true
+          if ! rpmbuild -bp --nodeps --define "_topdir $T" fedora/redumper-gui/redumper-gui.spec; then
+            echo "::error::%prep failed for ${VERSION}. Most likely a carried patch no longer applies because upstream implemented it -- check fedora/redumper-gui/*.patch against the new source before this ships."
+            exit 1
+          fi
+          echo "%prep unpacks and patches cleanly"
+
+      - name: Commit, push, trigger
+        id: commit
+        if: steps.check.outputs.tag
+        env:
+          TAG: ${{ steps.check.outputs.tag }}
+          PIN_MOVED: ${{ steps.bump.outputs.pin_moved }}
+        run: |
+          set -euo pipefail
+          git add fedora/redumper-gui opensuse/redumper-gui ubuntu/redumper-gui \
+                  fedora/redumper-rgui opensuse/redumper-rgui ubuntu/redumper-rgui
+          if git diff --cached --quiet; then
+            echo "nothing changed after the rewrites -- exiting clean"
+            exit 0
+          fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+          git config user.name  "redumper-gui-watcher"
+          git config user.email "actions@github.com"
+          if [ "${PIN_MOVED:-}" = true ]; then
+            git commit -m "chore: redumper-gui ${TAG} (and its pinned dumper)"
+          else
+            git commit -m "chore: redumper-gui ${TAG}"
+          fi
+
+          # main can move under us -- another watcher, or a human pushing while
+          # this run was in flight. Rebase and retry; fail loudly only if it still
+          # will not go. A silently dropped bump is the failure mode this whole
+          # workflow exists to remove.
+          pushed=
+          for attempt in 1 2 3; do
+            if git push origin HEAD:main; then pushed=1; break; fi
+            echo "::warning::push to main rejected (attempt $attempt) -- rebasing onto the new tip"
+            git fetch -q origin main
+            git rebase origin/main
+          done
+          [ -n "$pushed" ] || { echo "::error::could not push to main after 3 attempts"; exit 1; }
+
+          # Trigger branches. TWO of them when the pin moved, and both are needed:
+          # each Packit job watches exactly one branch, so a push to
+          # build-redumper-gui alone leaves the pin sitting in main unbuilt. That
+          # is precisely what happened by hand on 2026-07-19 -- the b733 bump was
+          # committed and never built, and there was no red build to find, only
+          # silence. COPR kept shipping 729-4 under a GUI tested against b733.
+          trigger() {
+            git checkout -q -B trigger-tmp
+            printf '# build-%s — %s (Fedora/COPR trigger branch)\n\nAuto-managed **trigger branch**: a push here fires that one COPR build via\nPackit, nothing else rebuilds. Canonical source is `main` (do not edit here).\nPackaging: `fedora/%s/`.\n' "$1" "$1" "$1" > README.md
+            git add README.md
+            git commit -q -m "trigger: $1 build (branch landing README)"
+            git push -f origin "trigger-tmp:build-$1"
+            git reset -q --hard HEAD~1
+          }
+          trigger redumper-gui
+          [ "${PIN_MOVED:-}" = true ] && trigger redumper-rgui
+          echo "done"
+
+  # Ask OBS to re-pull the recipe from main and rebuild. OBS fetches the recipe
+  # itself, so nothing is uploaded here.
+  obs:
+    needs: watch
+    if: needs.watch.outputs.changed == 'true'
+    uses: ./.github/workflows/obs-trigger.yml
+    secrets: inherit

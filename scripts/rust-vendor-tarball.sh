@@ -49,37 +49,35 @@ TOOL=${1:?usage: rust-vendor-tarball.sh <tool> <version> [--publish]}
 VERSION=${2:?usage: rust-vendor-tarball.sh <tool> <version> [--publish]}
 PUBLISH=${3:-}
 
-# Upstream coordinates per tool, plus the MSRV the lockfile must resolve for.
-#
-# MSRV = the LOWEST rustc among the targets this tool actually ships to. It is a
-# floor, not a wish: upstream ships no Cargo.lock and declares no rust-version,
-# so `cargo generate-lockfile` on a modern toolchain resolves to the newest
-# semver-compatible crates -- several of which have since raised their own MSRV.
-# Measured on redumper-gui 1.0.1: a lockfile generated with rustc 1.96 pulled in
-# zip 8.6, time-core 0.1.9 and vello_* 0.0.9 (all needing 1.88), and the build
-# then failed on an older toolchain. Injecting rust-version makes cargo's
-# MSRV-aware resolver (default under edition 2024 / resolver 3) hold the line.
-#
-# For redumper-gui that floor is 1.92, and it is NOT ours to choose: eframe/egui
-# 0.35 -- a direct dependency, pinned in upstream's Cargo.toml -- itself requires
-# rustc 1.92. No resolver can go below a direct dependency's own MSRV.
-#
-# Which targets that leaves, re-measured 2026-07-13 in clean containers (an
-# earlier note here claimed trixie-backports had no newer rustc -- that was
-# WRONG, and it was wrong in a public upstream issue too; see #2 there):
-#   Fedora 43+              1.96                       builds
-#   EL 8 / 9 / 10           1.92                       builds, at EXACTLY the floor
-#   Leap 16 / Tumbleweed    1.96                       builds
-#   Debian 13 (trixie)      1.85, backports 1.94       builds, via backports only
-#   Ubuntu 26.04            1.93                       builds
-#   Debian 12 (bookworm)    1.63, no rustc in bpo      OUT
-#   Ubuntu 22.04 / 24.04    1.75, rustc-1.91 at best   OUT
-#
-# Raise this only when the lowest SHIPPING target's rustc actually rises.
 case "$TOOL" in
-    redumper-gui) UPSTREAM_REPO="Deterous/Redumper-GUI"; TAG="v${VERSION}"; MSRV="1.92" ;;
+    redumper-gui) UPSTREAM_REPO="Deterous/Redumper-GUI"; TAG="v${VERSION}" ;;
     *) echo "unknown tool: $TOOL" >&2; exit 1 ;;
 esac
+
+# The MSRV floor the lockfile must resolve for. DERIVED, never declared: it is the
+# lowest rustc among the targets we actually ship to, and that list lives in
+# scripts/rust-targets.tsv. This was a hardcoded MSRV="1.92" sitting next to a
+# comment explaining that it was the minimum of a table -- two spellings of one
+# fact, with nothing checking they agreed.
+#
+# Why a floor is needed at all: cargo's resolver picks the newest
+# semver-compatible crates, and several have raised their own MSRV since. Measured
+# on redumper-gui 1.0.1 -- a lockfile generated under rustc 1.96 pulled in zip 8.6,
+# time-core 0.1.9 and vello_* 0.0.9 (all wanting 1.88), and the build then died on
+# an older toolchain. Declaring rust-version makes the MSRV-aware resolver
+# (default under edition 2024 / resolver 3) hold the line.
+#
+# The floor is also not ours to lower at will: eframe/egui 0.35 is a DIRECT
+# dependency pinned in upstream's Cargo.toml and requires 1.92 itself. No resolver
+# goes below a direct dependency's own MSRV.
+TARGETS="$(dirname "$0")/rust-targets.tsv"
+[ -f "$TARGETS" ] || { echo "missing target table: $TARGETS" >&2; exit 1; }
+MSRV=$(awk -F'\t' '$1 !~ /^#/ && $4 == "ship" { print $3 }' "$TARGETS" | sort -V | head -1)
+[[ "$MSRV" =~ ^[0-9]+\.[0-9]+$ ]] || {
+    echo "could not derive an MSRV floor from $TARGETS (got '${MSRV}')" >&2; exit 1; }
+AT_FLOOR=$(awk -F'\t' -v m="$MSRV" \
+    '$1 !~ /^#/ && $4 == "ship" && $3 == m { printf "%s ", $2 }' "$TARGETS")
+echo ":: MSRV floor ${MSRV}, set by: ${AT_FLOOR}(scripts/rust-targets.tsv)"
 
 PKG_REPO="gmipf/packaging-media-preservation"
 WORK=$(mktemp -d)

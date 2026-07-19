@@ -1,0 +1,40 @@
+# rust-targets.tsv — which rustc every target we ship to actually has.
+#
+# THIS IS DATA, AND IT IS LOAD-BEARING. It used to be a comment block in
+# rust-vendor-tarball.sh next to a hardcoded MSRV="1.92", which is two statements
+# of one fact: the prose explained that the floor is the lowest rustc among the
+# shipping targets, and the constant asserted what that came to. Nothing checked
+# that the two agreed, so the day a target moved, the comment would describe a
+# floor the script did not use.
+#
+# Now the floor is DERIVED: rust-vendor-tarball.sh takes the minimum rustc over
+# the rows marked `ship`, and watch-redumper-gui.yml compares upstream's declared
+# rust-version against that same number. One fact, one place.
+#
+# Cross-check when this was introduced (2026-07-19): the derived minimum is 1.92,
+# which is exactly what the constant said. The rewrite reproduces the known value
+# rather than quietly changing it.
+#
+# `ship` vs `out` is the decision recorded on 2026-07-19: when a future release
+# raises the floor, the affected target is switched OFF for the NEW version and
+# the last package built for it stays in the repo and keeps being delivered. A
+# row moving ship -> out is that switch. It does NOT mean "broken"; it means
+# "frozen at the last version it could build".
+#
+# ⚠️ These numbers are MEASURED in clean containers, not read off a distro's
+# website, and they are only as fresh as the `measured` column. An earlier note
+# claimed trixie-backports had no newer rustc -- that was wrong, and it was wrong
+# in a public upstream issue too. Re-measure before trusting a row that is old.
+#
+# lane	target	rustc	status	measured	note
+copr	fedora-43+	1.96	ship	2026-07-13	rolling Fedora, always ahead of the floor
+copr	epel-8	1.92	ship	2026-07-13	EXACTLY at the floor, zero headroom
+copr	epel-9	1.92	ship	2026-07-13	EXACTLY at the floor, zero headroom
+copr	epel-10	1.92	ship	2026-07-13	EXACTLY at the floor, zero headroom
+obs	openSUSE_Leap_16.0	1.96	ship	2026-07-13	-
+obs	openSUSE_Tumbleweed	1.96	ship	2026-07-13	-
+obs	Debian_13	1.94	ship	2026-07-13	from trixie-backports; plain trixie ships 1.85
+obs	xUbuntu_26.04	1.93	ship	2026-07-13	-
+obs	Debian_12	1.63	out	2026-07-13	bookworm-backports carries no rustc at all
+obs	xUbuntu_22.04	1.75	out	2026-07-13	rustc-1.91 is the newest available
+obs	xUbuntu_24.04	1.75	out	2026-07-13	rustc-1.91 is the newest available
