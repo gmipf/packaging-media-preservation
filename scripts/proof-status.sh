@@ -234,9 +234,19 @@ while IFS='|' read -r tool lane arch prop date hash ev files; do
         if [ ! -f "$vspec" ]; then
             red "  ✗ $tag — blocked, aber die Versionsquelle fehlt: fedora/$tool/$tool.spec"; fail=1; continue
         fi
-        cur=$(awk '/^Version:[[:space:]]/{print $2; exit}' "$vspec")
+        # rpmspec, NOT an awk for '^Version:'. A spec may drive its version from a
+        # macro -- aaru5 does since 2026-07-19, so that a bump touches one line
+        # instead of two -- and then the raw line reads "%{aaruver}". This awk
+        # compared that against 5.4.2 and reported every blocked aaru5 row as
+        # "upstream has moved". Every other version reader in this repo (status.sh,
+        # all eight get-current-version actions) already used rpmspec; this was the
+        # last one that did not. A checker must read what rpm reads.
+        if ! command -v rpmspec >/dev/null; then
+            red "  ✗ $tag — rpmspec fehlt, die Blockade-Version ist nicht pruefbar"; fail=1; continue
+        fi
+        cur=$(rpmspec -q --queryformat '%{version}\n' "$vspec" 2>/dev/null | head -1)
         if [ -z "$cur" ]; then
-            red "  ✗ $tag — blocked, aber fedora/$tool/$tool.spec hat keine lesbare Version:-Zeile"; fail=1; continue
+            red "  ✗ $tag — blocked, aber rpmspec liest aus fedora/$tool/$tool.spec keine Version"; fail=1; continue
         fi
         if [ "$cur" != "$bver" ]; then
             red "  ✗ $tag — $tool steht auf $cur, blockiert war $bver: UPSTREAM HAT SICH BEWEGT."

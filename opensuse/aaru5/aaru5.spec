@@ -16,7 +16,7 @@
 %global __provides_exclude ^libe_sqlite3\.so
 
 Name:           aaru5
-Version:        5.4.2
+Version:        %{aaruver}
 Release:        0
 Summary:        Aaru 5.x stable data-preservation CLI (MPF-compatible)
 

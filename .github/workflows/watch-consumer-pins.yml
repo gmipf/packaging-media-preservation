@@ -1,29 +1,31 @@
 name: watch-consumer-pins
 
-# The consumer pins now have FIXED names and a moving version (redumper-mpf,
-# redumper-rgui, aaru5), so tracking a consumer's bundled build is a plain
-# in-place version bump -- no new package, no orphan. This watcher does that
-# hourly for the one pin whose source moves on a rolling basis:
+# The consumer pins have FIXED names and a moving version (redumper-mpf, aaru5,
+# redumper-rgui), so following a consumer's bundled build is a plain in-place
+# version bump -- no new package, no orphan. This watcher tracks the two that MPF
+# bundles, reading both out of MPF's own publish-nix.sh:
 #
-#   redumper-mpf  <- the redumper build in MPF's publish-nix.sh. Our mpf package
-#                    is itself rolling (tracks MPF main hourly), so the same source
-#                    is the right one for its pin. AUTO-BUMPED here.
+#   redumper-mpf  <- the redumper build MPF bundles
+#   aaru5         <- the stable Aaru release MPF bundles
 #
-# The other two are coupled to sources that are NOT hourly, and auto-bumping them
-# would ship a combination nobody tested -- so they are GUARDED, not bumped, and a
-# drift fails loudly (same contract as watch-aaru-releases: stop and mail, never
-# build on silently):
+# aaru5 was GUARDED rather than bumped until 2026-07-19, on the stated grounds
+# that it is "a NativeAOT tree with a static manpage, not a zip" and that
+# auto-bumping would ship an untested combination. Checked against the recipes,
+# neither half held: aaru5's manpage is GENERATED at build time from
+# aaru5-manpage.sh, exactly like the rolling aaru package, and that one is a
+# NativeAOT tree too and has been auto-bumped all along. The untested-combination
+# argument is backwards as well -- the version MPF bundles is precisely the one
+# MPF tested. What actually differed was one macro name and a `Version:` line that
+# repeated the literal 5.4.2 instead of following %{aaruver}. A reason written
+# down once and never re-checked kept a package on manual maintenance for weeks.
 #
-#   aaru5         <- MPF bundles a STABLE aaru (5.4.x); it moves rarely and its
-#                    repackage is a NativeAOT tree with a static manpage, not a zip.
-#                    On drift: bump by hand (Version + Source tag + gen-deb).
-#   redumper-rgui <- the redumper build bundled by the redumper-gui RELEASE we
-#                    package (b729 for 1.0.1). redumper-gui is not hourly-tracked;
-#                    when it is rebuilt to a new upstream release, bump redumper-rgui
-#                    in the SAME change. Deliberately no version pinned here -- a
-#                    hardcoded build number in this file is exactly the second-place
-#                    landmine feedback_packit_version_from_spec warns about, so the
-#                    coupling lives with redumper-gui, not in a watcher literal.
+#   redumper-rgui <- NOT here. It follows the redumper-gui RELEASE, so it is bumped
+#                    by watch-redumper-gui.yml, in the same commit as the GUI, from
+#                    REDUMPER_VERSION in that release's own build.yml. Deliberately
+#                    no version literal in either file: a hardcoded build number is
+#                    exactly the second-place landmine feedback_packit_version_from_spec
+#                    warns about -- and on 2026-07-19 that landmine went off, in
+#                    .packit.yaml, for this very pin.
 
 on:
   schedule:
@@ -41,7 +43,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Track MPF's redumper pin; guard aaru5
+      - name: Track the pins MPF bundles
         id: sync
         run: |
           set -euo pipefail
@@ -52,26 +54,45 @@ jobs:
           [ -n "$MPF_RD" ] || { echo "::error::could not read a redumper b<N> build from MPF publish-nix.sh -- upstream layout changed"; exit 1; }
           [ -n "$MPF_AA" ] || { echo "::error::could not read an Aaru version from MPF publish-nix.sh -- upstream layout changed"; exit 1; }
 
-          # ---- aaru5 guard (live values, nothing hardcoded) ----
-          AA_PIN=$(grep -oP '^Version:\s+\K\S+' fedora/aaru5/aaru5.spec)
-          if [ "$MPF_AA" != "$AA_PIN" ]; then
-            echo "::error::MPF now bundles Aaru ${MPF_AA} but aaru5 is ${AA_PIN}. aaru5 is a stable-release NativeAOT repackage with a curated manpage, not a zip -- bump it by hand (fedora+opensuse Version, Source tag, scripts/obs/gen-deb.sh aaru5) rather than auto-shipping a build MPF may not have been tested against."
-            exit 1
-          fi
-          echo "aaru5 guard ok: MPF bundles Aaru ${MPF_AA}, aaru5 is ${AA_PIN}"
+          command -v rpmspec >/dev/null || sudo apt-get install -y -qq rpm >/dev/null
+          BUMPED=""
 
-          # ---- redumper-mpf: the one we auto-track ----
-          MPF_PIN=$(grep -oP '^%global rdbuild \K[0-9]+' fedora/redumper-mpf/redumper-mpf.spec)
-          if [ "$MPF_PIN" = "$MPF_RD" ]; then
-            echo "redumper-mpf already at b${MPF_RD} -- nothing to do"
+          # Read each pin from the MACRO that drives it, never from the Version:
+          # line. aaru5's Version: follows %{aaruver} as of 2026-07-19, so a grep
+          # for '^Version:' there returns the literal text "%{aaruver}" -- it would
+          # have compared that against 5.4.2 and reported a drift on every run.
+          # The macro is also what bump-pin.sh writes, so reader and writer agree
+          # by construction.
+          # The spec path is SPELLED OUT, not derived from the name, and that is
+          # deliberate twice over. It shows at a glance which recipes this watcher
+          # touches -- and status.sh's coverage check looks for exactly
+          # `fedora/<pkg>/` in executable (comment-stripped) workflow code to prove
+          # a package is tracked by something. Written as "fedora/$name/" it finds
+          # nothing, and both pins report as untracked while being bumped perfectly
+          # well. Measured on 2026-07-19: the first version of this loop did exactly
+          # that, and the check caught it. Do not "simplify" these back into the
+          # variable -- it would silently blind the control that enforces the rule.
+          for entry in "redumper-mpf rdbuild $MPF_RD fedora/redumper-mpf/redumper-mpf.spec" \
+                       "aaru5 aaruver $MPF_AA fedora/aaru5/aaru5.spec"; do
+            set -- $entry
+            name=$1 macro=$2 want=$3 spec=$4
+            have=$(grep -oP "^%global[[:space:]]+${macro}[[:space:]]+\K\S+" "$spec")
+            [ -n "$have" ] || { echo "::error::$spec has no '%global $macro' line"; exit 1; }
+            if [ "$have" = "$want" ]; then
+              echo "$name already at $want"
+              continue
+            fi
+            echo "MPF moved its bundled $name: $have -> $want"
+            bash scripts/bump-pin.sh "$name" "$want"
+            BUMPED="${BUMPED}${name} "
+          done
+
+          if [ -z "$BUMPED" ]; then
+            echo "neither pin moved -- nothing to do"
             exit 0
           fi
-          echo "MPF moved its bundled redumper: b${MPF_PIN} -> b${MPF_RD}"
 
-          command -v rpmspec >/dev/null || sudo apt-get install -y -qq rpm >/dev/null
-          bash scripts/bump-pin.sh redumper-mpf "$MPF_RD"
-
-          git add fedora/redumper-mpf opensuse/redumper-mpf ubuntu/redumper-mpf
+          for p in $BUMPED; do git add "fedora/$p" "opensuse/$p" "ubuntu/$p"; done
           if git diff --cached --quiet; then
             echo "bump produced no change -- exiting clean"; exit 0
           fi
@@ -79,7 +100,7 @@ jobs:
 
           git config user.name  "consumer-pins-watcher"
           git config user.email "actions@github.com"
-          git commit -m "chore: redumper-mpf -> b${MPF_RD} (MPF bundle moved)"
+          git commit -m "chore: pins follow MPF's bundle (${BUMPED% })"
 
           # main can move under us (another watcher / a human). Rebase and retry,
           # fail loudly only if it still will not go -- same shape as the other
@@ -93,11 +114,21 @@ jobs:
           done
           [ -n "$pushed" ] || { echo "::error::could not push to main after 3 attempts"; exit 1; }
 
-          git checkout -q -b trigger-tmp
-          printf '# build-redumper-mpf — redumper-mpf (Fedora/COPR trigger branch)\n\nAuto-managed **trigger branch** for the `redumper-mpf` pin: a push here fires\nthat one COPR build via Packit, nothing else rebuilds. Canonical source is\n`main` (do not edit here). Packaging: `fedora/redumper-mpf/`.\n' > README.md
-          git add README.md
-          git commit -q -m "trigger: redumper-mpf build (branch landing README)"
-          git push -f origin trigger-tmp:build-redumper-mpf
+          # ONE TRIGGER BRANCH PER BUMPED PACKAGE. Each Packit job watches exactly
+          # one branch, so a commit that moves two pins needs two pushes -- pushing
+          # only one leaves the other sitting in main, built by nobody, with no red
+          # build anywhere to find it. That is not hypothetical: it is what happened
+          # to redumper-rgui b733 on 2026-07-19. Until today this watcher could only
+          # ever move one pin, so the shape was latent rather than wrong.
+          trigger() {
+            git checkout -q -B trigger-tmp
+            printf '# build-%s — %s (Fedora/COPR trigger branch)\n\nAuto-managed **trigger branch**: a push here fires that one COPR build via\nPackit, nothing else rebuilds. Canonical source is `main` (do not edit here).\nPackaging: `fedora/%s/`.\n' "$1" "$1" "$1" > README.md
+            git add README.md
+            git commit -q -m "trigger: $1 build (branch landing README)"
+            git push -f origin "trigger-tmp:build-$1"
+            git reset -q --hard HEAD~1
+          }
+          for p in $BUMPED; do trigger "$p"; done
 
   obs:
     needs: watch
