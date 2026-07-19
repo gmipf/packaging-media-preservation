@@ -66,9 +66,16 @@ Source2:        redumper-gui.1
 # left alone there, keeping the download folder its users expect. Home is the
 # Linux convention for a tool like this, and it is what our mpf package already
 # does (DefaultOutputPath = $HOME/ISO): a browser empties Downloads, and nobody
-# looks for disc images in it. Byte-identical to the copy in the Fedora and
-# Debian lanes, and offered upstream.
-Patch0:         0001-default-dump-folder-must-be-writable.patch
+# looks for disc images in it.
+#
+# DROPPED in 1.0.2 -- upstream now does this itself. It closed our PR #3
+# unmerged and then implemented the same fix its own way: effective_output_dir()
+# in src/app/logic.rs falls back to download_dir/home_dir + "Dumps" and does not
+# touch current_exe at all. Verified by reading the 1.0.2 source, not inferred
+# from the PR being closed -- the two say different things, and only the source
+# is binding. The patch is therefore gone rather than rebased; do not re-add it.
+# (current_exe still appears in dump.rs and postprocess.rs, but for finding the
+# redumper and MPF.Check binaries, which is PR #4's subject, not this one.)
 
 ExclusiveArch:  x86_64 aarch64
 
@@ -278,6 +285,8 @@ done
 %changelog
 * Sun Jul 19 2026 gmipf <gmipf64@gmail.com> - 1.0.2-0
 - Update to upstream 1.0.2; Source0 moves to a release asset on the packaging repo.
+- Drop 0001-default-dump-folder-must-be-writable.patch: upstream implemented the
+  same fix itself in 1.0.2, so it no longer applies and is no longer needed.
 
 * Sat Jul 18 2026 gmipf <gmipf64@gmail.com> - 1.0.1-0
 - Add aarch64 (arm64) support: ExclusiveArch is now x86_64 aarch64. This package

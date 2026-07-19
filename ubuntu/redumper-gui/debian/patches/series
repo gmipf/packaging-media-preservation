@@ -1,1 +1,11 @@
-0001-default-dump-folder-must-be-writable.patch
+# No patches.
+#
+# Through 1.0.1 this carried 0001-default-dump-folder-must-be-writable.patch,
+# which stopped the packaged build defaulting its dump folder to the executable's
+# own directory (root-owned under /usr/lib, so the dump failed later for a reason
+# that never named the cause). Upstream closed our PR #3 unmerged and then
+# implemented the same fix its own way in 1.0.2: effective_output_dir() falls back
+# to download_dir/home_dir + "Dumps" and never touches current_exe.
+#
+# So the patch was DROPPED, not rebased -- verified by reading the 1.0.2 source
+# rather than inferred from the PR being closed. Do not re-add it.

@@ -1,6 +1,8 @@
 redumper-gui (1.0.2-1) UNRELEASED; urgency=medium
 
   * Update to upstream 1.0.2; Source0 moves to a release asset on the packaging repo.
+  * Drop 0001-default-dump-folder-must-be-writable.patch: upstream implemented the
+    same fix itself in 1.0.2, so it no longer applies and is no longer needed.
 
  -- gmipf <gmipf64@gmail.com>  Sun, 19 Jul 2026 15:45:27 +0000
 
