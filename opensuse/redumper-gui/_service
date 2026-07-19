@@ -32,10 +32,6 @@
     <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/redumper-gui/redumper-gui.desktop</param>
     <param name="filename">redumper-gui.desktop</param>
   </service>
-  <service name="download_url">
-    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/redumper-gui/0001-default-dump-folder-must-be-writable.patch</param>
-    <param name="filename">0001-default-dump-folder-must-be-writable.patch</param>
-  </service>
   <!-- upstream asset (the vendored crate tarball), taken from the Source: URL of
        the spec above -->
   <service name="download_files"/>

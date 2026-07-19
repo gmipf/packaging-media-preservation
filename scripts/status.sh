@@ -233,7 +233,57 @@ done
 # That killed all four watchers for five hours on 2026-07-14, and a red run only
 # tells you AFTER an upstream release you then failed to ship. Grep for the shape
 # instead: it is never intentional.
-# --- silent failure #6: a package nobody tracks -------------------------------
+# --- silent failure #6: _service names a file that is not there ---------------
+# OBS pulls the recipe itself: every opensuse/<tool>/_service lists each file it
+# needs as a download_url off raw.githubusercontent. Delete or rename one of
+# those files in git and NOTHING here complains -- the .dsc still matches, the
+# debian.tar.gz still matches, the spec still parses. OBS finds out instead, and
+# reports it as `broken: service error: ERROR 404: Not Found`, which reads like
+# an OBS outage rather than our own dangling reference.
+#
+# That is exactly what dropping the redumper-gui patch did on 2026-07-19: the
+# spec stopped referencing it, gen-deb.sh regenerated the .dsc and the tarball
+# happily, and _service went on demanding a file that no longer existed.
+# gen-deb.sh only owns the DEB block of _service, not this recipe-file list.
+#
+# Two questions, because the file exists in two places and they drift apart
+# independently:
+#   A. does every URL still resolve?  (a deleted file 404s)
+#   B. is OBS running the same _service we have in git?  The workflow token can
+#      only `runservice`; the _service itself reaches OBS only through an
+#      `osc commit` that nothing automates. A forgotten one is invisible until
+#      a build breaks for a reason that points at the wrong thing.
+hr "OBS _service — Datei-URLs und Stand gegen OBS"
+SVC_BAD=0
+for svc in "$REPO"/opensuse/*/_service; do
+    tool=$(basename "$(dirname "$svc")")
+    while read -r u; do
+        [ -n "$u" ] || continue
+        code=$(curl -sI -m 20 -o /dev/null -w '%{http_code}' "$u" 2>/dev/null)
+        case "$code" in
+            200|302) ;;
+            *) printf '  \033[31mFEHLER\033[0m %-18s HTTP %s  %s\n' "$tool" "${code:-?}" "${u##*/}"
+               SVC_BAD=$((SVC_BAD + 1)) ;;
+        esac
+    done <<<"$(sed -n 's|.*<param name="url">\(.*\)</param>.*|\1|p' "$svc")"
+
+    remote=$(osc -A https://api.opensuse.org api \
+             "/source/${OBS_PROJECT}/${tool}/_service" 2>/dev/null)
+    if [ -z "$remote" ]; then
+        printf '  \033[31mFEHLER\033[0m %-18s _service auf OBS nicht lesbar\n' "$tool"
+        SVC_BAD=$((SVC_BAD + 1))
+    # printf '%s\n', not '%s': $(...) strips the trailing newline the file has,
+    # so comparing raw makes EVERY package look drifted. It did -- all eight,
+    # which is what gave the bug away: a check that is always red is exactly as
+    # useless as one that can never be red.
+    elif ! diff -q <(printf '%s\n' "$remote") "$svc" >/dev/null 2>&1; then
+        printf '  \033[31mFEHLER\033[0m %-18s _service in OBS != git -- `osc commit` fehlt\n' "$tool"
+        SVC_BAD=$((SVC_BAD + 1))
+    fi
+done
+[ "$SVC_BAD" = 0 ] && echo "  alle _service-URLs loesen auf, OBS-Stand == git"
+
+# --- silent failure #7: a package nobody tracks -------------------------------
 # HARD RULE (2026-07-19): no package here may be human-supervised. Upstream
 # tracking AND building must be automatic, without exception. A loud-fail guard
 # that pings a human is a STEPPING STONE, not a finished state.
