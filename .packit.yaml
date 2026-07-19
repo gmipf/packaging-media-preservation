@@ -164,7 +164,16 @@ packages:
         - bash -c "rpmspec -q --queryformat '%{version}\n' redumper-rgui.spec | head -1"
       create-archive:
         - bash -c "spectool -g redumper-rgui.spec 1>&2"
-        - bash -c "ls -1 redumper-b729-linux-x64.zip"
+        # Match the archive by FORM, never by build number. This line said
+        # `redumper-b729-linux-x64.zip` until 2026-07-19 and by then the spec was
+        # at b733: the pin had been bumped in the spec, the yaml was not, and the
+        # SRPM step would have died on a file that spectool never downloaded. It
+        # did not even fail -- nothing triggered a build, so the bump simply sat
+        # in main, unbuilt and unmentioned. The rolling `redumper` job above has
+        # matched by form all along; this is its sibling and was missed when that
+        # fix went in. A version written down a second time is a bomb with a
+        # calendar (feedback_packit_version_from_spec).
+        - bash -c "ls -1 redumper-b*-linux-x64.zip | head -1"
 
   # MPF's pin. b732 is what MPF's publish-nix.sh bundles. It stays pinned even
   # while the rolling `redumper` carries the same build (it does today): the
@@ -181,7 +190,12 @@ packages:
         - bash -c "rpmspec -q --queryformat '%{version}\n' redumper-mpf.spec | head -1"
       create-archive:
         - bash -c "spectool -g redumper-mpf.spec 1>&2"
-        - bash -c "ls -1 redumper-b732-linux-x64.zip"
+        # By form, same as redumper-rgui above -- and here it matters MORE, not
+        # less: this pin is bumped AUTOMATICALLY by watch-consumer-pins.yml, which
+        # rewrites the spec and knows nothing about this file. It happened to
+        # still read b732 correctly on 2026-07-19; the next MPF bundle move would
+        # have left a green watcher and a dead SRPM step behind it.
+        - bash -c "ls -1 redumper-b*-linux-x64.zip | head -1"
 
   # Source0 is the VENDORED tarball published as a release asset on THIS repo
   # (scripts/rust-vendor-tarball.sh), not an upstream archive: Rust needs its

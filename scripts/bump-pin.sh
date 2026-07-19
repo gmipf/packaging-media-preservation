@@ -47,6 +47,12 @@ bash scripts/opensuse-bump.sh "$PIN" "$NEW" "b${NEW}" "$MSG" rdbuild="$NEW"
 
 # ---- debian: new UNRELEASED stanza at <build>-1 ----
 bash scripts/deb/bump-changelog.sh "ubuntu/$PIN" "$NEW" "$MSG"
+# ...and its marker. Left out until 2026-07-19, which is why ubuntu/redumper-rgui
+# still read b729 while the other two lanes were at b733. Nothing caught it: the
+# opensuse/ and ubuntu/ markers are written by every bump path and read by none,
+# and state nobody reads cannot go red -- it just drifts. status.sh now compares
+# the three lanes against each other, which is what makes this line testable.
+printf '%s\n' "b${NEW}" > "ubuntu/$PIN/.upstream-tag"
 
 # ---- regenerate the openSUSE deb artifacts (the .dsc names the b<N> archive) ----
 command -v rpmspec >/dev/null || { echo "rpmspec required" >&2; exit 1; }

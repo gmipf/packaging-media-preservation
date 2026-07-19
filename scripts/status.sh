@@ -352,6 +352,97 @@ else
     echo "  -> ${TRACK_BAD} Verstoss(e) gegen die Vollautomatik-Regel"
 fi
 
+# --- silent failure #8: the lane markers drift apart --------------------------
+# Every recipe carries a .upstream-tag naming the upstream revision it describes.
+# Only the fedora/ one is ever READ -- the watchers use it as their "what did I
+# see last" memory. The opensuse/ and ubuntu/ copies are written by every bump
+# path and read by nothing, and state nobody reads cannot go red. It just drifts.
+#
+# It had, unnoticed, until 2026-07-19: fedora/ and ubuntu/ still said redumper-gui
+# v1.0.1 while opensuse/ said v1.0.2, and ubuntu/redumper-rgui still said b729
+# against b733 in the other two -- bump-pin.sh simply never wrote that one file.
+#
+# The obvious fix is to delete the unread copies. This does the opposite, because
+# the marker is the ONE lane-independent way to ask "do these three recipes
+# describe the same upstream revision?": the spec Version, the .dsc and
+# debian/changelog each spell it differently, so only the marker compares. Read
+# them, and they stop being decoration.
+#
+# Two mechanical questions:
+#   A. do all lanes that carry a marker for a package agree with each other?
+#   B. does the marker agree with the version the fedora spec actually builds?
+#      Four shapes exist in the tree today and three are checkable:
+#        v<semver>   -> spec version, with '-' spelled '~' (rpm sort order)
+#        b<N>        -> spec version verbatim
+#        <sha40>     -> its first 8 chars END the spec's snapshot version
+#        rolling     -> mpf tracks a branch; there is no revision to compare.
+#                       SKIPPED -- and counted and named, not passed over. A check
+#                       that hides what it did not look at reads as full coverage.
+#      Order matters below: the sha40 test runs BEFORE the b<N> test, because a
+#      commit hash beginning "b3..." would otherwise be read as build 3.
+hr "Upstream-Marker — beschreiben alle Lanes dieselbe Revision?"
+MARK_BAD=0
+MARK_SKIP=0
+MARK_PKGS=$(for l in fedora opensuse ubuntu; do
+                for m in "$REPO"/$l/*/.upstream-tag; do
+                    [ -f "$m" ] && basename "$(dirname "$m")"
+                done
+            done | sort -u)
+for pkg in $MARK_PKGS; do
+    shown=""
+    vals=$(for l in fedora opensuse ubuntu; do
+               m="$REPO/$l/$pkg/.upstream-tag"
+               [ -f "$m" ] && head -1 "$m"
+           done)
+    for l in fedora opensuse ubuntu; do
+        m="$REPO/$l/$pkg/.upstream-tag"
+        [ -f "$m" ] && shown="$shown $l=$(head -1 "$m")"
+    done
+    if [ "$(printf '%s\n' "$vals" | sort -u | wc -l)" -gt 1 ]; then
+        printf '  \033[31mFEHLER\033[0m %-18s Lanes uneinig:%s\n' "$pkg" "$shown"
+        MARK_BAD=$((MARK_BAD + 1))
+        continue
+    fi
+    tag=$(printf '%s\n' "$vals" | head -1)
+    spec="$REPO/fedora/$pkg/$pkg.spec"
+    if [ ! -f "$spec" ]; then
+        printf '  \033[32mok\033[0m    %-18s %-24s (Pin ohne fedora-Marker, Lanes einig)\n' "$pkg" "$tag"
+        continue
+    fi
+    sv=$(rpmspec -q --queryformat '%{version}\n' "$spec" 2>/dev/null | head -1)
+    if [ "$tag" = rolling ]; then
+        printf '  \033[33m--\033[0m    %-18s rolling — kein Revisionsvergleich moeglich (Spec: %s)\n' "$pkg" "$sv"
+        MARK_SKIP=$((MARK_SKIP + 1))
+        continue
+    elif [ ${#tag} = 40 ]; then
+        short=$(printf '%s' "$tag" | cut -c1-8)
+        case "$sv" in *".$short") ok=1 ;; *) ok= ;; esac
+        want="Snapshot endend auf .$short"
+    elif [ "${tag#v}" != "$tag" ]; then
+        want=$(printf '%s' "${tag#v}" | tr '-' '~')
+        [ "$sv" = "$want" ] && ok=1 || ok=
+    elif [ "${tag#b}" != "$tag" ]; then
+        want=${tag#b}
+        [ "$sv" = "$want" ] && ok=1 || ok=
+    else
+        want=$tag
+        [ "$sv" = "$want" ] && ok=1 || ok=
+    fi
+    if [ -n "$ok" ]; then
+        printf '  \033[32mok\033[0m    %-18s %-24s == Spec %s\n' "$pkg" "$tag" "$sv"
+    else
+        printf '  \033[31mFEHLER\033[0m %-18s Marker %s erwartet %s, Spec baut %s\n' \
+            "$pkg" "$tag" "$want" "$sv"
+        MARK_BAD=$((MARK_BAD + 1))
+    fi
+done
+if [ "$MARK_BAD" = 0 ]; then
+    printf '  alle Lanes einig, Marker deckt die gebaute Version'
+    [ "$MARK_SKIP" = 0 ] && echo || printf ' (%s ohne Revision uebersprungen)\n' "$MARK_SKIP"
+else
+    echo "  -> ${MARK_BAD} Marker-Drift(s); Bump-Pfad hat eine Lane nicht mitgezogen"
+fi
+
 hr "Workflow-Shell — abgebrochene Zeilenfortsetzungen"
 CONT=$(for f in "$REPO"/.github/workflows/*.yml "$REPO"/scripts/*.sh "$REPO"/scripts/obs/*.sh; do
     [ -f "$f" ] || continue
