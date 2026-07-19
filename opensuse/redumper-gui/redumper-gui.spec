@@ -7,8 +7,10 @@
 # they are dead weight regardless -- and uniform with every other spec here.
 %global _build_id_links none
 
-# The redumper build this GUI is tested against. Upstream pins it in its own
-# CI (REDUMPER_VERSION: b729 in .github/workflows/build.yml) and bundles the
+# The redumper build this GUI is tested against. Upstream pins it in its own CI
+# (REDUMPER_VERSION in .github/workflows/build.yml -- the number is deliberately
+# NOT repeated here: a build number in a comment is a second place to forget it,
+# and this one already went stale once) and bundles the
 # binary in every release archive, with the README stating that changing it
 # "is not recommended as it may not be supported by the GUI". A distribution
 # cannot ship that bundled copy -- it would be a second /usr/bin/redumper --
@@ -17,32 +19,38 @@
 %global guidir  %{_libdir}/%{name}
 
 Name:           redumper-gui
-Version:        1.0.1
+Version:        1.0.2
 Release:        0
 Summary:        Desktop frontend for the redumper optical-disc dumper
 
-# Upstream ships the plain GPL-3.0 text with no per-file headers and no
-# license field in Cargo.toml, so there is nothing that says "or later".
-# Packaged as the narrower GPL-3.0-only; asking upstream to declare the
-# license in Cargo.toml is part of the packaging PR.
+# Upstream ships the plain GPL-3.0 text with no per-file headers, so there is
+# nothing that says "or later" -- packaged as the narrower GPL-3.0-only. As of
+# 1.0.2 upstream declares `license = "GPL-3.0-only"` in Cargo.toml as well (the
+# packaging PR asked for it), so this now agrees with the crate's own metadata
+# instead of resting on our reading of a bare LICENSE file.
 License:        GPL-3.0-only
 URL:            https://github.com/Deterous/Redumper-GUI
 
-# Source0 is a REPACKAGED tarball, not the upstream release archive:
-# upstream's release archive ships a prebuilt binary (glibc 2.39, so it is
-# unusable on EL8/EL9 and jammy), and Rust needs its dependency crates
-# present at build time while the OBS build root, the COPR chroot and the
-# and OBS build roots have no network. scripts/rust-vendor-tarball.sh
-# therefore takes the upstream git tag, pins a Cargo.lock, vendors the crates
-# filtered to x86_64-linux (cargo-vendor-filterer, which drops the windows-*
-# trees: 546 MB -> 178 MB) and commits the result to an orphan `vendored` branch
-# of the redumper-gui fork (gmipf/Redumper-GUI). Both lanes -- COPR and OBS --
-# fetch that one file via raw.githubusercontent, so they build from
-# byte-identical sources.
+# Source0 is a REPACKAGED tarball, not the upstream release archive: upstream's
+# release archive ships a prebuilt binary (glibc 2.39, unusable on EL8/EL9 and
+# jammy), and Rust needs every dependency crate present at build time while no
+# build root -- OBS's or COPR's mock chroot -- has network.
+# scripts/rust-vendor-tarball.sh therefore takes the upstream git tag, keeps
+# upstream's Cargo.lock (committed as of 1.0.2), vendors the crates filtered to
+# x86_64-linux (cargo-vendor-filterer drops the windows-* trees: 546 MB -> 178 MB)
+# and uploads the result as a RELEASE ASSET on the packaging repo. Both lanes --
+# COPR and OBS -- fetch that one file, so they build from byte-identical sources.
+#
+# It used to live on an orphan `vendored` branch of our fork of the tool, served
+# by raw.githubusercontent. That cost a cross-repo write credential, grew the
+# branch by ~15 MB per release forever, and served branch URLs through a
+# ~5 minute CDN cache -- so re-publishing the SAME version with different bytes
+# handed the build farms the old blob under the new name, with no error anywhere.
+# A release asset has an immutable per-tag URL and needs no credential at all.
 #
 # Fetched by the _service (download_files) and committed as a package source,
 # because the OBS build root is hermetic.
-Source0:        https://raw.githubusercontent.com/gmipf/Redumper-GUI/vendored/%{name}-%{version}-vendored.tar.xz
+Source0:        https://github.com/gmipf/packaging-media-preservation/releases/download/%{name}-vendored-%{version}/%{name}-%{version}-vendored.tar.xz
 Source1:        redumper-gui.desktop
 Source2:        redumper-gui.1
 
@@ -65,9 +73,9 @@ Patch0:         0001-default-dump-folder-must-be-writable.patch
 ExclusiveArch:  x86_64 aarch64
 
 # The real MSRV is 1.92, NOT the 1.85 that `edition = "2024"` alone implies:
-# eframe/egui 0.35 pull it up. Measured, not inferred -- and upstream declares no
-# `rust-version` in Cargo.toml, so nothing states this except the build breaking
-# (asked for the declaration in Deterous/Redumper-GUI#2). Both openSUSE targets
+# eframe/egui 0.35 pull it up. Measured, not inferred -- and as of 1.0.2 upstream
+# STATES it, `rust-version = "1.92"` in Cargo.toml, which Deterous/Redumper-GUI#2
+# asked for; before that nothing declared it but the build breaking. Both targets
 # clear it with room to spare: Leap 16.0 and Tumbleweed both carry rustc 1.96.
 BuildRequires:  rust >= 1.92
 BuildRequires:  cargo
@@ -268,6 +276,9 @@ done
 %{_datadir}/icons/hicolor/*/apps/%{name}.png
 
 %changelog
+* Sun Jul 19 2026 gmipf <gmipf64@gmail.com> - 1.0.2-0
+- Update to upstream 1.0.2; Source0 moves to a release asset on the packaging repo.
+
 * Sat Jul 18 2026 gmipf <gmipf64@gmail.com> - 1.0.1-0
 - Add aarch64 (arm64) support: ExclusiveArch is now x86_64 aarch64. This package
   is BUILT FROM SOURCE (Rust, from the vendored crate tarball), so there is no

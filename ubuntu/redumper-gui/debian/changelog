@@ -1,3 +1,9 @@
+redumper-gui (1.0.2-1) UNRELEASED; urgency=medium
+
+  * Update to upstream 1.0.2; Source0 moves to a release asset on the packaging repo.
+
+ -- gmipf <gmipf64@gmail.com>  Sun, 19 Jul 2026 15:45:27 +0000
+
 redumper-gui (1.0.1-4) UNRELEASED; urgency=medium
 
   * Add aarch64 (arm64) support: Architecture is now amd64 arm64. Built from

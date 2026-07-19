@@ -1,3 +1,9 @@
+redumper-rgui (733-1) UNRELEASED; urgency=medium
+
+  * Automated: consumer moved its bundled redumper to b733; the pin follows.
+
+ -- gmipf <gmipf64@gmail.com>  Sun, 19 Jul 2026 15:45:28 +0000
+
 redumper-rgui (729-2) UNRELEASED; urgency=medium
 
   * Add aarch64 (arm64) support: the linux-arm64 upstream binary travels as a

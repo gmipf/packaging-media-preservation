@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Build the vendored source tarball for a Rust tool and (optionally) publish it
-# to an orphan `vendored` branch of the tool's own fork (not a GitHub release).
+# as a release asset on the packaging repo (see the publish block at the bottom
+# for why there, and not on a branch of the tool's fork as it used to be).
 #
 # WHY THIS EXISTS
 # ---------------
@@ -24,14 +25,18 @@
 # compile (measured on redumper-gui 1.0.1: 546 MB -> 178 MB unpacked,
 # 37 MB -> 15 MB compressed).
 #
-# UPSTREAM SHIPS NO Cargo.lock
-# ----------------------------
-# Redumper-GUI does not commit a lockfile, so a plain `cargo build` resolves the
-# dependency tree afresh every time: "builds today" is no guarantee of "builds
-# next month", and two builds of the same tag can differ. We therefore generate
-# a lockfile here and freeze it INSIDE the tarball. The published tarball is the
-# artifact of record: every lane, and every rebuild, uses that exact tree.
-# (Asking upstream to commit a Cargo.lock is part of the packaging PR.)
+# THE LOCKFILE
+# ------------
+# Through 1.0.1 Redumper-GUI committed no lockfile, so a plain `cargo build`
+# re-resolved the dependency tree every time: "builds today" was no guarantee of
+# "builds next month", and two builds of the same tag could differ. We generated
+# one here and froze it inside the tarball.
+#
+# As of 1.0.2 upstream commits a Cargo.lock -- asked for in the packaging PR and
+# granted, along with rust-version and license in Cargo.toml. So we now KEEP
+# upstream's lockfile and only generate one when there is none. Either way the
+# published tarball stays the artifact of record: every lane, and every rebuild,
+# uses that exact tree.
 #
 # Needs network and a Rust toolchain; run it outside the command sandbox.
 #
@@ -112,8 +117,45 @@ if ! grep -q '^rust-version' Cargo.toml; then
     grep -q '^rust-version' Cargo.toml || { echo "rust-version injection failed" >&2; exit 1; }
 fi
 
-echo ":: pinning Cargo.lock (resolved for rustc ${MSRV})"
-cargo generate-lockfile
+# Upstream committed a Cargo.lock as of 1.0.2 -- one of the three things the
+# packaging PR asked for, and granted (the others: rust-version and license in
+# Cargo.toml). That lockfile IS the pin, and it is upstream's, which is strictly
+# better than ours: regenerating it here would throw away the determinism we just
+# gained and re-resolve against whatever cargo happens to be on this machine.
+# So keep it when it exists, and verify it is actually in sync -- `--locked`
+# fails rather than silently updating, which is the whole point.
+# name/version of every locked package, one per line. CR is stripped because
+# upstream's 1.0.2 lockfile is committed with CRLF endings and cargo rewrites it
+# with LF -- compare that raw and EVERY line reads as changed, which is a
+# spectacular way to hide the one line that really moved.
+lockpairs() { tr -d '\r' < Cargo.lock | awk '/^name = /{n=$3} /^version = /{print n, $3}' | sort; }
+
+if [ -f Cargo.lock ]; then
+    # Upstream's lockfile is exactly the pin we want. But the 1.0.2 tag ships one
+    # that still names the package itself as 1.0.1 -- generated before the version
+    # bump and never regenerated. `--locked` therefore refuses outright, while
+    # simply dropping it would let cargo re-resolve all dependencies against
+    # whatever cargo happens to sit on this machine.
+    #
+    # So allow cargo its MINIMAL fixup, then prove that nothing but the root
+    # package's own version moved. A dependency shifting here is a real finding
+    # and must stop the run -- that is the whole value of upstream having a
+    # lockfile at all.
+    echo ":: upstream ships Cargo.lock -- keeping its pins, allowing only a self-version fixup"
+    lockpairs > "${WORK}/lock.before"
+    cargo metadata --format-version 1 >/dev/null
+    lockpairs > "${WORK}/lock.after"
+    MOVED=$(comm -3 "${WORK}/lock.before" "${WORK}/lock.after" | tr -d '\t ' | grep -v "^\"${TOOL}\"" || true)
+    if [ -n "$MOVED" ]; then
+        echo "cargo moved dependency pins, not just ${TOOL}'s own version:" >&2
+        comm -3 "${WORK}/lock.before" "${WORK}/lock.after" >&2
+        exit 1
+    fi
+    echo ":: verified -- only ${TOOL}'s own version entry changed, every dependency pin held"
+else
+    echo ":: no upstream Cargo.lock -- generating one (resolved for rustc ${MSRV})"
+    cargo generate-lockfile
+fi
 
 echo ":: vendoring crates (filtered to x86_64-unknown-linux-gnu)"
 cargo vendor-filterer --platform=x86_64-unknown-linux-gnu vendor >/dev/null
@@ -155,34 +197,41 @@ cat <<EOF
 EOF
 
 if [ "$PUBLISH" = "--publish" ]; then
-    # Host the tarball on an orphan `vendored` branch of OUR fork of the tool,
-    # not as a GitHub release: a Releases list reads like a binary download, and
-    # the vendored crates are conceptually the tool's own dependency tree. Both
-    # lanes fetch it via raw.githubusercontent (see the spec's Source0).
-    VENDOR_REPO="gmipf/$(basename "$UPSTREAM_REPO")"
-    VENDOR_BRANCH="vendored"
-    RAW="https://raw.githubusercontent.com/${VENDOR_REPO}/${VENDOR_BRANCH}/${TARBALL}"
-    echo ":: publishing ${TARBALL} to ${VENDOR_BRANCH} branch of ${VENDOR_REPO}"
-    PUB=$(mktemp -d)
-    if ! git clone --quiet --depth 1 --branch "$VENDOR_BRANCH" --single-branch \
-            "https://github.com/${VENDOR_REPO}.git" "$PUB" 2>/dev/null; then
-        # branch does not exist yet -> start it as an orphan
-        git clone --quiet --depth 1 "https://github.com/${VENDOR_REPO}.git" "$PUB"
-        git -C "$PUB" switch --quiet --orphan "$VENDOR_BRANCH"
-        git -C "$PUB" rm -rfq . 2>/dev/null || true
-    fi
-    cp "$TARBALL" "$PUB/"
-    git -C "$PUB" add "$TARBALL"
-    if git -C "$PUB" diff --cached --quiet; then
-        echo ":: identical bytes already on the branch -- nothing to push"
+    # Host the tarball as a RELEASE ASSET on the packaging repo itself.
+    #
+    # It used to live on an orphan `vendored` branch of our FORK of the tool. That
+    # cost a cross-repo write credential (the built-in GITHUB_TOKEN reaches only
+    # the repo its workflow runs in) and carried two quiet defects:
+    #
+    #   * raw.githubusercontent serves branch URLs through a ~5 minute CDN cache.
+    #     Re-publishing the SAME version with different bytes therefore hands the
+    #     build farms the OLD blob under the new file -- a silently wrong build,
+    #     not an error. Exactly what a re-vendor of an already-shipped version does.
+    #   * the branch grew ~15 MB per release forever; xz does not delta-compress.
+    #
+    # Release assets fix all three: the built-in token writes them in its own repo
+    # (nothing to install, nothing to rotate, nothing that can expire), GitHub
+    # documents no bandwidth limit on them, and they live OUTSIDE git, so this repo
+    # stays a recipe and never becomes the payload.
+    #
+    # Safe here specifically, and this was measured rather than assumed: no
+    # workflow in this repo triggers on `release`, and obs-trigger.yml's `push` is
+    # scoped to branches:[main] -- a tag is not a branch. The 2026-07-13 incident,
+    # where one tag made every package lacking get-current-version build as the
+    # TAG's version, is closed: all eight pin their version from the spec now.
+    # The lesson recorded then as "no GitHub releases" was broader than its
+    # evidence; the real rule is "no untracked version inference".
+    RELTAG="${TOOL}-vendored-${VERSION}"
+    RAW="https://github.com/${PKG_REPO}/releases/download/${RELTAG}/${TARBALL}"
+    echo ":: publishing ${TARBALL} as a release asset on ${PKG_REPO} (tag ${RELTAG})"
+    if gh release view "$RELTAG" --repo "$PKG_REPO" >/dev/null 2>&1; then
+        gh release upload "$RELTAG" "$TARBALL" --repo "$PKG_REPO" --clobber
     else
-        git -C "$PUB" -c user.name=gmipf -c user.email=gmipf64@gmail.com \
-            commit --quiet -m "vendored: ${TOOL} ${VERSION} crate tarball"
-        git -C "$PUB" push --quiet origin "$VENDOR_BRANCH"
-        echo ":: pushed"
+        gh release create "$RELTAG" "$TARBALL" --repo "$PKG_REPO" \
+            --title "${TOOL} ${VERSION} — vendored crates" \
+            --notes "Build input, not a download for users. Upstream ${UPSTREAM_REPO} at ${TAG} plus its vendored Cargo dependencies, so COPR and OBS can build offline from byte-identical sources. Consumed by Source0 in fedora/${TOOL}/ and opensuse/${TOOL}/. Rebuild and compare with: scripts/rust-vendor-tarball.sh ${TOOL} ${VERSION}"
     fi
-    rm -rf "$PUB"
     echo ":: Source0 -> ${RAW}"
 else
-    echo "not published (pass --publish to push it to the vendored branch)"
+    echo "not published (pass --publish to upload it as a release asset)"
 fi
