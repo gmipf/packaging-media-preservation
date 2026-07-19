@@ -334,20 +334,54 @@ for d in "$REPO"/fedora/*/; do
     fi
 done
 
+# A DECLARED exception is not a violation -- but it must stay visible, or it is just
+# a silent handoff with better manners. A workflow declares one with a line
+#
+#   # full-automation-exception: <pkg> — <reason>
+#
+# and this prints it every run, in its own colour, with the reason. Delete the line
+# and the handoff below it counts as a violation again.
+#
+# This is not a loophole in the same sense the comment-stripping in part A closes.
+# There, the danger was prose PRETENDING to be an implementation. Here the exception
+# IS a documentation decision -- the check exists to stop handoffs nobody NOTICED,
+# and a declared one has been noticed. What it must not do is let the declaration
+# fade: hence printed, not merely subtracted.
+EXC=$(grep -h '# full-automation-exception:' "$REPO"/.github/workflows/watch-*.yml 2>/dev/null \
+      | sed 's/.*full-automation-exception:[[:space:]]*//')
+if [ -n "$EXC" ]; then
+    while IFS= read -r e; do
+        [ -n "$e" ] || continue
+        printf '  \033[33mAUSNAHME\033[0m %s\n' "$e"
+    done <<<"$EXC"
+fi
+
 for w in "$REPO"/.github/workflows/watch-*.yml; do
     [ -f "$w" ] || continue
+    # Does THIS workflow declare an exception? Then its handoffs are accounted for.
+    # No `|| echo 0` here: `grep -c` already PRINTS 0 when it matches nothing, and
+    # exits 1 while doing it -- so the fallback fires too and the variable becomes
+    # the two-line string "0\n0", which `[ -gt ]` then rejects with "integer
+    # expected". Measured, not guessed: the first version of this line did exactly
+    # that, and bash said so on stderr while the check still produced right answers.
+    declared=$(grep -c '# full-automation-exception:' "$w" 2>/dev/null) || true
     while IFS= read -r hit; do
         [ -n "$hit" ] || continue
-        printf '  \033[31mFEHLER\033[0m %-18s %s:%s uebergibt an einen MENSCHEN\n' \
-            "-" "$(basename "$w")" "${hit%%:*}"
-        TRACK_BAD=$((TRACK_BAD + 1))
+        if [ "$declared" -gt 0 ]; then
+            printf '  \033[33m--\033[0m       %-18s %s:%s — Uebergabe, aber DEKLARIERT\n' \
+                "-" "$(basename "$w")" "${hit%%:*}"
+        else
+            printf '  \033[31mFEHLER\033[0m %-18s %s:%s uebergibt an einen MENSCHEN\n' \
+                "-" "$(basename "$w")" "${hit%%:*}"
+            TRACK_BAD=$((TRACK_BAD + 1))
+        fi
     done <<<"$(grep -nE '::error::' "$w" \
-                | grep -iE 'by hand|manual|von Hand|review required|bump it|by a human' \
+                | grep -iE 'by hand|manual|von Hand|review required|bump it|by a human|decided to measure|deliberately NOT auto' \
                 | cut -d: -f1)"
 done
 
 if [ "$TRACK_BAD" = 0 ]; then
-    echo "  alle Pakete werden maschinell verfolgt, keine Uebergabe an Menschen"
+    echo "  alle Pakete maschinell verfolgt; keine UNDEKLARIERTE Uebergabe an Menschen"
 else
     echo "  -> ${TRACK_BAD} Verstoss(e) gegen die Vollautomatik-Regel"
 fi

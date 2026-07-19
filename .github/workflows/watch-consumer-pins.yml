@@ -27,6 +27,14 @@ name: watch-consumer-pins
 #                    warns about -- and on 2026-07-19 that landmine went off, in
 #                    .packit.yaml, for this very pin.
 
+# full-automation-exception: aaru5 — a bump voids its blocked vendor-cap proof and demands a fresh drive measurement (user, 2026-07-19)
+#
+# The line above is what status.sh prints, so it has to stand on its own -- only the
+# first line carries the marker. Declared in a form the check reads, so the rule
+# reports this as an ACKNOWLEDGED exception instead of either crying wolf forever or
+# quietly ignoring it. Delete that line and the handoff below counts as a violation
+# again, which is the point: the exception has to be re-stated to keep existing.
+
 on:
   schedule:
     - cron: '47 * * * *'
@@ -72,15 +80,34 @@ jobs:
           # well. Measured on 2026-07-19: the first version of this loop did exactly
           # that, and the check caught it. Do not "simplify" these back into the
           # variable -- it would silently blind the control that enforces the rule.
-          for entry in "redumper-mpf rdbuild $MPF_RD fedora/redumper-mpf/redumper-mpf.spec" \
-                       "aaru5 aaruver $MPF_AA fedora/aaru5/aaru5.spec"; do
+          # Field 5 is the POLICY: auto = bump it, guard = report and stop.
+          #
+          # aaru5 is `guard`, and it is the ONE deliberate exception to the
+          # full-automation rule (decided 2026-07-19, by the user, after the
+          # machinery to auto-bump it was already built and pushed in 8abf5a4).
+          # The reason is not "it is hard" -- bump-pin.sh handles it fine and the
+          # local 5.4.2 -> 5.5.0 run proved that. The reason is its BLOCKED proof
+          # state: aaru5's three vendor-cap ledger rows are pinned to 5.4.2
+          # because aaru5 5.4.2 crashes before any optical read (see
+          # proofs/aaru5-vendor-cap-BLOCKED-x86_64.md). A version bump voids that
+          # blockade and demands a fresh hardware measurement on a real drive.
+          # Silently triggering that with a cron job is not automation, it is a
+          # surprise. So the drift is reported and a human decides when to
+          # measure -- and status.sh carries this exception EXPLICITLY rather
+          # than counting it as a violation, so the rule check stays meaningful.
+          for entry in "redumper-mpf rdbuild $MPF_RD fedora/redumper-mpf/redumper-mpf.spec auto" \
+                       "aaru5 aaruver $MPF_AA fedora/aaru5/aaru5.spec guard"; do
             set -- $entry
-            name=$1 macro=$2 want=$3 spec=$4
+            name=$1 macro=$2 want=$3 spec=$4 policy=$5
             have=$(grep -oP "^%global[[:space:]]+${macro}[[:space:]]+\K\S+" "$spec")
             [ -n "$have" ] || { echo "::error::$spec has no '%global $macro' line"; exit 1; }
             if [ "$have" = "$want" ]; then
               echo "$name already at $want"
               continue
+            fi
+            if [ "$policy" = guard ]; then
+              echo "::error::MPF now bundles $name $want but we ship $have. This pin is deliberately NOT auto-bumped: its vendor-cap proof is blocked:$have, and moving the version voids that blockade and requires a fresh drive measurement. When you have decided to measure: scripts/bump-pin.sh $name $want, then re-run the proof and update scripts/proof-ledger.tsv."
+              exit 1
             fi
             echo "MPF moved its bundled $name: $have -> $want"
             bash scripts/bump-pin.sh "$name" "$want"
