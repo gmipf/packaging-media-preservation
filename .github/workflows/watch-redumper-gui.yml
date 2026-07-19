@@ -266,7 +266,14 @@ jobs:
             git reset -q --hard HEAD~1
           }
           trigger redumper-gui
-          [ "${PIN_MOVED:-}" = true ] && trigger redumper-rgui
+          # `if`, not `[ ... ] && trigger`. Measured: under `set -e` that AND-list
+          # does NOT abort the script when the test is false -- but only because a
+          # command follows it. As the LAST line of the step it would exit 1 and
+          # paint a perfectly good run red, in the common case where the pin did
+          # not move. An `if` does not depend on what happens to come after it.
+          if [ "${PIN_MOVED:-}" = true ]; then
+            trigger redumper-rgui
+          fi
           echo "done"
 
   # Ask OBS to re-pull the recipe from main and rebuild. OBS fetches the recipe
