@@ -233,6 +233,75 @@ done
 # That killed all four watchers for five hours on 2026-07-14, and a red run only
 # tells you AFTER an upstream release you then failed to ship. Grep for the shape
 # instead: it is never intentional.
+# --- silent failure #6: a package nobody tracks -------------------------------
+# HARD RULE (2026-07-19): no package here may be human-supervised. Upstream
+# tracking AND building must be automatic, without exception. A loud-fail guard
+# that pings a human is a STEPPING STONE, not a finished state.
+#
+# The rule exists because of redumper-gui. It was the only one of the eight with
+# no watcher at all -- and that was *documented*, in watch-consumer-pins.yml:
+# "redumper-gui is not hourly-tracked; ... bump redumper-rgui in the SAME change".
+# The coupling was described correctly and was still useless, because it assumed
+# a human would notice a release. Nobody did: upstream v1.0.2 sat there for two
+# days while we shipped 1.0.1, and the coupled pin (b729 vs the bundled b733)
+# went stale with it. Nothing turned red. It was SILENCE -- and a package that
+# quietly falls two versions behind looks green in every overview there is.
+#
+# So this check derives the package list from the FILESYSTEM, never from a list
+# someone maintains here, and asks two questions:
+#
+#   A. COVERAGE  -- does some watcher actually reference this package?
+#      Comments are STRIPPED before matching, deliberately. That is the whole
+#      point: redumper-rgui *is* named in watch-consumer-pins.yml, but only in
+#      prose. Documented is not implemented, and this check must not confuse the
+#      two -- confusing them is precisely what cost us those two days.
+#
+#   B. HANDOFF   -- does a watcher deliberately stop and ask a human to act?
+#      Only "the automation chose to stop" counts. "could not push after 3
+#      attempts" is the tool being broken, which SHOULD be loud and is not a
+#      rule violation.
+#
+# Honest limit: B matches on wording, so a novel phrasing ("please fix this
+# yourself") would slip past. A is mechanical and cannot. If you add a watcher,
+# A is the one that guarantees you get caught; keep B's vocabulary in mind when
+# writing a new guard.
+hr "Auto-Tracking — kein Paket darf menschenueberwacht sein"
+TRACK_BAD=0
+for d in "$REPO"/fedora/*/; do
+    pkg=$(basename "$d")
+    [ -f "$d/$pkg.spec" ] || continue
+    seen=""
+    for w in "$REPO"/.github/workflows/watch-*.yml; do
+        [ -f "$w" ] || continue
+        sed 's/#.*//' "$w" | grep -qE "fedora/$pkg/|(^|[^-])$pkg\.spec" \
+            && seen="$seen $(basename "$w" .yml)"
+    done
+    if [ -n "$seen" ]; then
+        printf '  \033[32mok\033[0m    %-18s <-%s\n' "$pkg" "$seen"
+    else
+        printf '  \033[31mFEHLER\033[0m %-18s KEIN Watcher nennt dieses Paket (Kommentare zaehlen nicht)\n' "$pkg"
+        TRACK_BAD=$((TRACK_BAD + 1))
+    fi
+done
+
+for w in "$REPO"/.github/workflows/watch-*.yml; do
+    [ -f "$w" ] || continue
+    while IFS= read -r hit; do
+        [ -n "$hit" ] || continue
+        printf '  \033[31mFEHLER\033[0m %-18s %s:%s uebergibt an einen MENSCHEN\n' \
+            "-" "$(basename "$w")" "${hit%%:*}"
+        TRACK_BAD=$((TRACK_BAD + 1))
+    done <<<"$(grep -nE '::error::' "$w" \
+                | grep -iE 'by hand|manual|von Hand|review required|bump it|by a human' \
+                | cut -d: -f1)"
+done
+
+if [ "$TRACK_BAD" = 0 ]; then
+    echo "  alle Pakete werden maschinell verfolgt, keine Uebergabe an Menschen"
+else
+    echo "  -> ${TRACK_BAD} Verstoss(e) gegen die Vollautomatik-Regel"
+fi
+
 hr "Workflow-Shell — abgebrochene Zeilenfortsetzungen"
 CONT=$(for f in "$REPO"/.github/workflows/*.yml "$REPO"/scripts/*.sh "$REPO"/scripts/obs/*.sh; do
     [ -f "$f" ] || continue
