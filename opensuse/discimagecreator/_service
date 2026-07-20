@@ -19,18 +19,6 @@
        all five packages and rebuild them for nothing. download_url writes only the
        files themselves: an unchanged recipe keeps verifymd5 stable -> no rebuild. -->
   <service name="download_url">
-    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/discimagecreator/70-discimagecreator-floppy.rules</param>
-    <param name="filename">70-discimagecreator-floppy.rules</param>
-  </service>
-  <service name="download_url">
-    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/discimagecreator/discimagecreator-rpmlintrc</param>
-    <param name="filename">discimagecreator-rpmlintrc</param>
-  </service>
-  <service name="download_url">
-    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/discimagecreator/discimagecreator.1</param>
-    <param name="filename">discimagecreator.1</param>
-  </service>
-  <service name="download_url">
     <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/discimagecreator/discimagecreator.spec</param>
     <param name="filename">discimagecreator.spec</param>
   </service>

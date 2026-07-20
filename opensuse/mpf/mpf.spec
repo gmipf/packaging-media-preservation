@@ -32,18 +32,24 @@ Source15:       %{url}/releases/download/%{rolltag}/MPF.Check_net10.0_linux-arm6
 Source16:       %{url}/releases/download/%{rolltag}/MPF.CLI_net10.0_linux-arm64_release.zip
 Source17:       %{url}/releases/download/%{rolltag}/MPF.Avalonia_net10.0_linux-arm64_release.zip
 
-Source3:        mpf-gui.desktop
-Source4:        mpf-check.1
-Source5:        mpf-cli.1
-Source6:        mpf-gui.1
-
+# The recipe files below carry a URL for the same reason the upstream sources do:
+# download_files fetches whatever a Source: names, and that is what keeps them OUT
+# of _service. _service lives in OBS and only an `osc commit` can change it, so
+# every file listed there would make it a function of our file list. See
+# opensuse/redumper-mpf/redumper-mpf.spec for the measurement behind this.
+Source3:        https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/mpf/mpf-gui.desktop
+Source4:        https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/mpf/mpf-check.1
+Source5:        https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/mpf/mpf-cli.1
+Source6:        https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/mpf/mpf-gui.1
 # ONE icon master. The smaller hicolor sizes are rendered from it at build time
 # (see %%install) instead of being committed here as pre-rendered copies: five
 # files that have to be kept in lockstep are five chances to update four of them.
 # Checked before dropping the others: mpf-32/64/128/256.png were plain downscales
 # of this 512 (RMSE < 0.02 against a fresh Lanczos resample), not hand-tuned
 # artwork -- so nothing is lost, and 16/22/24/48 are gained.
-Source14:       mpf-512.png
+Source14:       https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/mpf/mpf-512.png
+
+Source99:       https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/mpf/mpf-rpmlintrc
 
 ExclusiveArch:  x86_64 aarch64
 BuildRequires:  unzip

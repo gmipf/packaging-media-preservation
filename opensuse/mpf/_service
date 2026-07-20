@@ -23,30 +23,6 @@
        which also gains the 16/22/24/48 sizes a panel actually asks for. Fetching
        files that no longer exist in the repo would 404 and fail the service. -->
   <service name="download_url">
-    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/mpf/mpf-512.png</param>
-    <param name="filename">mpf-512.png</param>
-  </service>
-  <service name="download_url">
-    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/mpf/mpf-check.1</param>
-    <param name="filename">mpf-check.1</param>
-  </service>
-  <service name="download_url">
-    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/mpf/mpf-cli.1</param>
-    <param name="filename">mpf-cli.1</param>
-  </service>
-  <service name="download_url">
-    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/mpf/mpf-gui.1</param>
-    <param name="filename">mpf-gui.1</param>
-  </service>
-  <service name="download_url">
-    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/mpf/mpf-gui.desktop</param>
-    <param name="filename">mpf-gui.desktop</param>
-  </service>
-  <service name="download_url">
-    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/mpf/mpf-rpmlintrc</param>
-    <param name="filename">mpf-rpmlintrc</param>
-  </service>
-  <service name="download_url">
     <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/mpf/mpf.spec</param>
     <param name="filename">mpf.spec</param>
   </service>

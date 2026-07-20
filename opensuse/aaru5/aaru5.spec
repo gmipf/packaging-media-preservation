@@ -41,14 +41,21 @@ Source4:        %{url}/releases/download/%{aarutag}/aaru-%{aaruver}_linux_arm64.
 # silently, a generated one cannot. Aaru 5's CLI is a different generation from
 # v6 (System.CommandLine vs Spectre.Console.Cli), so it needs its own parser --
 # hence a separate script rather than reuse (see fedora/aaru5 for the details).
-Source1:        aaru5.1.in
-Source3:        aaru5-manpage.sh
+# The recipe files below carry a URL for the same reason the upstream sources do:
+# download_files fetches whatever a Source: names, and that is what keeps them OUT
+# of _service. _service lives in OBS and only an `osc commit` can change it, so
+# every file listed there would make it a function of our file list. See
+# opensuse/redumper-mpf/redumper-mpf.spec for the measurement behind this.
+Source1:        https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/aaru5/aaru5.1.in
+Source3:        https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/aaru5/aaru5-manpage.sh
 # udev rule tagging USB and legacy floppy block devices with "uaccess", so
 # systemd-logind puts an ACL on the node for whoever is logged in at the local
 # desktop seat and `aaru5 media dump` can read floppies with no group and no
 # root. Package-unique filename so it never collides with the same rule shipped
 # by `aaru` (v6) or `discimagecreator`, keeping all three co-installable.
-Source2:        70-aaru5-floppy.rules
+Source2:        https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/aaru5/70-aaru5-floppy.rules
+
+Source99:       https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/aaru5/aaru5-rpmlintrc
 
 ExclusiveArch:  x86_64 aarch64
 BuildRequires:  tar

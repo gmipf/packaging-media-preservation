@@ -19,22 +19,6 @@
        all five packages and rebuild them for nothing. download_url writes only the
        files themselves: an unchanged recipe keeps verifymd5 stable -> no rebuild. -->
   <service name="download_url">
-    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/aaru/70-aaru-floppy.rules</param>
-    <param name="filename">70-aaru-floppy.rules</param>
-  </service>
-  <service name="download_url">
-    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/aaru/aaru-manpage.sh</param>
-    <param name="filename">aaru-manpage.sh</param>
-  </service>
-  <service name="download_url">
-    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/aaru/aaru-rpmlintrc</param>
-    <param name="filename">aaru-rpmlintrc</param>
-  </service>
-  <service name="download_url">
-    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/aaru/aaru.1.in</param>
-    <param name="filename">aaru.1.in</param>
-  </service>
-  <service name="download_url">
     <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/aaru/aaru.spec</param>
     <param name="filename">aaru.spec</param>
   </service>

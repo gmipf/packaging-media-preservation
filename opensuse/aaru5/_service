@@ -18,14 +18,6 @@
        the git commit, so every unrelated push to main would change the sources of
        all five packages and rebuild them for nothing. download_url writes only the
        files themselves: an unchanged recipe keeps verifymd5 stable -> no rebuild. -->
-  <service name="download_url">
-    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/aaru5/70-aaru5-floppy.rules</param>
-    <param name="filename">70-aaru5-floppy.rules</param>
-  </service>
-  <service name="download_url">
-    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/aaru5/aaru5-rpmlintrc</param>
-    <param name="filename">aaru5-rpmlintrc</param>
-  </service>
   <!-- The manpage is GENERATED at build time now: aaru5-manpage.sh walks the help
        tree the shipped binary prints (33 sub-commands) and fills aaru5.1.in. The
        old hand-written aaru5.1 is gone, so fetching it would 404 and fail the
@@ -37,14 +29,6 @@
 
        (Careful: an XML comment may not contain two consecutive dashes. Writing
        the long-form help flag here made OBS reject the file outright.) -->
-  <service name="download_url">
-    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/aaru5/aaru5.1.in</param>
-    <param name="filename">aaru5.1.in</param>
-  </service>
-  <service name="download_url">
-    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/aaru5/aaru5-manpage.sh</param>
-    <param name="filename">aaru5-manpage.sh</param>
-  </service>
   <service name="download_url">
     <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/aaru5/aaru5.spec</param>
     <param name="filename">aaru5.spec</param>

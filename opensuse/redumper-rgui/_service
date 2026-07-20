@@ -18,10 +18,6 @@
        pinned in the name. The service exists so the RECIPE can be corrected from
        git, not so the binary can advance. -->
   <service name="download_url">
-    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/redumper-rgui/redumper-rgui-rpmlintrc</param>
-    <param name="filename">redumper-rgui-rpmlintrc</param>
-  </service>
-  <service name="download_url">
     <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/redumper-rgui/redumper-rgui.spec</param>
     <param name="filename">redumper-rgui.spec</param>
   </service>

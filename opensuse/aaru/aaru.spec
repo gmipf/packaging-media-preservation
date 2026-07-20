@@ -41,14 +41,21 @@ Source5:        %{url}/releases/download/%{aarutag}/aaru-%{aaruver}-%{aaruprerel
 Source1:        %{url}/releases/download/%{aarutag}/aaru-src-%{aaruver}-%{aaruprerel}.tar.xz
 # Curated manpage template (.TH/NAME/.../FILES/SEE ALSO) with a marker
 # where the build-time generator splices in the live --help reference.
-Source2:        aaru.1.in
-Source3:        aaru-manpage.sh
+# The recipe files below carry a URL for the same reason the upstream sources do:
+# download_files fetches whatever a Source: names, and that is what keeps them OUT
+# of _service. _service lives in OBS and only an `osc commit` can change it, so
+# every file listed there would make it a function of our file list. See
+# opensuse/redumper-mpf/redumper-mpf.spec for the measurement behind this.
+Source2:        https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/aaru/aaru.1.in
+Source3:        https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/aaru/aaru-manpage.sh
 # udev rule tagging USB and legacy floppy block devices with "uaccess", so
 # systemd-logind puts an ACL on the node for whoever is logged in at the local
 # desktop seat and `aaru media dump` can read floppies with no group and no
 # root. Package-unique filename so it never collides with the same rule shipped
 # by `aaru5` (stable) or `discimagecreator`, keeping all three co-installable.
-Source4:        70-aaru-floppy.rules
+Source4:        https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/aaru/70-aaru-floppy.rules
+
+Source99:       https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/aaru/aaru-rpmlintrc
 
 ExclusiveArch:  x86_64 aarch64
 BuildRequires:  tar

@@ -19,14 +19,6 @@
        all five packages and rebuild them for nothing. download_url writes only the
        files themselves: an unchanged recipe keeps verifymd5 stable -> no rebuild. -->
   <service name="download_url">
-    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/redumper/redumper-rpmlintrc</param>
-    <param name="filename">redumper-rpmlintrc</param>
-  </service>
-  <service name="download_url">
-    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/redumper/redumper.1</param>
-    <param name="filename">redumper.1</param>
-  </service>
-  <service name="download_url">
     <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/redumper/redumper.spec</param>
     <param name="filename">redumper.spec</param>
   </service>

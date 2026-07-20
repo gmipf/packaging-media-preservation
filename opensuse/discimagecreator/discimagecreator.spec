@@ -38,14 +38,22 @@ Source0:        %{url}/archive/%{diccommit}.tar.gz#/DiscImageCreator-%{diccommit
 Source1:        https://github.com/saramibreak/EccEdc/archive/refs/tags/%{eccedcver}.tar.gz#/EccEdc-%{eccedcver}.tar.gz
 Source2:        https://github.com/saramibreak/DVDAuth/archive/refs/tags/v%{dvdauthver}.tar.gz#/DVDAuth-%{dvdauthver}.tar.gz
 Source3:        https://github.com/saramibreak/unscrambler/archive/refs/tags/%{unscramblver}.tar.gz#/unscrambler-%{unscramblver}.tar.gz
-Source4:        discimagecreator.1
+# The recipe files below carry a URL for the same reason the upstream sources do:
+# download_files fetches whatever a Source: names, and that is what keeps them OUT
+# of _service. _service lives in OBS and only an `osc commit` can change it, so
+# every file listed there would make it a function of our file list. See
+# opensuse/redumper-mpf/redumper-mpf.spec for the measurement behind this.
+Source4:        https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/discimagecreator/discimagecreator.1
 # udev rule tagging USB and legacy floppy block devices with "uaccess", so
 # systemd-logind puts an ACL on the node for whoever is logged in at the local
 # desktop seat and DIC's `fd` (floppy dump) command can read floppies with no
 # group and no root. Package-unique filename so it never collides with the same
 # rule shipped by `aaru` (v6) or `aaru5` (stable), keeping all three
 # co-installable.
-Source5:        70-discimagecreator-floppy.rules
+Source5:        https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/discimagecreator/70-discimagecreator-floppy.rules
+
+Source99:       https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/discimagecreator/discimagecreator-rpmlintrc
+
 ExclusiveArch:  x86_64 aarch64
 
 BuildRequires:  gcc-c++

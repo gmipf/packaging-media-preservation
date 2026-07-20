@@ -57,6 +57,13 @@ Source4:        %{url}/releases/download/b%{rdbuild}/redumper-b%{rdbuild}-linux-
 Source1:        https://raw.githubusercontent.com/superg/redumper/b%{rdbuild}/LICENSE
 Source2:        https://raw.githubusercontent.com/superg/redumper/b%{rdbuild}/README.md
 
+# The recipe files below carry a URL for the same reason the upstream sources do:
+# download_files fetches whatever a Source: names, and that is what keeps them OUT
+# of _service. _service lives in OBS and only an `osc commit` can change it, so
+# every file listed there would make it a function of our file list. See
+# opensuse/redumper-mpf/redumper-mpf.spec for the measurement behind this.
+Source99:       https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/redumper-rgui/redumper-rgui-rpmlintrc
+
 ExclusiveArch:  x86_64 aarch64
 BuildRequires:  unzip
 

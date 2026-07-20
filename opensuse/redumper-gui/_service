@@ -24,14 +24,6 @@
     <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/redumper-gui/redumper-gui.spec</param>
     <param name="filename">redumper-gui.spec</param>
   </service>
-  <service name="download_url">
-    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/redumper-gui/redumper-gui.1</param>
-    <param name="filename">redumper-gui.1</param>
-  </service>
-  <service name="download_url">
-    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/redumper-gui/redumper-gui.desktop</param>
-    <param name="filename">redumper-gui.desktop</param>
-  </service>
   <!-- upstream asset (the vendored crate tarball), taken from the Source: URL of
        the spec above -->
   <service name="download_files"/>

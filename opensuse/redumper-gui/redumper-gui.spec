@@ -51,9 +51,13 @@ URL:            https://github.com/Deterous/Redumper-GUI
 # Fetched by the _service (download_files) and committed as a package source,
 # because the OBS build root is hermetic.
 Source0:        https://github.com/gmipf/packaging-media-preservation/releases/download/%{name}-vendored-%{version}/%{name}-%{version}-vendored.tar.xz
-Source1:        redumper-gui.desktop
-Source2:        redumper-gui.1
-
+# The recipe files below carry a URL for the same reason the upstream sources do:
+# download_files fetches whatever a Source: names, and that is what keeps them OUT
+# of _service. _service lives in OBS and only an `osc commit` can change it, so
+# every file listed there would make it a function of our file list. See
+# opensuse/redumper-mpf/redumper-mpf.spec for the measurement behind this.
+Source1:        https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/redumper-gui/redumper-gui.desktop
+Source2:        https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/redumper-gui/redumper-gui.1
 # Upstream puts the default dump folder next to the executable, which is right
 # for the portable build it ships and wrong for every packaged one: here the
 # executable sits in %%{guidir}, owned by root, and the user cannot create the

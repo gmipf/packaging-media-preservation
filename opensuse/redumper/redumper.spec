@@ -49,7 +49,14 @@ Source2:        https://raw.githubusercontent.com/superg/redumper/b%{version}/RE
 # reader see their binary is newer. (Generated pages are the opposite case and do
 # stamp -- see aaru, whose page is produced from --help at build time.)
 # Local source, left alone by the service.
-Source3:        redumper.1
+# The recipe files below carry a URL for the same reason the upstream sources do:
+# download_files fetches whatever a Source: names, and that is what keeps them OUT
+# of _service. _service lives in OBS and only an `osc commit` can change it, so
+# every file listed there would make it a function of our file list. See
+# opensuse/redumper-mpf/redumper-mpf.spec for the measurement behind this.
+Source3:        https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/redumper/redumper.1
+
+Source99:       https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/redumper/redumper-rpmlintrc
 
 ExclusiveArch:  x86_64 aarch64
 BuildRequires:  unzip
