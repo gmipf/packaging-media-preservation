@@ -2,8 +2,22 @@
   <!-- OBS pulls EVERYTHING itself; `_service` is the only file committed to OBS.
        Same shape as every other tool in this lane — see opensuse/README.md.
 
-       1. download_url fetches each recipe file (spec, rpmlintrc) straight from
-          `main` of the packaging repo, so git stays the single source of truth.
+       1. download_url fetches the SPEC straight from `main` of the packaging
+          repo, so git stays the single source of truth. Only the spec: it is the
+          one file that cannot fetch itself. Every other recipe file carries a
+          URL in its own Source: line and is pulled by download_files in step 2.
+
+          That split is deliberate. This file lives in OBS and only an
+          `osc commit` can change it. No token can, and nothing automates it.
+          Listing recipe files here would make _service a function of our file
+          list, so adding one would need a hand in OBS; forgetting that hand
+          surfaces as `broken: service error: ERROR 404`, which reads like an OBS
+          outage and is really our own dangling reference. As it stands now,
+          _service depends on the PACKAGE NAME only and never has to change again.
+
+          (No double hyphens anywhere above: XML forbids them inside a comment
+          and OBS rejects the whole file for it. Warned about below, and writing
+          this very paragraph still tripped over it once.)
        2. download_files then reads the *generated* spec and downloads the upstream
           assets named in its Source: URLs (the pinned b729 release zip, LICENSE,
           README). OBS build roots have no network, so they must exist as package
@@ -17,10 +31,6 @@
        Unlike the rolling `redumper`, nothing here ever moves: the build number is
        pinned in the name. The service exists so the RECIPE can be corrected from
        git, not so the binary can advance. -->
-  <service name="download_url">
-    <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/redumper-mpf/redumper-mpf-rpmlintrc</param>
-    <param name="filename">redumper-mpf-rpmlintrc</param>
-  </service>
   <service name="download_url">
     <param name="url">https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/redumper-mpf/redumper-mpf.spec</param>
     <param name="filename">redumper-mpf.spec</param>

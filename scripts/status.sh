@@ -288,6 +288,23 @@ SVC_BAD=0
 SVC_UNKNOWN=0
 for svc in "$REPO"/opensuse/*/_service; do
     tool=$(basename "$(dirname "$svc")")
+
+    # Is it even well-formed XML? Nothing else here would notice, and the way
+    # this file breaks is nasty: XML forbids a DOUBLE HYPHEN inside a comment,
+    # so a perfectly ordinary dash in explanatory prose invalidates the whole
+    # file. OBS then rejects it in full, not just the comment.
+    #
+    # It is a live trap, not a theoretical one: writing the comment that WARNS
+    # about it, on 2026-07-20, I put a double hyphen in the sentence. Nothing in
+    # the repo caught it -- git took it happily -- and it would have surfaced
+    # only at `osc commit`, which for these files happens rarely and by hand.
+    # The countermeasure belongs where the mistake is made, not where it is felt.
+    if ! xmllint --noout "$svc" 2>/dev/null; then
+        printf '  \033[31mFEHLER\033[0m %-18s _service ist kein gueltiges XML (doppelter Bindestrich im Kommentar?)\n' "$tool"
+        SVC_BAD=$((SVC_BAD + 1))
+        continue
+    fi
+
     while read -r u; do
         [ -n "$u" ] || continue
         # Measured 2026-07-20: no route/DNS -> exit 56 and code "000"; a real

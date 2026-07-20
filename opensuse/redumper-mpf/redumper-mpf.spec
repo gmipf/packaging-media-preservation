@@ -60,6 +60,21 @@ Source4:        %{url}/releases/download/b%{rdbuild}/redumper-b%{rdbuild}-linux-
 Source1:        https://raw.githubusercontent.com/superg/redumper/b%{rdbuild}/LICENSE
 Source2:        https://raw.githubusercontent.com/superg/redumper/b%{rdbuild}/README.md
 
+# Our own recipe file, given a URL for the same reason the upstream ones have
+# one: download_files fetches whatever a Source: names, so declaring it here is
+# what keeps it OUT of _service. That matters because _service lives in OBS and
+# only an `osc commit` can change it; no token can. Every recipe file listed
+# there makes _service a function of our file list, so adding or removing one
+# needs a hand in OBS, and forgetting that hand surfaces as
+# `broken: service error: ERROR 404`, which reads like an OBS outage and is our
+# own dangling reference.
+#
+# Measured 2026-07-20 in a throwaway project: download_files follows a URL given
+# in Patch: exactly as in Source:. The _service comment claiming a patch "would
+# never be fetched" holds only for a patch with NO URL, and the rule that every
+# recipe file must be listed in _service had been derived from it.
+Source99:       https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/redumper-mpf/redumper-mpf-rpmlintrc
+
 ExclusiveArch:  x86_64 aarch64
 BuildRequires:  unzip
 
