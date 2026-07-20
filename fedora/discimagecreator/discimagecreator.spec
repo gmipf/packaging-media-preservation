@@ -137,20 +137,27 @@ mv 'Release_ANSI/Doc/Firmware&Tool.md' 'Release_ANSI/Doc/Firmware_and_Tool.md'
 sed -i '1i #include <cstdint>' \
     EccEdc-%{eccedcver}/EccEdc/_external/ecm.cpp
 
-# Upstream gates its pointer-sized integer typedefs (INT_PTR / UINT_PTR /
-# LONG_PTR / ULONG_PTR) on __x86_64__, and the #else branch defines them as
-# plain int/unsigned int. That asks which ISA this is when it means how wide a
-# pointer is, so aarch64 -- equally LP64 -- gets 32-bit types to hold 64-bit
-# pointers and the build dies in defineForLinux.h:
+# FIXED UPSTREAM in #331 (merged 2026-07-20, 0a61a018), so the rewrite that used
+# to live here is gone. Upstream had gated its pointer-sized typedefs (INT_PTR /
+# UINT_PTR / LONG_PTR / ULONG_PTR) on __x86_64__ with the #else branch defining
+# them as plain int -- asking which ISA this is when it means how wide a pointer
+# is. aarch64, equally LP64, got 32-bit types for 64-bit pointers and died with
 #   cast from 'PDISK_PARTITION_INFO' to 'UINT_PTR' {aka 'unsigned int'}
 #   loses precision
-# Widen the gate to cover aarch64. Only these two arches are ever built here
-# (see ExclusiveArch), so this is exact; the fix upstream should take is a
-# pointer-width test (__SIZEOF_POINTER__ == 8) rather than an ISA list.
-# grep-guard first so a future upstream restructure fails loudly.
-grep -q '^#if defined(__x86_64__)$' DiscImageCreator/_linux/defineForLinux.h
-sed -i 's/^#if defined(__x86_64__)$/#if defined(__x86_64__) || defined(__aarch64__)/' \
-    DiscImageCreator/_linux/defineForLinux.h
+# We carried a sed widening the gate to __aarch64__; upstream took the better fix
+# we had suggested in the comment, `#if __SIZEOF_POINTER__ == 8`.
+#
+# The guard below asserts the BROKEN form is absent rather than asserting the
+# fixed one is present. That direction matters: a positive assertion on
+# upstream's current spelling is a second copy of their source and goes red the
+# day they merely reformat it, and a check that cries wolf gets ignored. This one
+# can only fire on a real regression.
+if grep -q '^#if defined(__x86_64__)$' DiscImageCreator/_linux/defineForLinux.h; then
+    echo "ERROR: upstream reverted the LP64 typedef fix (#331); aarch64 would get" >&2
+    echo "       32-bit types for 64-bit pointers. Re-add the sed or pin an older" >&2
+    echo "       commit -- do not ship this." >&2
+    exit 1
+fi
 
 # All three helper makefiles omit -fPIE; Fedora's default ld invokes -pie
 # (PIE hardening), which then rejects non-PIC relocations from the .o

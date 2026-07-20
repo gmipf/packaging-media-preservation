@@ -55,17 +55,17 @@ override_dh_auto_configure:
 	# uses uint32_t without <cstdint>.
 	sed -i '1i #include <cstdint>' \
 	    EccEdc-$(ECCEDCVER)/EccEdc/_external/ecm.cpp
-	# Upstream gates its pointer-sized integer typedefs (INT_PTR / UINT_PTR /
-	# LONG_PTR / ULONG_PTR) on __x86_64__, with the #else branch defining them as
-	# plain int/unsigned int. That asks which ISA this is when it means how wide a
-	# pointer is, so arm64 -- equally LP64 -- gets 32-bit types to hold 64-bit
-	# pointers and the build dies in defineForLinux.h with "cast from
-	# 'PDISK_PARTITION_INFO' to 'UINT_PTR' {aka 'unsigned int'} loses precision".
-	# Widen the gate to cover aarch64 (the fix upstream should take is a
-	# pointer-width test). grep-guard first so an upstream restructure fails loudly.
-	grep -q '^#if defined(__x86_64__)$$' DiscImageCreator/_linux/defineForLinux.h
-	sed -i 's/^#if defined(__x86_64__)$$/#if defined(__x86_64__) || defined(__aarch64__)/' \
-	    DiscImageCreator/_linux/defineForLinux.h
+	# FIXED UPSTREAM in #331 (merged 2026-07-20, 0a61a018): pointer-sized typedefs
+	# are gated on `__SIZEOF_POINTER__ == 8` now, not on __x86_64__, so the sed that
+	# widened the gate to arm64 is gone. It existed because asking which ISA this is,
+	# when the question is how wide a pointer is, gave arm64 32-bit types for 64-bit
+	# pointers ("cast from 'PDISK_PARTITION_INFO' to 'UINT_PTR' loses precision").
+	# The guard asserts the BROKEN form is absent rather than that the fixed one is
+	# present, so a mere upstream reformat cannot make it cry wolf.
+	if grep -q '^#if defined(__x86_64__)$$' DiscImageCreator/_linux/defineForLinux.h; then \
+	    echo "ERROR: upstream reverted the LP64 typedef fix (#331); arm64 would get 32-bit types for 64-bit pointers." >&2; \
+	    exit 1; \
+	fi
 	# Upstream meson.build stages Release_ANSI data into the build tree via
 	# fs.copyfile() (needs meson >= 0.64). jammy ships meson 0.61, which aborts
 	# configure there. The calls are pure build-tree convenience — redundant with
