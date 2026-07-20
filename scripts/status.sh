@@ -145,8 +145,26 @@ else
 fi
 
 hr "Workflow-Laeufe (letzte 40)"
-RUNS=$(gh run list --limit 40 \
-        --json workflowName,conclusion,createdAt,databaseId 2>/dev/null)
+# Same trap as the OBS block below, but pointing the OTHER way, which is why this
+# one is the dangerous one: when `gh` fails, RUNS is empty, every jq filter below
+# yields nothing, RED comes out empty -- and empty RED prints "keine offenen
+# (letzter Lauf jedes Workflows ist gruen)". The check whose whole job is to
+# catch silent failures reports ALL CLEAR when it could not look.
+#
+# Not hypothetical: 2026-07-20 two watchers died on `gh: ... (HTTP 503)`. Had the
+# same outage hit this script while I was investigating them, it would have told
+# me everything was fine. Measured before fixing: jq on empty input exits 0 and
+# prints nothing, so nothing anywhere goes wrong loudly.
+#
+# So verify an ANSWER arrived -- a JSON array -- before believing what it implies.
+# An empty array is a real measurement ("no runs"); no array is no measurement.
+if ! RUNS=$(gh run list --limit 40 \
+            --json workflowName,conclusion,createdAt,databaseId 2>/dev/null) \
+   || ! jq -e 'type == "array"' >/dev/null 2>&1 <<<"$RUNS"; then
+    echo "  gh nicht erreichbar — Workflow-Zustand UNGEPRUEFT (keine Entwarnung)"
+    RUNS=""
+fi
+if [ -n "$RUNS" ]; then
 RED=$(jq -r '[.[] | select(.conclusion == "success" or .conclusion == "failure")]
              | group_by(.workflowName)
              | map(sort_by(.createdAt) | last)
@@ -161,6 +179,7 @@ else
 fi
 if [ "${HEALED:-0}" -gt 0 ]; then
     echo "  (${HEALED} rote Laeufe im Fenster, seither von einem gruenen Lauf abgeloest)"
+fi
 fi
 
 # --- silent failure #4: the Debian lane's generated files drift apart ----------
@@ -253,35 +272,74 @@ done
 #      only `runservice`; the _service itself reaches OBS only through an
 #      `osc commit` that nothing automates. A forgotten one is invisible until
 #      a build breaks for a reason that points at the wrong thing.
+# "I could not measure" is NOT a finding, and reporting it as one is its own bug.
+# Both halves below talk to the network, so both have a third outcome besides
+# ok/broken: no answer at all. They must be told apart, in BOTH directions:
+#
+#   - Calling "unreachable" a FEHLER makes this section permanently red for
+#     anyone without OBS credentials -- and a check that is always red gets
+#     ignored exactly like one that can never be red.
+#   - But counting it as ok is worse: the summary would then print
+#     "OBS-Stand == git" for eight packages nobody actually asked OBS about.
+#     A false green is never revisited. So unmeasured suppresses the all-clear
+#     without claiming a defect.
 hr "OBS _service — Datei-URLs und Stand gegen OBS"
 SVC_BAD=0
+SVC_UNKNOWN=0
 for svc in "$REPO"/opensuse/*/_service; do
     tool=$(basename "$(dirname "$svc")")
     while read -r u; do
         [ -n "$u" ] || continue
+        # Measured 2026-07-20: no route/DNS -> exit 56 and code "000"; a real
+        # missing file -> exit 0 and code "404". So the status line is the
+        # evidence that a question was actually answered, and "000" is not a
+        # status -- it is the absence of one.
         code=$(curl -sI -m 20 -o /dev/null -w '%{http_code}' "$u" 2>/dev/null)
         case "$code" in
             200|302) ;;
-            *) printf '  \033[31mFEHLER\033[0m %-18s HTTP %s  %s\n' "$tool" "${code:-?}" "${u##*/}"
+            000|'') printf '  \033[33mUNKLAR\033[0m %-18s nicht erreichbar (keine Messung)  %s\n' \
+                        "$tool" "${u##*/}"
+                    SVC_UNKNOWN=$((SVC_UNKNOWN + 1)) ;;
+            *) printf '  \033[31mFEHLER\033[0m %-18s HTTP %s  %s\n' "$tool" "$code" "${u##*/}"
                SVC_BAD=$((SVC_BAD + 1)) ;;
         esac
     done <<<"$(sed -n 's|.*<param name="url">\(.*\)</param>.*|\1|p' "$svc")"
 
-    remote=$(osc -A https://api.opensuse.org api \
-             "/source/${OBS_PROJECT}/${tool}/_service" 2>/dev/null)
-    if [ -z "$remote" ]; then
-        printf '  \033[31mFEHLER\033[0m %-18s _service auf OBS nicht lesbar\n' "$tool"
-        SVC_BAD=$((SVC_BAD + 1))
+    # osc's failure does NOT look like "empty" -- which is why the `-z` test that
+    # stood here sailed straight past it. Without readable credentials osc prints
+    # its interactive prompt to STDOUT and exits 1: 29 bytes of
+    # "Username [api.opensuse.org]: " that are non-empty, differ from the file,
+    # and so reported all eight packages as drifted. Measured 2026-07-20 in the
+    # sandbox, where ~/.config/osc/oscrc is unreadable; with credentials the very
+    # same run is green.
+    #
+    # So do not ask "did anything come back" -- ask "did an ANSWER come back":
+    # a non-zero exit, or a body that is not a _service document, means we could
+    # not measure. `< /dev/null` because that prompt is read from stdin: given a
+    # terminal this call HANGS instead of failing, and a check that hangs never
+    # reports anything at all.
+    #
+    # Note the earlier bug fixed here (trailing newline, see printf '%s\n' below)
+    # had the SAME symptom -- all eight red -- and a different cause. The comment
+    # explaining it made this second cause look like something already handled.
+    if ! remote=$(osc -A https://api.opensuse.org api \
+                  "/source/${OBS_PROJECT}/${tool}/_service" 2>/dev/null </dev/null) \
+       || ! printf '%s' "$remote" | grep -q '<services'; then
+        printf '  \033[33mUNKLAR\033[0m %-18s OBS nicht befragbar (keine Messung, kein Befund)\n' "$tool"
+        SVC_UNKNOWN=$((SVC_UNKNOWN + 1))
     # printf '%s\n', not '%s': $(...) strips the trailing newline the file has,
-    # so comparing raw makes EVERY package look drifted. It did -- all eight,
-    # which is what gave the bug away: a check that is always red is exactly as
-    # useless as one that can never be red.
+    # so comparing raw makes EVERY package look drifted.
     elif ! diff -q <(printf '%s\n' "$remote") "$svc" >/dev/null 2>&1; then
         printf '  \033[31mFEHLER\033[0m %-18s _service in OBS != git -- `osc commit` fehlt\n' "$tool"
         SVC_BAD=$((SVC_BAD + 1))
     fi
 done
-[ "$SVC_BAD" = 0 ] && echo "  alle _service-URLs loesen auf, OBS-Stand == git"
+if [ "$SVC_BAD" = 0 ] && [ "$SVC_UNKNOWN" = 0 ]; then
+    echo "  alle _service-URLs loesen auf, OBS-Stand == git"
+elif [ "$SVC_UNKNOWN" -gt 0 ]; then
+    printf '  \033[33m--\033[0m       %s Pruefung(en) nicht durchgefuehrt — kein Befund, aber auch keine Entwarnung\n' \
+        "$SVC_UNKNOWN"
+fi
 
 # --- silent failure #7: a package nobody tracks -------------------------------
 # HARD RULE (2026-07-19): no package here may be human-supervised. Upstream
