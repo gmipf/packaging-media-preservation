@@ -1,4 +1,57 @@
-# aaru5 vendor-cap — BLOCKED on the empirical A/B (not a packaging defect)
+# aaru5 vendor-cap — RETRACTED 2026-07-20: the blockade was MY measurement setup
+
+> 🔴 **THE CENTRAL CLAIM OF THIS FILE IS REFUTED.** It said aaru5 5.4.2 cannot dump
+> optical media on Linux — "a pure aaru5 5.4.2 code bug", "green owed by upstream",
+> "a different disc will NOT help". None of that is true. aaru5 5.4.2 dumps optical
+> media fine. What crashed was the measurement.
+>
+> **Cause** (found by Boot 6.1, 2026-07-20, hardware A/B on the same drive):
+> `Aaru.Progress.ClearCurrentConsoleLine()` builds `new String(' ', Console.WindowWidth - 1)`.
+> With stdout redirected there is no terminal, `WindowWidth` is **0**, so the count is
+> **-1** and .NET throws `ArgumentOutOfRangeException` — at the FIRST progress bar,
+> before the first read. Same disc, same drive, same command, only the terminal
+> differs: redirected → crash after ~1 s; `script -qec "stty rows 50 cols 200; ..."`
+> → **299,620,893 byte dump**.
+>
+> ⚠️ A PTY alone is not enough to counter-measure: without an explicitly set window
+> size `WindowWidth` stays 0 and the crash reproduces, which would have "confirmed"
+> the wrong conclusion a second time.
+>
+> ⭐ **The evidence was in THIS FILE from the start and I read past it.** The stack
+> trace below names `System.String.Ctor(Char c, Int32 count)` with -1 — literally
+> `new String(' ', WindowWidth - 1)`. The section below even records "ReadKey
+> **without a console**" for the GDPR wizard: I noticed the missing terminal,
+> attributed it to the wizard, worked around it, and never connected it to the crash
+> three lines further down. And "crashes AS ROOT with ALL capabilities" should have
+> been the tell — a privilege-independent crash before any I/O is not a drive
+> problem.
+>
+> ⭐ **Three agreeing measurements on three distributions did not make this safer,
+> they made it more convincing.** All three ran the same broken harness. Reproducing
+> a result across platforms tests the platforms, not the harness.
+>
+> **Ledger consequence:** the three `aaru5|*|vendor-cap` rows are back to `not-yet`.
+> `blocked` means "red proven, green blocked BY UPSTREAM at one version" — upstream
+> never blocked anything, so the state was wrong on its own definition. This is
+> deliberately NOT flipped to proven: nobody has yet run the capped/uncapped A/B with
+> a real terminal, and a `blocked` row must never be quietly upgraded to a green one.
+> The difference now is that the obligation is **closeable** — we know how to measure
+> it (TTY with an explicit `stty` size), which is exactly what it was missing.
+
+## What still holds: the RED half
+
+The RED measurement below is **unaffected** by the terminal bug — it is an strace of
+the SG_IO layer, taken before any progress output, and it stands on its own: aaru5
+issues an `ATA PASS-THROUGH(16)` (0x85) that returns **EPERM without the cap**. The
+capability is load-bearing. That was never the disputed part.
+
+## Original text below, kept verbatim as the record of the error
+
+Nothing below this line has been edited. It is preserved because a retraction that
+deletes what it retracts teaches nobody anything — and because the true cause is
+sitting in it, in plain sight, twice.
+
+---
 
 Status (since 2026-07-17): `aaru5|*|vendor-cap` is **`blocked:5.4.2`** in the ledger —
 red proven, green owed by upstream. It passes through without holding the gate shut,

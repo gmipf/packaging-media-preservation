@@ -84,7 +84,7 @@
 #
 tool|lane|arch|property|date|mech_hash|evidence|mech_files
 aaru|fedora|x86_64|vendor-cap|2026-07-15|b999c8ae1138c9f5|log:proofs/aaru-fedora-vendor-cap-x86_64.log|fedora/aaru/aaru.spec
-aaru5|fedora|x86_64|vendor-cap|2026-07-15|e350b8066d99ac41|blocked:5.4.2:proofs/aaru5-vendor-cap-BLOCKED-x86_64.md|fedora/aaru5/aaru5.spec
+aaru5|fedora|x86_64|vendor-cap|-|-|not-yet|fedora/aaru5/aaru5.spec
 discimagecreator|fedora|x86_64|vendor-cap|2026-07-15|b9b33d96bab25e61|log:proofs/discimagecreator-fedora-vendor-cap-x86_64.log|fedora/discimagecreator/discimagecreator.spec
 redumper|fedora|x86_64|vendor-cap|2026-07-15|fb0579d39f362d6f|log:proofs/redumper-fedora-vendor-cap-x86_64.log|fedora/redumper/redumper.spec
 redumper-rgui|fedora|x86_64|vendor-cap|2026-07-17|baea572f33459419|log:proofs/redumper-rgui-fedora-vendor-cap-x86_64.log|fedora/redumper-rgui/redumper-rgui.spec
@@ -96,13 +96,13 @@ redumper|debian|x86_64|vendor-cap|2026-07-15|5111b9c6410cdef5|log:proofs/redumpe
 redumper-rgui|debian|x86_64|vendor-cap|2026-07-17|0e8578b2c1070b04|log:proofs/redumper-rgui-debian-vendor-cap-x86_64.log|ubuntu/redumper-rgui/debian/redumper-rgui.postinst
 redumper-mpf|debian|x86_64|vendor-cap|2026-07-17|f95d1286074e0120|log:proofs/redumper-mpf-debian-vendor-cap-x86_64.log|ubuntu/redumper-mpf/debian/redumper-mpf.postinst
 aaru|debian|x86_64|vendor-cap|2026-07-15|94e4f73523de3c9f|log:proofs/aaru-debian-vendor-cap-x86_64.log|ubuntu/aaru/debian/aaru.postinst
-aaru5|debian|x86_64|vendor-cap|2026-07-15|c21169016f0524f8|blocked:5.4.2:proofs/aaru5-vendor-cap-BLOCKED-x86_64.md|ubuntu/aaru5/debian/aaru5.postinst
+aaru5|debian|x86_64|vendor-cap|-|-|not-yet|ubuntu/aaru5/debian/aaru5.postinst
 discimagecreator|debian|x86_64|vendor-cap|2026-07-15|107cee8d2ac3123a|log:proofs/discimagecreator-debian-vendor-cap-x86_64.log|ubuntu/discimagecreator/debian/discimagecreator.postinst
 aaru|debian|x86_64|node-floppy|2026-07-15|3acd67a788d0e67e|log:proofs/aaru-debian-node-floppy-x86_64.log|ubuntu/aaru/debian/70-aaru-floppy.rules,ubuntu/aaru/debian/aaru.postinst
 aaru5|debian|x86_64|node-floppy|2026-07-15|0f686134f9f0f1df|log:proofs/aaru5-debian-node-floppy-x86_64.log|ubuntu/aaru5/debian/70-aaru5-floppy.rules,ubuntu/aaru5/debian/aaru5.postinst
 discimagecreator|debian|x86_64|node-floppy|2026-07-15|be200a5686a803a5|log:proofs/discimagecreator-debian-node-floppy-x86_64.log|ubuntu/discimagecreator/debian/70-discimagecreator-floppy.rules,ubuntu/discimagecreator/debian/discimagecreator.postinst
 aaru|opensuse|x86_64|vendor-cap|2026-07-15|fb04b2c21b965da6|log:proofs/aaru-opensuse-vendor-cap-x86_64.log|opensuse/aaru/aaru.spec
-aaru5|opensuse|x86_64|vendor-cap|2026-07-15|bebcd1ad78937252|blocked:5.4.2:proofs/aaru5-vendor-cap-BLOCKED-x86_64.md|opensuse/aaru5/aaru5.spec
+aaru5|opensuse|x86_64|vendor-cap|-|-|not-yet|opensuse/aaru5/aaru5.spec
 discimagecreator|opensuse|x86_64|vendor-cap|2026-07-15|beb10c9e033d5af7|log:proofs/discimagecreator-opensuse-vendor-cap-x86_64.log|opensuse/discimagecreator/discimagecreator.spec
 redumper|opensuse|x86_64|vendor-cap|2026-07-15|776b3afa06906366|log:proofs/redumper-opensuse-vendor-cap-x86_64.log|opensuse/redumper/redumper.spec
 redumper-rgui|opensuse|x86_64|vendor-cap|2026-07-17|7df6e2e85b248834|log:proofs/redumper-rgui-opensuse-vendor-cap-x86_64.log|opensuse/redumper-rgui/redumper-rgui.spec

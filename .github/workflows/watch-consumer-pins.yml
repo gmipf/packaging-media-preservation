@@ -86,11 +86,19 @@ jobs:
           # full-automation rule (decided 2026-07-19, by the user, after the
           # machinery to auto-bump it was already built and pushed in 8abf5a4).
           # The reason is not "it is hard" -- bump-pin.sh handles it fine and the
-          # local 5.4.2 -> 5.5.0 run proved that. The reason is its BLOCKED proof
-          # state: aaru5's three vendor-cap ledger rows are pinned to 5.4.2
-          # because aaru5 5.4.2 crashes before any optical read (see
-          # proofs/aaru5-vendor-cap-BLOCKED-x86_64.md). A version bump voids that
-          # blockade and demands a fresh hardware measurement on a real drive.
+          # local 5.4.2 -> 5.5.0 run proved that. The reason is its proof state:
+          # aaru5's three vendor-cap ledger rows carry an OPEN obligation that
+          # only a hardware run can close, and a bump would move the target
+          # underneath it.
+          #
+          # Corrected 2026-07-20: those rows used to say `blocked:5.4.2` on the
+          # grounds that "aaru5 5.4.2 crashes before any optical read". That was
+          # OUR measurement harness, not aaru5 -- stdout was redirected, so
+          # Console.WindowWidth was 0 and Aaru's progress bar threw on
+          # `new String(' ', -1)`. With a real terminal aaru5 dumps fine. The rows
+          # are `not-yet` now (see proofs/aaru5-vendor-cap-RETRACTED-x86_64.md);
+          # the obligation is unchanged in size but is CLOSEABLE by us, where
+          # before we believed it was owed by upstream.
           # Silently triggering that with a cron job is not automation, it is a
           # surprise. So the drift is reported and a human decides when to
           # measure -- and status.sh carries this exception EXPLICITLY rather
