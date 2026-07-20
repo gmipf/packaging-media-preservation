@@ -6,8 +6,8 @@
 # plus short SHA: dicsnap = <YYYYMMDDHHMMSS>.<short-SHA>. watch-dic-releases
 # rewrites dicsnap / diccommit on every new master commit; diccommit is the
 # full SHA used for the source archive.
-%global dicsnap      20260703121302.efa7d482
-%global diccommit    efa7d4826f7e48b50d84cdd2a3d03cfb0321cf6b
+%global dicsnap      20260720163205.0a61a018
+%global diccommit    0a61a0185cdc905b34d7b9aca3220d47cda4426f
 %global eccedcver    20240901
 %global dvdauthver   1.4
 %global unscramblver 0.5.5
@@ -292,6 +292,9 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
 %{_datadir}/permissions/permissions.d/discimagecreator
 
 %changelog
+* Mon Jul 20 2026 gmipf <gmipf64@gmail.com> - 20260720163205.0a61a018-0
+- Automated master-snapshot sync to upstream DiscImageCreator commit 0a61a018 (committed 20260720163205 UTC).
+
 * Sat Jul 18 2026 gmipf <gmipf64@gmail.com> - 20260703121302.efa7d482-0
 - Add aarch64 (arm64) support: ExclusiveArch is now x86_64 aarch64. Unlike the
   repackaged tools this one is BUILT FROM SOURCE, so there is no arch-specific

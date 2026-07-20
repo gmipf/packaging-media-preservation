@@ -12,8 +12,8 @@
 # SIGSEGV fix (#328) -- that the tag lacks. watch-dic-releases.yml rewrites
 # dicsnap / diccommit on every new master commit; diccommit is the full SHA
 # used for the source archive.
-%global dicsnap      20260703121302.efa7d482
-%global diccommit    efa7d4826f7e48b50d84cdd2a3d03cfb0321cf6b
+%global dicsnap      20260720163205.0a61a018
+%global diccommit    0a61a0185cdc905b34d7b9aca3220d47cda4426f
 %global eccedcver    20240901
 %global dvdauthver   1.4
 %global unscramblver 0.5.5
@@ -31,7 +31,7 @@
 
 Name:           discimagecreator
 Version:        %{dicsnap}
-Release:        6%{?dist}
+Release:        1%{?dist}
 Summary:        Low-level disc dumper plus EccEdc / DVDAuth / unscrambler helpers
 License:        Apache-2.0 AND GPL-3.0-or-later AND GPL-2.0-or-later
 URL:            https://github.com/saramibreak/DiscImageCreator
@@ -276,6 +276,10 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
 %{_udevrulesdir}/70-discimagecreator-floppy.rules
 
 %changelog
+* Mon Jul 20 2026 gmipf <gmipf64@gmail.com> - 20260720163205.0a61a018-1
+- Automated master-snapshot sync to upstream DiscImageCreator commit
+  0a61a018 (committed 20260720163205 UTC); Release reset to 1.
+
 * Sat Jul 18 2026 gmipf <gmipf64@gmail.com> - 20260703121302.efa7d482-6
 - Fix the aarch64 build. Upstream gates its pointer-sized integer typedefs
   (INT_PTR / UINT_PTR / LONG_PTR / ULONG_PTR) on __x86_64__ and the #else branch
