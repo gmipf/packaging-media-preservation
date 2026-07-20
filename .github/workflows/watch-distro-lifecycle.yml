@@ -1,0 +1,82 @@
+name: watch-distro-lifecycle
+
+# Does a distribution exist that we do not build for?
+#
+# COPR answers this itself: `fedora-all` and `epel-all` resolve at BUILD time, so
+# Fedora 44 arrived in our repo and Fedora 42 left it without anyone doing
+# anything. OBS has no equivalent -- every target is a hand-written <repository>
+# block in the project meta. Debian 14, Leap 17 or Ubuntu 26.10 would simply
+# never be built for, and nothing would turn red, because nothing asks.
+#
+# full-automation-exception: distro-lifecycle — adding an OBS <repository> block writes the project meta, and no OBS token can do that (runservice/branch/release/rebuild/workflow only); the decision to adopt a new release is also a judgement call (user, 2026-07-20)
+#
+# The line above is what status.sh prints every run, reason included. Deleting it
+# does not make this automatic -- it makes the handoff below count as a violation
+# again, which is the point: the exception has to be re-asserted to exist.
+#
+# WHY FAILING IS THE NOTIFICATION
+#
+# Measured 2026-07-20: a SCHEDULED run on main that exits non-zero produces a
+# GitHub e-mail that reaches the maintainer's inbox. Two independent instances
+# that day -- watch-aaru-releases and watch-redumper-releases, both
+# `event: schedule`, both dead on an HTTP 503 -- and both e-mails arrived. A
+# green run carrying a ::warning:: sends nothing at all.
+#
+# That measurement replaced a planned deliberate-failure test. It is better
+# evidence than the test would have been: real channel, real content, real inbox,
+# and nothing staged. Before it, `viewerSubscription` read `null` via the API and
+# it was genuinely undecidable whether Actions mail was being delivered.
+#
+# So this workflow's ONLY channel is its exit code. Anything it wants a human to
+# know, it must fail to say.
+
+on:
+  schedule:
+    # Weekly. Distributions release a few times a year, so hourly would be noise;
+    # the other watchers here run hourly because upstream tags move that fast.
+    # Minute 43 keeps it off the hour and clear of the six hourly watchers.
+    - cron: '43 7 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lifecycle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Are we building for every current distribution?
+        run: |
+          set -uo pipefail
+
+          # The script does the measuring and owns the verdict. It reads only
+          # anonymous distribution feeds -- deliberately NOT the OBS API, which
+          # returns 401 even for reading a public project, and whose own
+          # /distributions list is incomplete (it omits CentOS:CentOS-10:Stream).
+          # See the header of scripts/check-distro-lifecycle.sh for the full
+          # measurement.
+          # `|| rc=$?` and not a bare call: GitHub runs steps as `bash -e {0}`
+          # (visible in any run log), so a non-zero exit would kill the step right
+          # here and the ::error:: below -- the entire point of the run -- would
+          # never be printed. The failing run would still be red, but silent
+          # about why.
+          rc=0
+          bash scripts/check-distro-lifecycle.sh || rc=$?
+
+          if [ "$rc" -eq 0 ]; then
+            echo "Nothing to do."
+            exit 0
+          fi
+
+          # Wording matters here, not just for humans: status.sh's handoff
+          # detector matches ::error:: lines against this vocabulary, and that is
+          # how this workflow gets paired with its declared exception above. Say
+          # plainly that a person has to act.
+          if [ "$rc" -eq 2 ]; then
+            echo "::error::check-distro-lifecycle.sh could not run at all — manual review required"
+          else
+            echo "::error::a distribution has no <repository> block, or a feed could not be read — manual review required, add the block by hand via osc meta prj"
+          fi
+          exit 1
