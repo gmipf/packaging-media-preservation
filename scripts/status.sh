@@ -598,3 +598,31 @@ if [ "$DOC_MISS" = 0 ]; then
 elif [ "$DOC_MISS" -gt 0 ]; then
     echo "  -> ${DOC_MISS} Paket(e) gebaut und ausgeliefert, aber nirgends beschrieben"
 fi
+
+hr "MSRV — Spec-Boden gegen rust-targets.tsv"
+# Der abgeleitete Boden (Minimum ueber die `ship`-Zeilen) steckt in
+# rust-vendor-tarball.sh UND in watch-redumper-gui.yml -- beide lesen die TSV, also
+# EINE Quelle. Der Spec kann das nicht: rpm liest keine TSV, `BuildRequires: rust >=`
+# muss ein Literal sein. Damit ist es die eine Zahl, die STILL auseinanderlaufen
+# kann, sobald sich eine `ship`-Zeile bewegt.
+#
+# Genau diese Krankheit hat am 2026-07-20 zugeschlagen, nur eine Ebene hoeher:
+# ubuntu/README.md trug "Debian 13 ships 1.85" weiter, lange nachdem die
+# Neumessung (1.94 aus trixie-backports) in der TSV stand. Die Prosa war die
+# Zweitkopie, und nichts verglich sie. Hier wird verglichen.
+MSRV_SPEC=$(command grep -oP '^BuildRequires:\s+rust\s*>=\s*\K[0-9]+\.[0-9]+' \
+            "$REPO/fedora/redumper-gui/redumper-gui.spec" 2>/dev/null || true)
+MSRV_TSV=$(awk -F'\t' '$1 !~ /^#/ && $4 == "ship" { print $3 }' \
+           "$REPO/scripts/rust-targets.tsv" 2>/dev/null | sort -V | head -1)
+if [ -z "$MSRV_SPEC" ] || [ -z "$MSRV_TSV" ]; then
+    printf '  \033[33mUNKLAR\033[0m Boden nicht ablesbar (Spec=%s TSV=%s) — keine Messung, keine Entwarnung\n' \
+        "${MSRV_SPEC:-–}" "${MSRV_TSV:-–}"
+elif [ "$MSRV_SPEC" = "$MSRV_TSV" ]; then
+    printf '  \033[32mok\033[0m    BuildRequires rust >= %s == abgeleiteter Boden\n' "$MSRV_SPEC"
+else
+    printf '  \033[31mFEHLER\033[0m Spec verlangt rust >= %s, abgeleiteter Boden ist %s\n' \
+        "$MSRV_SPEC" "$MSRV_TSV"
+    echo "  -> Eine ship-Zeile hat sich bewegt und der Spec ist nicht mitgezogen."
+    echo "     Der Bau bricht dann NICHT ab: er akzeptiert ein zu altes rustc und"
+    echo "     scheitert erst mitten in cargo, mit einer Meldung ueber ein Crate."
+fi

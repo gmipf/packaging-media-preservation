@@ -83,7 +83,15 @@ ExclusiveArch:  x86_64 aarch64
 # asked for. Before that nothing declared it except the build breaking, and our
 # vendoring script had to inject the floor itself to keep cargo's resolver honest.
 #
-# 1.92 is what rules the target list, and it is tight on EL:
+# 1.92 is what rules the target list, and it is tight on EL. The table below is a
+# READING COPY for whoever has only the SRPM; scripts/rust-targets.tsv in the
+# packaging repo is authoritative and carries the `measured` date per row. When
+# the two disagree, the TSV is right and this comment is stale -- say so out loud,
+# because on 2026-07-20 ubuntu/README.md still claimed "Debian 13 ships 1.85, only
+# 26.04 clears the floor" months after the re-measurement had landed in the TSV.
+# Nothing marked the prose as subordinate, so the superseded number outlived the
+# note that superseded it.
+#
 #   Fedora 43+                      1.96   ok
 #   EL 8 / 9 / 10                   1.92   ok -- EXACTLY the floor, zero headroom
 #   Leap 16.0 / Tumbleweed          1.96   ok
@@ -91,6 +99,10 @@ ExclusiveArch:  x86_64 aarch64
 #   Debian 12                       1.63   OUT (backports carries no rustc at all)
 #   Ubuntu 22.04 / 24.04            1.75   OUT (rustc-1.91 is the newest available)
 #   Ubuntu 26.04                    1.93   ok
+#
+# The version below is NOT a reading copy -- it is load-bearing, and rpm cannot
+# read the TSV. status.sh therefore compares it against the floor derived from the
+# `ship` rows and fails if they drift apart.
 BuildRequires:  rust >= 1.92
 BuildRequires:  cargo
 # zstd-sys compiles the bundled C and x86-64 assembly sources of libzstd.

@@ -127,9 +127,26 @@ outright. That is a property of the container, not a bug in the package — see 
 | `aaru` | binary tarball + source tarball (icons, `.desktop`, MIME xml) | all |
 | `discimagecreator` | DIC + EccEdc + DVDAuth + unscrambler, built from source | all |
 | `mpf` | three release zips (Check, CLI, Avalonia) | all |
-| `redumper-gui` | vendored source tarball (crates travel with the source: no build root has network) | **Ubuntu 26.04 only** |
+| `redumper-gui` | vendored source tarball (crates travel with the source: no build root has network) | **Ubuntu 26.04 + Debian 13** |
 
-`redumper-gui` needs rustc ≥ 1.92 (eframe/egui). Debian 13 ships 1.85, Debian 12
-ships 1.63, and Ubuntu 22.04/24.04 top out at 1.91. Only 26.04 clears the floor —
-that is a floor, not an oversight, and it is why the tool is build-enabled for
-exactly one repository in its OBS package meta.
+`redumper-gui` needs rustc ≥ 1.92 (eframe/egui), and that floor is not written
+here: it is derived from the `ship` rows of `scripts/rust-targets.tsv`, which is
+also what `rust-vendor-tarball.sh` and `watch-redumper-gui.yml` read. One fact,
+one place.
+
+Two deb targets clear it. **Ubuntu 26.04** carries 1.93. **Debian 13** carries
+1.94 — *from `trixie-backports`*, which is why it builds even though plain trixie
+ships 1.85 and the OBS repository is a Download-on-Demand path onto backports.
+Ubuntu 22.04/24.04 top out at 1.91 and Debian 12 has no rustc in backports at all;
+those three are `build disable`d in the package meta and keep delivering the last
+package they could build.
+
+> ⚠️ Until 2026-07-20 this section said "Debian 13 ships 1.85 … only 26.04 clears
+> the floor … build-enabled for exactly one repository". That was already known to
+> be wrong: `scripts/rust-targets.tsv` records the re-measurement, and its header
+> warns in as many words that "an earlier note claimed trixie-backports had no
+> newer rustc — that was wrong, and it was wrong in a public upstream issue too."
+> The correction was made in the data and never carried into this prose, so the
+> superseded number outlived the note that superseded it. Verified against the
+> build farm before rewriting: `osc results` reports Debian_13 **succeeded** on
+> both x86_64 and aarch64.
