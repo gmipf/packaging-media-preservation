@@ -88,16 +88,28 @@ rebuilds.
 ```
 opensuse/<tool>/
 ├── .upstream-tag       # last-seen upstream tag (watcher anchor, mirrors fedora/ & ubuntu/)
-├── _service            # download_url per recipe file (from git) + download_files (assets)
+├── _service            # 4 fixed entries (spec, .dsc, debian.tar.gz, changelog) + download_files
 ├── <tool>.spec         # openSUSE spec (Fedora spec + distro-native adaptations)
 ├── <tool>.1            # handwritten manpage, @TAG@/@DATE@ stamped in %build
 ├── <tool>-rpmlintrc    # self-authorizes the permissions.d cap profile (see below)
 └── ...                 # udev rule, icons, .desktop — whatever the spec lists as a local Source
 ```
 
-**Every file here except `.upstream-tag` is listed in that tool's `_service`.** If
-you add one, add it there too — otherwise OBS never sees it. The upstream assets
-are *not* in git: `download_files` fetches them from the `Source:` URLs.
+**Adding a file here is a pure git operation — `_service` is NOT touched.** Give
+the new file a `Source:` line with its full `raw.githubusercontent.com` URL and
+`download_files` fetches it, exactly as it fetches the upstream assets. The
+upstream assets are *not* in git either; the mechanism is the same for both.
+
+> ⚠️ This was the opposite until 2026-07-20, and the old rule read "every file
+> here is listed in that tool's `_service`; if you add one, add it there too".
+> Following that today would **re-create the coupling that was just removed**.
+> `_service` lives in OBS and only an `osc commit` can change it — no token can —
+> so every recipe file listed there made `_service` a function of our file list,
+> and a forgotten hand surfaced as `broken: service error: ERROR 404`, which reads
+> like an OBS outage and is really our own dangling reference. Measured that day:
+> `download_files` follows a URL in `Patch:` exactly as in `Source:`, which is
+> what made the split possible. Now `_service` depends on the PACKAGE NAME alone
+> and never has to change again.
 
 The `<tool>-rpmlintrc` is not a `Source:` and is not installed — OBS copies the
 whole package directory into the build root's `SOURCES/` (stripping the
@@ -316,18 +328,30 @@ and skips rather than failing.
 
 ## Packaged tools
 
-Every `_service` has the same shape: one `download_url` per recipe file, then a
-single `download_files` for the upstream assets.
+Every `_service` is **identical in shape and constant in size**: four
+`download_url` entries (`<tool>.spec`, `<tool>.dsc`, `debian.tar.gz`,
+`debian.changelog`), then a single `download_files` that pulls everything the spec
+names in a `Source:`/`Patch:` URL — our own recipe files and the upstream assets
+alike. The count below is therefore what the *directory* holds, and it no longer
+has anything to do with `_service`.
 
 | Tool             | Kind                              | Recipe files | Notes |
 |------------------|-----------------------------------|--------------|-------|
-| redumper         | static binary                     | 3            | no shlib deps; stamped manpage |
-| redumper-rgui      | static binary, **pinned build**   | 2            | b729 as `/usr/bin/redumper-rgui`; no manpage, by design |
-| redumper-gui     | **source build** (Rust / egui)    | 4            | vendored crates; 9 icon sizes; **no capability**, by design |
-| aaru5            | NativeAOT binary + sidecar `.so`  | 4            | auto ELF deps; static manpage; udev |
-| aaru             | self-contained .NET (single-file) | 5            | two tarballs; manpage from `--help`; udev; icons/MIME/desktop |
-| mpf              | self-contained .NET × 3           | 11           | `mpf` meta + `mpf-check`/`mpf-cli`/`mpf-gui`; caps per subpackage; 5 icons |
-| discimagecreator | **source build** (meson)          | 4            | four archives via `#/rename`; helper makefiles; two caps binaries; udev |
+| redumper         | static binary                     | 5            | no shlib deps; stamped manpage |
+| redumper-rgui    | static binary, **pinned build**   | 4            | b733 as `/usr/bin/redumper-rgui`; no manpage, by design |
+| redumper-mpf     | static binary, **pinned build**   | 4            | b732 as `/usr/bin/redumper-mpf`; no manpage, by design |
+| redumper-gui     | **source build** (Rust / egui)    | 5            | vendored crates; 9 icon sizes; **no capability**, by design |
+| aaru5            | NativeAOT binary + sidecar `.so`  | 7            | auto ELF deps; static manpage; udev |
+| aaru             | self-contained .NET (single-file) | 7            | two tarballs; manpage from `--help`; udev; icons/MIME/desktop |
+| mpf              | self-contained .NET × 3           | 9            | `mpf` meta + `mpf-check`/`mpf-cli`/`mpf-gui`; caps per subpackage; 5 icons |
+| discimagecreator | **source build** (meson)          | 6            | four archives via `#/rename`; helper makefiles; two caps binaries; udev |
+
+> The counts and the pinned build numbers above were **measured** on 2026-07-20
+> (`ls` per directory, `%global rdbuild` per spec), not carried forward. Every one
+> of them was wrong beforehand: the column still counted the old `_service`
+> entries, `redumper-rgui` was listed at b729 when its pin had moved to b733, and
+> **`redumper-mpf` was missing from the table entirely** — the same failure mode
+> that once kept `redumper-gui` and `redumper-rgui` outside this lane for a week.
 
 Every tool that *talks to a drive* grants its `cap_sys_rawio` capability through
 the **permissions framework** (see *Permissions framework & rpmlint*) instead of

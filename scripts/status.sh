@@ -565,3 +565,36 @@ if [ -n "$CONT" ]; then
 else
     echo "  keine (kein '\\' am Zeilenende vor einer Leerzeile)"
 fi
+
+hr "Doku-Abdeckung — nennt opensuse/README.md jedes Paket?"
+# Die Tabelle "Packaged tools" ist eine HANDGEPFLEGTE Liste, und am 2026-07-20 fiel
+# genau deshalb redumper-mpf aus ihr heraus -- dieselbe Fehlerform, vor der die
+# README zwei Absaetze weiter oben selbst warnt ("it *was* a literal list of five
+# names once, and that is exactly how redumper-gui and redumper-rgui sat outside
+# this lane for a week"). Eine Warnung im Fliesstext haelt keine Liste aktuell.
+# Darum wird die Abdeckung hier mechanisch aus dem DATEISYSTEM abgeleitet.
+#
+# Bewusst NUR Abdeckung, nicht Inhalt: ob die Notizspalte stimmt, kann kein Skript
+# sagen. Ein fehlendes Paket kann es sagen, und das ist der Fall, der eintritt.
+DOC="$REPO/opensuse/README.md"
+DOC_MISS=0
+if [ ! -r "$DOC" ]; then
+    printf '  \033[33mUNKLAR\033[0m opensuse/README.md nicht lesbar — keine Messung, keine Entwarnung\n'
+    DOC_MISS=-1
+else
+    # Zeilen der Tabelle: "| <tool> | ..." -- der Paketname steht in der ersten Spalte.
+    TABLE=$(awk -F'|' '/^\|/ { gsub(/^[ \t]+|[ \t]+$/, "", $2); print $2 }' "$DOC")
+    for d in "$REPO"/opensuse/*/; do
+        t=$(basename "$d")
+        [ -f "$d/_service" ] || continue
+        if ! printf '%s\n' "$TABLE" | command grep -qx -- "$t"; then
+            printf '  \033[31mFEHLER\033[0m %-18s fehlt in der Tabelle "Packaged tools"\n' "$t"
+            DOC_MISS=$((DOC_MISS + 1))
+        fi
+    done
+fi
+if [ "$DOC_MISS" = 0 ]; then
+    echo "  jedes Paket mit einem _service steht in der Tabelle"
+elif [ "$DOC_MISS" -gt 0 ]; then
+    echo "  -> ${DOC_MISS} Paket(e) gebaut und ausgeliefert, aber nirgends beschrieben"
+fi
