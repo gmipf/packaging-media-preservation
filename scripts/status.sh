@@ -398,8 +398,18 @@ for d in "$REPO"/fedora/*/; do
     seen=""
     for w in "$REPO"/.github/workflows/watch-*.yml; do
         [ -f "$w" ] || continue
-        sed 's/#.*//' "$w" | grep -qE "fedora/$pkg/|(^|[^-])$pkg\.spec" \
-            && seen="$seen $(basename "$w" .yml)"
+        # NICHT `sed ... | grep -q`: das Skript laeuft mit `pipefail`, `grep -q`
+        # beendet sich beim ERSTEN Treffer, `sed` bekommt daraufhin SIGPIPE (141),
+        # und pipefail macht aus dem Treffer einen Fehlschlag. Ergebnis war ein
+        # SPORADISCH falsches "KEIN Watcher nennt dieses Paket" -- gemessen am
+        # 2026-07-20: ~1 von 5 Laeufen, in einer Direktmessung 104 von 200.
+        # ⭐ Je frueher der Treffer im File steht, desto WAHRSCHEINLICHER der
+        # Fehlalarm (hier Zeile 59 von ~310), also traf es ausgerechnet die
+        # eindeutigsten Faelle. Kein Pipe, kein Rennen.
+        stripped=$(sed 's/#.*//' "$w")
+        if grep -qE "fedora/$pkg/|(^|[^-])$pkg\.spec" <<<"$stripped"; then
+            seen="$seen $(basename "$w" .yml)"
+        fi
     done
     if [ -n "$seen" ]; then
         printf '  \033[32mok\033[0m    %-18s <-%s\n' "$pkg" "$seen"

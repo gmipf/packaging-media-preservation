@@ -34,6 +34,9 @@ name: watch-redumper-gui
 # shipping a package that cannot compile. That reporting step is a STEPPING STONE
 # and is not the finished state.
 
+# full-automation-exception: redumper-gui/obs-msrv — switching an OBS target off is `build disable` in the package meta, and no OBS token can write that (runservice/branch/release/rebuild/workflow only). The COPR half of the same decision IS automated (scripts/msrv-disable.sh edits .packit.yaml). Same root as the distro-lifecycle exception (user, 2026-07-20)
+# full-automation-exception: redumper-gui/partial-wildcard — .packit.yaml lists epel-all-<arch>, so a wildcard can only be removed WHOLE; if only part of a family fell below the floor, removing it would also drop targets that still build. Has never occurred (all three EPEL rows sit at the same rustc) and is solvable without a credential via the public api_3/mock-chroots/list, but building that for a case that has not happened would add a network failure mode to a guard. Refuses loudly instead. MY design call, not a user decision (Boot 6, 2026-07-20)
+
 on:
   schedule:
     - cron: '17 * * * *'
@@ -87,39 +90,49 @@ jobs:
 
       # ---- everything below runs ONLY on a real new release ----
 
-      - name: Check the Rust floor against the targets we ship to
+      - name: Switch off targets the new Rust floor leaves behind
+        id: msrv
         if: steps.check.outputs.tag
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.check.outputs.tag }}
         run: |
-          set -euo pipefail
-          # Same derivation the vendoring script uses: the lowest rustc among the
-          # `ship` rows. One fact, one place (scripts/rust-targets.tsv).
-          FLOOR=$(awk -F'\t' '$1 !~ /^#/ && $4 == "ship" { print $3 }' scripts/rust-targets.tsv \
-                  | sort -V | head -1)
+          set -uo pipefail
+          # This step used to MEASURE and print ::warning::, and call itself a
+          # stepping stone. It was, in two ways. A green run with ::warning::
+          # sends no mail at all, so nobody would ever read it; and the deferral
+          # rested on an incomplete measurement -- "protects no artifact today"
+          # was checked against the OBS targets (Debian_12, xUbuntu_22.04/24.04,
+          # zero binaries) and never against COPR, where epel-8/9/10 sit at
+          # EXACTLY the floor with six real packages on them.
           DECL=$(gh api "repos/Deterous/Redumper-GUI/contents/Cargo.toml?ref=${TAG}" --jq .content \
                  | base64 -d | grep -oP '^rust-version\s*=\s*"\K[^"]+' | head -1 || true)
-
           if [ -z "$DECL" ]; then
+            FLOOR=$(awk -F'\t' '$1 !~ /^#/ && $4 == "ship" { print $3 }' scripts/rust-targets.tsv \
+                    | sort -V | head -1)
             echo "upstream declares no rust-version at ${TAG}; the vendoring script injects the floor (${FLOOR})"
             exit 0
           fi
-          echo "upstream rust-version ${DECL}, our shipping floor ${FLOOR}"
 
-          # DECL > FLOOR ?  (string compare first: sort -V calls 1.92 and 1.92 equal)
-          if [ "$DECL" != "$FLOOR" ] \
-             && [ "$(printf '%s\n%s\n' "$DECL" "$FLOOR" | sort -V | tail -1)" = "$DECL" ]; then
-            LOST=$(awk -F'\t' -v d="$DECL" '
-              $1 !~ /^#/ && $4 == "ship" {
-                split($3, a, "."); split(d, b, ".")
-                if (a[1] < b[1] || (a[1] == b[1] && a[2] < b[2])) printf "%s(%s) ", $2, $3
-              }' scripts/rust-targets.tsv)
-            echo "::warning::${TAG} raises the Rust floor to ${DECL}; these targets can no longer build it: ${LOST}"
-            echo "::warning::Per the 2026-07-19 decision they must be switched off for this version and keep delivering the last package they could build. COPR: the targets list in .packit.yaml. OBS: 'build disable' in the package meta (osc, no token here can write it). Then flip those rows to 'out' in scripts/rust-targets.tsv."
-          else
-            echo "floor holds -- every shipping target can still build this release"
-          fi
+          # `rc=0; ... || rc=$?` is mandatory: GitHub runs steps as `bash -e {0}`,
+          # so a bare call would kill the step on any non-zero exit -- including
+          # the ones this step exists to branch on.
+          rc=0
+          bash scripts/msrv-disable.sh "$DECL" || rc=$?
+          echo "msrv-disable exit ${rc}"
+
+          case "$rc" in
+            0)  echo "floor holds -- nothing switched off" ;;
+            10) echo "COPR targets switched off; .packit.yaml and rust-targets.tsv changed"
+                echo "disabled=true" >> "$GITHUB_OUTPUT" ;;
+            11) echo "COPR targets switched off, but OBS targets fell too"
+                echo "disabled=true"   >> "$GITHUB_OUTPUT"
+                echo "obs_manual=true" >> "$GITHUB_OUTPUT" ;;
+            3)  echo "::error::Only part of a packit target wildcard fell below the new Rust floor. .packit.yaml lists epel-all-<arch> / fedora-all-<arch>, so the wildcard can only be removed whole -- removing it would also drop targets that still build. Expand it into explicit chroots by hand, then re-run this workflow. Nothing was changed."
+                exit 1 ;;
+            *)  echo "::error::msrv-disable.sh failed with ${rc} -- see the log above. Nothing can be assumed about the target list; do not ship this release until it is resolved."
+                exit 1 ;;
+          esac
 
       - name: Vendor the crates and publish the tarball
         if: steps.check.outputs.tag
@@ -222,8 +235,13 @@ jobs:
           PIN_MOVED: ${{ steps.bump.outputs.pin_moved }}
         run: |
           set -euo pipefail
+          # .packit.yaml and rust-targets.tsv travel WITH the bump when a target
+          # was switched off. Committing the version without the target list would
+          # ship a release to a chroot that cannot compile it -- the two halves of
+          # D2/(c) are one change or they are a bug.
           git add fedora/redumper-gui opensuse/redumper-gui ubuntu/redumper-gui \
-                  fedora/redumper-rgui opensuse/redumper-rgui ubuntu/redumper-rgui
+                  fedora/redumper-rgui opensuse/redumper-rgui ubuntu/redumper-rgui \
+                  .packit.yaml scripts/rust-targets.tsv
           if git diff --cached --quiet; then
             echo "nothing changed after the rewrites -- exiting clean"
             exit 0
@@ -275,6 +293,22 @@ jobs:
             trigger redumper-rgui
           fi
           echo "done"
+
+      # LAST, and deliberately so: everything above has already been committed,
+      # pushed and triggered, so failing here loses nothing. It exists because the
+      # OBS half of "switch a target off" writes the package meta and no OBS token
+      # can do that -- the one piece of #42 that stays a human step.
+      #
+      # It has to FAIL rather than warn. A green run with ::warning:: sends no
+      # mail (measured 2026-07-20 on real deliveries: `event: schedule` plus a
+      # non-zero exit arrives, green with a warning annotation does not), so a
+      # warning here would be a handover nobody is told about -- which is exactly
+      # the silence the full-automation rule exists to remove.
+      - name: The OBS half needs a human
+        if: steps.msrv.outputs.obs_manual == 'true'
+        run: |
+          echo "::error::A new Rust floor left OBS targets behind. The COPR side was switched off automatically and is committed, but 'build disable' writes the OBS package meta and no token here can. Run it by hand: osc meta pkg -e home:gmipf:media-preservation redumper-gui -- then flip those rows to 'out' in scripts/rust-targets.tsv. Until then those targets build red on every run."
+          exit 1
 
   # Ask OBS to re-pull the recipe from main and rebuild. OBS fetches the recipe
   # itself, so nothing is uploaded here.
