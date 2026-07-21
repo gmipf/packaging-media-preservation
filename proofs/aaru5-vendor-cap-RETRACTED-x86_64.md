@@ -5,17 +5,44 @@
 > "a different disc will NOT help". None of that is true. aaru5 5.4.2 dumps optical
 > media fine. What crashed was the measurement.
 >
-> **Cause** (found by Boot 6.1, 2026-07-20, hardware A/B on the same drive):
-> `Aaru.Progress.ClearCurrentConsoleLine()` builds `new String(' ', Console.WindowWidth - 1)`.
-> With stdout redirected there is no terminal, `WindowWidth` is **0**, so the count is
-> **-1** and .NET throws `ArgumentOutOfRangeException` — at the FIRST progress bar,
-> before the first read. Same disc, same drive, same command, only the terminal
-> differs: redirected → crash after ~1 s; `script -qec "stty rows 50 cols 200; ..."`
-> → **299,620,893 byte dump**.
+> **Cause** (Boot 6.1, 2026-07-20/21, hardware A/B on the same drive):
+> `Aaru.Progress.ClearCurrentConsoleLine()` builds `new String(' ', Console.WindowWidth - 1)`,
+> and .NET throws `ArgumentOutOfRangeException` on a negative count — at the FIRST
+> progress bar, before the first read. Same disc, same drive, same command:
+> crash after ~1 s, or a **299,620,893 byte dump**, depending only on the environment.
 >
-> ⚠️ A PTY alone is not enough to counter-measure: without an explicitly set window
-> size `WindowWidth` stays 0 and the crash reproduces, which would have "confirmed"
-> the wrong conclusion a second time.
+> **The trigger is `TERM`, not the redirection** (sharpened 2026-07-21 — the first
+> retraction on this page said "with stdout redirected there is no terminal,
+> WindowWidth is 0", which is too broad and was wrong in two ways):
+>
+> | stdout not a terminal, and… | result |
+> |---|---|
+> | `TERM=xterm` / `xterm-256color` / `vt100` / **`dumb`** | **dumps fine** ✅ |
+> | `TERM` unset / empty / unknown | crash 💥 (width **0**) |
+> | `TERM=linux` (terminfo without `cols`) | crash 💥 (width **-1**) |
+>
+> With no terminal .NET reads the width from **terminfo**, so a usable `TERM` is
+> enough — the redirection alone is harmless. And the failure has **two shapes**:
+> `0` and `-1`. Anything checking only for `0` misses half the cases.
+>
+> ⚠️ A PTY alone does not counter-measure this: without an explicitly set window size
+> the crash reproduces, which would have "confirmed" the wrong conclusion a second
+> time. Use `script -qec "stty rows 50 cols 200; ..." /dev/null`.
+>
+> 🔴 **Why every one of MY runs hit the crashing case: they all went through `ssh`,
+> and a non-interactive ssh command has no `TERM`.** I never once measured outside
+> the failure condition. The measurements were correct; the reading assigned a
+> property of the ENVIRONMENT to the SUBJECT.
+>
+> ⭐ **This is the same defect as the three distributions below, one level down:**
+> they differed in everything except the variable that mattered.
+> **Reproduction across environments only tests the environments if the deciding
+> variable actually differs between them.**
+>
+> Practical consequence for this repo: **GUI behaviour cannot be measured over ssh**
+> — a real desktop session gives Menu apps a `TERM` (KDE: `dumb`, which has `cols`,
+> so aaru5 runs; GNOME via `systemd-run --user`: none, so it crashes). Test GUIs over
+> **VNC in a real session**, never over ssh.
 >
 > ⭐ **The evidence was in THIS FILE from the start and I read past it.** The stack
 > trace below names `System.String.Ctor(Char c, Int32 count)` with -1 — literally
