@@ -82,6 +82,24 @@
 #               fragments (%caps(), %post/%postun, openSUSE permissions profile),
 #               everything else (.rules, postinst) is hashed whole.
 #
+# ⚠️ THE THREE `aaru5|*|vendor-cap` ROWS: what they are still open FOR (2026-07-21).
+# They were `blocked:5.4.2` on a claim that turned out to be our own harness, then
+# `not-yet` (proofs/aaru5-vendor-cap-RETRACTED-x86_64.md). Measured on hardware
+# since: with the capability REMOVED, aaru5 dumps an audio CD completely -- 299 MB,
+# 0 unreadable sectors, byte-for-byte the same outcome as with it. strace explains
+# why: 766 of 791 SG_IO calls are READ CD (0xBE), which the kernel whitelists, and
+# NOT ONE opcode is >= 0xC0. Only those reach blk_verify_command, which is why
+# redumper (Plextor D8 = 0xD8) genuinely needs the cap and aaru5 does not. Exactly
+# one cap-gated call is issued, ATA PASS-THROUGH (0x85); it is denied and ignored.
+# Report: proofs/aaru5-optical-dump-MEASURED-x86_64.md
+#
+# So these rows can NEVER be closed by an optical measurement -- there is no red
+# half to be had. They stay open for the ATA/SATA case, where ATA PASS-THROUGH is
+# the whole point rather than an optional extra, and where no device has been
+# attached yet. That is the honest remaining obligation, and it is why the
+# capability stays in the package: removing it on optical evidence alone would
+# break a path nobody has tested.
+#
 tool|lane|arch|property|date|mech_hash|evidence|mech_files
 aaru|fedora|x86_64|vendor-cap|2026-07-15|b999c8ae1138c9f5|log:proofs/aaru-fedora-vendor-cap-x86_64.log|fedora/aaru/aaru.spec
 aaru5|fedora|x86_64|vendor-cap|-|-|not-yet|fedora/aaru5/aaru5.spec
