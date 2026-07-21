@@ -104,9 +104,31 @@ aaru5 never issues it: 0 calls with an opcode >= 0xC0 in 791 SG_IO calls, agains
 aaru 6's 0xD8. So aaru 6's row is load-bearing and provable, and aaru5's is not —
 same package family, different answer, both correct.
 
+== THIRD PRIVILEGE LEVEL: as root, with EVERY capability ==
+Asked because aaru5 clearly TRIES to find the offset -- it prints the line -- so the
+open question was whether it tries and is denied, or never asks. Run as root, which
+holds cap_sys_rawio and everything else:
+
+  Running as superuser: Yes
+  Drive reading offset is 120 bytes (30 samples).
+  Disc write offset is unknown, dump may not be correct.
+
+Identical. Three privilege levels -- no capability, capability, full root -- and the
+same answer every time. ⭐ **That rules out a permissions cause entirely.** aaru5
+5.4.2 attempts the disc-write-offset step and cannot complete it, because it never
+issues the vendor read that would answer it. Not a packaging defect, not a rights
+problem: a capability gap in that version.
+
 ⚠️ Scope, stated honestly: this is ONE command (`media dump`, default options) on
 ONE disc (audio CD) with ONE drive. It shows aaru5 did not issue a vendor opcode
 HERE. It does not prove aaru5 never issues one under any option or media type.
+
+⚠️ And a correction to my own reasoning: the opcode trace covered only the first
+40 s of a 4½-minute dump, and I initially treated that window as the whole run. It
+happens to be sufficient -- the log shows the offset step occurs ONCE, two seconds
+in (13:39:55 start, 13:39:57 offset lines), well inside the window -- but that was
+verified afterwards, not by design. The root run above is the independent check
+that does not depend on the window at all.
 
 == WHAT IS EXPLICITLY NOT PROVEN ==
   Whether cap_sys_rawio matters for aaru5 on ATA/SATA devices, where
