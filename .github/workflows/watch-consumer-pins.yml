@@ -27,7 +27,7 @@ name: watch-consumer-pins
 #                    warns about -- and on 2026-07-19 that landmine went off, in
 #                    .packit.yaml, for this very pin.
 
-# full-automation-exception: aaru5 — a bump voids its blocked vendor-cap proof and demands a fresh drive measurement (user, 2026-07-19)
+# full-automation-exception: aaru5 — the Aaru version is read from MPF's publish-nix.sh WITHOUT a major constraint, and MPF is moving to Aaru 6: the day it lists a 6.x, an auto-bump would push the package named aaru5 to 6.0.0 and its name would stop describing its content. Reported and stopped instead (exception: user 2026-07-19; reason replaced Boot 6 2026-07-22 — the original proof-state reason died when the vendor-cap rows went not-yet)
 #
 # The line above is what status.sh prints, so it has to stand on its own -- only the
 # first line carries the marker. Declared in a form the check reads, so the rule
@@ -86,23 +86,38 @@ jobs:
           # full-automation rule (decided 2026-07-19, by the user, after the
           # machinery to auto-bump it was already built and pushed in 8abf5a4).
           # The reason is not "it is hard" -- bump-pin.sh handles it fine and the
-          # local 5.4.2 -> 5.5.0 run proved that. The reason is its proof state:
-          # aaru5's three vendor-cap ledger rows carry an OPEN obligation that
-          # only a hardware run can close, and a bump would move the target
-          # underneath it.
+          # local 5.4.2 -> 5.5.0 run proved that.
           #
-          # Corrected 2026-07-20: those rows used to say `blocked:5.4.2` on the
-          # grounds that "aaru5 5.4.2 crashes before any optical read". That was
-          # OUR measurement harness, not aaru5 -- stdout was redirected, so
-          # Console.WindowWidth was 0 and Aaru's progress bar threw on
-          # `new String(' ', -1)`. With a real terminal aaru5 dumps fine. The rows
-          # are `not-yet` now (see proofs/aaru5-vendor-cap-RETRACTED-x86_64.md);
-          # the obligation is unchanged in size but is CLOSEABLE by us, where
-          # before we believed it was owed by upstream.
-          # Silently triggering that with a cron job is not automation, it is a
-          # surprise. So the drift is reported and a human decides when to
-          # measure -- and status.sh carries this exception EXPLICITLY rather
-          # than counting it as a violation, so the rule check stays meaningful.
+          # THE REASON, as of 2026-07-22: the version above is read out of MPF's
+          # publish-nix.sh with `Aaru/releases/download/v[0-9.]+`, which does NOT
+          # constrain the major. MPF is on its way to Aaru 6, and the
+          # day publish-nix.sh lists a 6.x, an `auto` policy here would bump the
+          # package called aaru5 to 6.0.0 -- a name that no longer describes its
+          # content, delivered to installed systems by a plain `upgrade`. That is
+          # the aaru5 RETIREMENT, and a retirement is a decision, not a bump.
+          #
+          # The reason this exception was FIRST written down (2026-07-19) was a
+          # proof obligation: aaru5's three vendor-cap rows would have their target
+          # moved underneath them. That reason is DEAD, and both halves of how it
+          # died are worth keeping:
+          #   - the rows said `blocked:5.4.2` because "aaru5 crashes before any
+          #     optical read". That was OUR harness, not aaru5: the runs went over
+          #     ssh and carried no TERM, so Console.WindowWidth was 0 and the
+          #     progress bar threw on `new String(' ', -1)`.
+          #     See proofs/aaru5-vendor-cap-RETRACTED-x86_64.md.
+          #   - measured on hardware 2026-07-21: over a full audio-CD dump aaru5
+          #     issues NO opcode >= 0xC0 at all -- uncapped, capped, or as root.
+          #     The capability is not load-bearing for it, so there is no red half
+          #     to be had. The rows are `not-yet` and stand for the untested
+          #     ATA/SATA case only. See proofs/aaru5-optical-dump-MEASURED-x86_64.md.
+          # A version bump can void neither, and mech_hash covers only the
+          # mechanism slice, so it does not move on a Version: line either.
+          # ⭐ The guard was right for four days for a reason that was wrong. Check
+          # what an exception PROTECTS when the thing it named changes state.
+          #
+          # So the drift is reported and a human decides -- and status.sh carries
+          # this exception EXPLICITLY rather than counting it as a violation, so
+          # the rule check stays meaningful.
           for entry in "redumper-mpf rdbuild $MPF_RD fedora/redumper-mpf/redumper-mpf.spec auto" \
                        "aaru5 aaruver $MPF_AA fedora/aaru5/aaru5.spec guard"; do
             set -- $entry
@@ -114,7 +129,7 @@ jobs:
               continue
             fi
             if [ "$policy" = guard ]; then
-              echo "::error::MPF now bundles $name $want but we ship $have. This pin is deliberately NOT auto-bumped: its vendor-cap proof is blocked:$have, and moving the version voids that blockade and requires a fresh drive measurement. When you have decided to measure: scripts/bump-pin.sh $name $want, then re-run the proof and update scripts/proof-ledger.tsv."
+              echo "::error::MPF now bundles $name $want but we ship $have. This pin is deliberately NOT auto-bumped: the version is read from MPF's publish-nix.sh without a major-version constraint, so CHECK THE MAJOR FIRST. Same major -> scripts/bump-pin.sh $name $want. New major (5.x -> 6.x) -> this is NOT a bump: the package named aaru5 must not carry an Aaru 6, that is the aaru5 retirement, and it is decided by a human."
               exit 1
             fi
             echo "MPF moved its bundled $name: $have -> $want"
