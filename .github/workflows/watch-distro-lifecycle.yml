@@ -77,6 +77,6 @@ jobs:
           if [ "$rc" -eq 2 ]; then
             echo "::error::check-distro-lifecycle.sh could not run at all — manual review required"
           else
-            echo "::error::a distribution has no <repository> block, or a feed could not be read — manual review required, add the block by hand via osc meta prj"
+            echo "::error::a distribution has no <repository> block, or a feed could not be read — manual review required. DECIDE whether to adopt it, then do NOT hand-edit the meta: measure the target's rustc in a clean container and run 'scripts/obs/add-repo.sh <name> <obs-project> <obs-repo> <rustc>' (dry run; add --apply). Adding a deb series is 1 repository block + 1 project-level disable + 8 package metas, and writing only the block leaves a repository that builds nothing and looks like OBS being slow."
           fi
           exit 1
