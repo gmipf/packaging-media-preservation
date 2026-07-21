@@ -1,5 +1,5 @@
 %global mpfver         3.8.3
-%global mpfsnap        20260717142924.2cb07a1a
+%global mpfsnap        20260721132649.7f6aa4a3
 %global rolltag        rolling
 
 %global debug_package      %{nil}
@@ -17,7 +17,7 @@ Version:        %{mpfver}~%{mpfsnap}
 # lives in the changelog. (Stuck at 5 here from pre-fix manual bumps of
 # the 71dafe3d snapshot — already shipped as -5, so left as-is to avoid
 # a downgrade; the next snapshot resets it.)
-Release:        2%{?dist}
+Release:        1%{?dist}
 Summary:        Media Preservation Frontend suite (mpf-check, mpf-cli, mpf-gui)
 
 License:        MIT
@@ -474,6 +474,10 @@ install -m 0644 %{SOURCE6} %{buildroot}%{_mandir}/man1/mpf-gui.1
 %{_datadir}/icons/hicolor/*/apps/mpf.png
 
 %changelog
+* Tue Jul 21 2026 gmipf <gmipf64@gmail.com> - 3.8.3~20260721132649.7f6aa4a3-1
+- Automated rolling-snapshot sync to upstream MPF commit 7f6aa4a3
+  (rolling tag, published 20260721132649 UTC); Release reset to 1.
+
 * Sat Jul 18 2026 gmipf <gmipf64@gmail.com> - 3.8.3~20260717142924.2cb07a1a-2
 - Add aarch64 (arm64) support. Bundle the upstream linux-arm64 release ZIPs of
   all three tools (Check, CLI, Avalonia) alongside the linux-x64 set and unzip
