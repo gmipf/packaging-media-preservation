@@ -87,6 +87,27 @@ what it is -- a refutation of the old premise, not a red half.
   The uaccess ACL from our udev rule delivers the node access. That is the
   package's promise, and it is measured, not inferred.
 
+== WHY aaru 6 HAS A PROVEN vendor-cap ROW AND aaru5 DOES NOT ==
+This is not an inconsistency in the ledger, it is a real difference between the two
+versions. Compare with proofs/aaru-fedora-vendor-cap-x86_64.log (aaru 6.0.0-beta.1,
+same drive, same disc type):
+
+                          disc READ offset      disc WRITE offset
+  aaru5 5.4.2, WITH cap   120 bytes (from DB)   "unknown, dump may not be correct"
+  aaru 6, WITH cap        120 bytes (from DB)   5044 bytes  <- Plextor D8 (0xD8)
+  aaru 6, WITHOUT cap     120 bytes (from DB)   "unknown, dump may not be correct"
+
+⭐ **aaru5 WITH the capability behaves exactly like aaru 6 WITHOUT it.** The reading
+offset comes from the drive database in both versions, which is why an aaru5 dump
+looks fine at a glance. The WRITE offset is the one that needs the vendor read, and
+aaru5 never issues it: 0 calls with an opcode >= 0xC0 in 791 SG_IO calls, against
+aaru 6's 0xD8. So aaru 6's row is load-bearing and provable, and aaru5's is not —
+same package family, different answer, both correct.
+
+⚠️ Scope, stated honestly: this is ONE command (`media dump`, default options) on
+ONE disc (audio CD) with ONE drive. It shows aaru5 did not issue a vendor opcode
+HERE. It does not prove aaru5 never issues one under any option or media type.
+
 == WHAT IS EXPLICITLY NOT PROVEN ==
   Whether cap_sys_rawio matters for aaru5 on ATA/SATA devices, where
   ATA PASS-THROUGH is the whole point rather than an optional extra. No such
