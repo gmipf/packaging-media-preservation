@@ -24,17 +24,23 @@ name: watch-redumper-gui
 # Everything expensive sits behind the tag check, so the usual hourly run does one
 # API call and stops.
 #
-# THE ONE THING THIS CANNOT DECIDE: if a new release raises the Rust floor above
-# what a target we ship to can offer, that target has to be switched off for the
-# new version (decision of 2026-07-19: the last package built for it stays in the
-# repo and keeps being delivered). The COPR side of that lives in .packit.yaml and
-# the OBS side lives in package meta, which no token here can write. So the gate
-# below MEASURES and REPORTS it and lets the bump proceed -- a target that falls
-# behind goes red in the build farm, which is visible, rather than silently
-# shipping a package that cannot compile. That reporting step is a STEPPING STONE
-# and is not the finished state.
+# RUST FLOOR: if a new release raises the Rust floor above what a target we ship
+# to can offer, that target is switched off for the new version -- decision of
+# 2026-07-19, and the last package built for it stays in the repo and keeps being
+# delivered. Both halves of that are automatic as of 2026-07-22:
+#
+#   COPR  scripts/msrv-disable.sh drops the chroot from .packit.yaml. Plain git.
+#   OBS   scripts/msrv-sync.sh writes the new floor into every recipe, so the
+#         target's own resolver refuses it. No package meta, no credential.
+#
+# This used to stop here and demand a human `build disable`, on the assumption
+# that the click is what preserves the already-published package. It is not:
+# measured 2026-07-22 in a throwaway project, a package that goes `unresolvable`
+# keeps its last published binary exactly like a disabled one
+# (proofs/obs-publish-retention-MEASURED-x86_64.md). The click only suppresses a
+# status line, and status.sh now reads rust-targets.tsv and calls that red
+# EXPECTED -- so the signal survives without anyone touching OBS.
 
-# full-automation-exception: redumper-gui/obs-msrv — switching an OBS target off is `build disable` in the package meta, and no OBS token can write that (runservice/branch/release/rebuild/workflow only). The COPR half of the same decision IS automated (scripts/msrv-disable.sh edits .packit.yaml). Same root as the distro-lifecycle exception (user, 2026-07-20)
 # full-automation-exception: redumper-gui/partial-wildcard — .packit.yaml lists epel-all-<arch>, so a wildcard can only be removed WHOLE; if only part of a family fell below the floor, removing it would also drop targets that still build. Has never occurred (all three EPEL rows sit at the same rustc) and is solvable without a credential via the public api_3/mock-chroots/list, but building that for a case that has not happened would add a network failure mode to a guard. Refuses loudly instead. MY design call, not a user decision (Boot 6, 2026-07-20)
 
 on:
@@ -123,11 +129,8 @@ jobs:
 
           case "$rc" in
             0)  echo "floor holds -- nothing switched off" ;;
-            10) echo "COPR targets switched off; .packit.yaml and rust-targets.tsv changed"
+            10) echo "targets switched off; .packit.yaml, rust-targets.tsv and the recipe floors changed"
                 echo "disabled=true" >> "$GITHUB_OUTPUT" ;;
-            11) echo "COPR targets switched off, but OBS targets fell too"
-                echo "disabled=true"   >> "$GITHUB_OUTPUT"
-                echo "obs_manual=true" >> "$GITHUB_OUTPUT" ;;
             3)  echo "::error::Only part of a packit target wildcard fell below the new Rust floor. .packit.yaml lists epel-all-<arch> / fedora-all-<arch>, so the wildcard can only be removed whole -- removing it would also drop targets that still build. Expand it into explicit chroots by hand, then re-run this workflow. Nothing was changed."
                 exit 1 ;;
             *)  echo "::error::msrv-disable.sh failed with ${rc} -- see the log above. Nothing can be assumed about the target list; do not ship this release until it is resolved."
@@ -294,21 +297,16 @@ jobs:
           fi
           echo "done"
 
-      # LAST, and deliberately so: everything above has already been committed,
-      # pushed and triggered, so failing here loses nothing. It exists because the
-      # OBS half of "switch a target off" writes the package meta and no OBS token
-      # can do that -- the one piece of #42 that stays a human step.
-      #
-      # It has to FAIL rather than warn. A green run with ::warning:: sends no
-      # mail (measured 2026-07-20 on real deliveries: `event: schedule` plus a
-      # non-zero exit arrives, green with a warning annotation does not), so a
-      # warning here would be a handover nobody is told about -- which is exactly
-      # the silence the full-automation rule exists to remove.
-      - name: The OBS half needs a human
-        if: steps.msrv.outputs.obs_manual == 'true'
-        run: |
-          echo "::error::A new Rust floor left OBS targets behind. The COPR side was switched off automatically and is committed, but 'build disable' writes the OBS package meta and no token here can. Run it by hand: osc meta pkg -e home:gmipf:media-preservation redumper-gui -- then flip those rows to 'out' in scripts/rust-targets.tsv. Until then those targets build red on every run."
-          exit 1
+      # ⚰️ A step named "The OBS half needs a human" stood here until 2026-07-22.
+      # It fired on exit 11 and failed the run to demand a `build disable` click.
+      # It is gone, and the reason is worth keeping: the click was believed to be
+      # what preserves the already-published package for a target that fell below
+      # the floor. Measured, it is not -- an `unresolvable` package keeps its last
+      # published binary just like a disabled one. The step was demanding a human
+      # for an effect the human did not produce.
+      # ⭐ The step was CORRECT about the silence (a green run with ::warning::
+      # sends no mail, so it had to fail) and WRONG about what it was for. Both
+      # halves came from the same day; only one of them was measured.
 
   # Ask OBS to re-pull the recipe from main and rebuild. OBS fetches the recipe
   # itself, so nothing is uploaded here.

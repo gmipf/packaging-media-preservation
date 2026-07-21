@@ -44,6 +44,11 @@ set -uo pipefail
 
 COPR_PROJECT=${COPR_PROJECT:-gmipf/media-preservation}
 OBS_PROJECT=${OBS_PROJECT:-home:gmipf:media-preservation}
+# Stand hier frueher nicht, sondern erst ab Zeile 167 -- also NACH dem OBS-Block,
+# der ihn heute braucht. Mit `set -u` waere das kein subtiler Fehler, sondern ein
+# Abbruch; oben ist die einzige Stelle, an der eine Definition nicht davon abhaengt,
+# welcher Block sie zuerst benutzt.
+REPO=$(cd "$(dirname "$0")/.." && pwd)
 
 hr() { printf '\n\033[1m== %s\033[0m\n' "$1"; }
 
@@ -54,7 +59,91 @@ copr-cli monitor "$COPR_PROJECT" \
   | sort
 
 hr "OBS — ${OBS_PROJECT}"
-osc results "$OBS_PROJECT" 2>&1 | sed -n '1,12p' | sed 's/^/  /'
+# Hier stand `osc results | sed -n '1,12p'` -- ein ROHER AUSZUG, und beides daran
+# war still. Er faellte kein Urteil (ein rotes Ziel scrollte einfach vorbei), und
+# er schnitt nach 12 Zeilen ab, obwohl das Projekt 14 Repo/Arch-Kombinationen hat.
+# ⭐ Ein Bericht, der nie rot werden KANN, ist kein Meldekanal -- dieselbe Stille
+# wie das `::warning::`, das wir am 2026-07-20 aus dem Watcher geworfen haben.
+#
+# Was ein Rot BEDEUTET, steht nicht im Kopf, sondern in rust-targets.tsv: faellt
+# ein Ziel unter den Rust-Boden, ist sein Ausfall der GEWOLLTE Zustand (D2/c,
+# 2026-07-19). Ein dauerhaft rotes Feld, das niemand erwartet, erzieht genauso zum
+# Wegsehen wie eine Pruefung, die nie rot wird -- darum wird die Erwartung GELESEN.
+#
+# 📐 GEMESSEN 2026-07-22 (Wegwerf-Projekt home:gmipf:msrv-probe, zwei Arme, eine
+# Variable): ein Paket, dessen neue Version `unresolvable` wird, BEHAELT sein
+# zuletzt veroeffentlichtes Binary -- exakt wie eines, das `disabled` wird. Der
+# Boden im Rezept schaltet ein Ziel also selbst ab, ohne Paket-Meta und ohne
+# Credential. `build disable` ist damit Kosmetik, nicht artefakt-tragend.
+# ⚠️ Erwartet ist so ein Rot NUR fuer redumper-gui: die TSV beschreibt die Rust-Lane.
+OBS_XML=$(osc api "/build/${OBS_PROJECT}/_result" 2>/dev/null || true)
+if [ -z "$OBS_XML" ]; then
+    printf '  \033[33mUNKLAR\033[0m OBS nicht befragbar — keine Messung, keine Entwarnung\n'
+else
+    OBS_XML="$OBS_XML" python3 - "$REPO/scripts/rust-targets.tsv" <<'PY'
+import os, sys, xml.etree.ElementTree as ET
+
+tsv = sys.argv[1]
+
+# TSV-Zielname -> OBS-Repository-Name. Genau EINER weicht ab, und die Karte wird
+# gegen die Repos geprueft, die OBS wirklich meldet: ein verrotteter Alias wuerde
+# ein erwartetes Rot lautlos zu einem unerwarteten machen (oder umgekehrt), und
+# eine Karte, die niemand prueft, ist eine Vermutung.
+ALIAS = {"openSUSE_Leap_16.0": "16.0"}
+RUST_PKG = "redumper-gui"
+
+inv = {}
+try:
+    with open(tsv, encoding="utf-8") as fh:
+        for line in fh:
+            if line.startswith("#") or not line.strip():
+                continue
+            f = line.rstrip("\n").split("\t")
+            if len(f) >= 4 and f[0] == "obs":
+                inv[ALIAS.get(f[1], f[1])] = f[3]
+except OSError:
+    inv = {}
+
+root = ET.fromstring(os.environ["OBS_XML"])
+repos = {r.get("repository") for r in root.findall("result")}
+
+GOOD = {"succeeded", "disabled", "excluded", "locked"}
+BUSY = {"building", "scheduled", "blocked", "dispatching", "signing", "finished",
+        "unknown", "outdated", "unpublished"}
+
+counts, unexpected, expected = {}, [], []
+for r in root.findall("result"):
+    repo, arch = r.get("repository"), r.get("arch")
+    for s in r.findall("status"):
+        pkg, code = s.get("package"), s.get("code")
+        counts[code] = counts.get(code, 0) + 1
+        if code in GOOD or code in BUSY:
+            continue
+        if pkg == RUST_PKG and inv.get(repo) == "out":
+            expected.append((pkg, repo, arch, code))
+        else:
+            unexpected.append((pkg, repo, arch, code))
+
+print("  " + " · ".join(f"{v}× {k}" for k, v in sorted(counts.items())))
+
+if not inv:
+    print("  \033[33mUNKLAR\033[0m rust-targets.tsv nicht lesbar — jedes Rot gilt als unerwartet")
+else:
+    stale = sorted(set(inv) - repos)
+    if stale:
+        print("  \033[33mUNKLAR\033[0m TSV nennt Ziele, die OBS nicht kennt: " + ", ".join(stale))
+        print("           Alias-Karte oder Inventar verrottet — Erwartung nicht verlaesslich")
+
+for pkg, repo, arch, code in expected:
+    print(f"  \033[33mERWARTET\033[0m {pkg} {repo}/{arch}: {code} (TSV: out, unter dem Rust-Boden)")
+
+for pkg, repo, arch, code in unexpected:
+    print(f"  \033[31mFEHLER\033[0m  {pkg} {repo}/{arch}: {code}")
+
+if not unexpected:
+    print("  kein unerwartetes Rot")
+PY
+fi
 
 # --- silent failure #3: MPF's bundled backends drift away from ours ------------
 # Our mpf package deletes MPF's bundled Programs/ folder and points its config at
@@ -80,7 +169,6 @@ osc results "$OBS_PROJECT" 2>&1 | sed -n '1,12p' | sed 's/^/  /'
 # happens to bundle. MPF says nothing and has no version check of any kind -- so it
 # gets this watchdog instead of a pinned package.
 hr "MPF-Bundle + Pins (feste Namen, wandernde Version)"
-REPO=$(cd "$(dirname "$0")/.." && pwd)
 NIX=$(curl -fsSL https://raw.githubusercontent.com/SabreTools/MPF/master/publish-nix.sh 2>/dev/null)
 if [ -z "$NIX" ]; then
     echo "  publish-nix.sh nicht erreichbar — Bundle-Drift UNGEPRUEFT"
@@ -609,7 +697,7 @@ elif [ "$DOC_MISS" -gt 0 ]; then
     echo "  -> ${DOC_MISS} Paket(e) gebaut und ausgeliefert, aber nirgends beschrieben"
 fi
 
-hr "MSRV — Spec-Boden gegen rust-targets.tsv"
+hr "MSRV — ALLE Boden-Deklarationen gegen rust-targets.tsv"
 # Der abgeleitete Boden (Minimum ueber die `ship`-Zeilen) steckt in
 # rust-vendor-tarball.sh UND in watch-redumper-gui.yml -- beide lesen die TSV, also
 # EINE Quelle. Der Spec kann das nicht: rpm liest keine TSV, `BuildRequires: rust >=`
@@ -620,19 +708,26 @@ hr "MSRV — Spec-Boden gegen rust-targets.tsv"
 # ubuntu/README.md trug "Debian 13 ships 1.85" weiter, lange nachdem die
 # Neumessung (1.94 aus trixie-backports) in der TSV stand. Die Prosa war die
 # Zweitkopie, und nichts verglich sie. Hier wird verglichen.
-MSRV_SPEC=$(command grep -oP '^BuildRequires:\s+rust\s*>=\s*\K[0-9]+\.[0-9]+' \
-            "$REPO/fedora/redumper-gui/redumper-gui.spec" 2>/dev/null || true)
-MSRV_TSV=$(awk -F'\t' '$1 !~ /^#/ && $4 == "ship" { print $3 }' \
-           "$REPO/scripts/rust-targets.tsv" 2>/dev/null | sort -V | head -1)
-if [ -z "$MSRV_SPEC" ] || [ -z "$MSRV_TSV" ]; then
-    printf '  \033[33mUNKLAR\033[0m Boden nicht ablesbar (Spec=%s TSV=%s) — keine Messung, keine Entwarnung\n' \
-        "${MSRV_SPEC:-–}" "${MSRV_TSV:-–}"
-elif [ "$MSRV_SPEC" = "$MSRV_TSV" ]; then
-    printf '  \033[32mok\033[0m    BuildRequires rust >= %s == abgeleiteter Boden\n' "$MSRV_SPEC"
-else
-    printf '  \033[31mFEHLER\033[0m Spec verlangt rust >= %s, abgeleiteter Boden ist %s\n' \
-        "$MSRV_SPEC" "$MSRV_TSV"
-    echo "  -> Eine ship-Zeile hat sich bewegt und der Spec ist nicht mitgezogen."
-    echo "     Der Bau bricht dann NICHT ab: er akzeptiert ein zu altes rustc und"
-    echo "     scheitert erst mitten in cargo, mit einer Meldung ueber ein Crate."
-fi
+# 🔴 NACHTRAG 2026-07-22: dieser Block pruefte GENAU EINE Kopie -- die Fedora-Spec.
+# Es sind VIER. Die openSUSE-Spec traegt dieselbe `BuildRequires`-Zeile, und
+# ubuntu/redumper-gui/debian/control traegt sie ZWEIMAL (`cargo (>= X)` UND
+# `rustc (>= X)`). Drei Viertel der Zahl waren unbewacht -- und der Kommentar
+# darueber benannte die Krankheit voellig richtig, waehrend er eine von vier
+# Kopien absicherte.
+# ⭐ Ein Fix an EINER Stelle ist kein Fix: nach jedem Muster nach GESCHWISTERN
+# greppen. Die Fundliste kommt jetzt aus dem Dateisystem, nicht aus einem Namen --
+# eine fuenfte Kopie waere automatisch mit drin.
+#
+# Und geprueft wird mit demselben Code, der auch schreibt (msrv-sync.sh --check).
+# Ein zweites Regelwerk hier waere genau die naechste Zweitkopie gewesen.
+MSRV_OUT=$(bash "$REPO/scripts/msrv-sync.sh" --check 2>&1); MSRV_RC=$?
+case "$MSRV_RC" in
+    0) printf '  \033[32mok\033[0m    %s\n' "$(printf '%s' "$MSRV_OUT" | tail -1 | sed 's/^ *//')" ;;
+    1) printf '%s\n' "$MSRV_OUT" | sed -n 's/^ *DRIFT /  \x1b[31mFEHLER\x1b[0m /p'
+       echo "  -> Eine ship-Zeile hat sich bewegt und die Rezepte sind nicht mitgezogen."
+       echo "     Der Bau bricht dann NICHT ab: er akzeptiert ein zu altes rustc und"
+       echo "     scheitert erst mitten in cargo, mit einer Meldung ueber ein Crate."
+       echo "     Beheben: scripts/msrv-sync.sh (ohne --check), Ergebnis committen." ;;
+    *) printf '  \033[33mUNKLAR\033[0m Boden nicht messbar — keine Messung, keine Entwarnung\n'
+       printf '%s\n' "$MSRV_OUT" | sed 's/^/    /' ;;
+esac

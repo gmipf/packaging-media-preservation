@@ -24,12 +24,16 @@
 #
 # Exit codes (the watcher branches on these):
 #   0  floor holds, or nothing to do        -- no changes made
-#  10  COPR targets disabled                -- changes made, commit them
-#  11  COPR disabled AND obs rows fell too  -- changes made, but a human must run
-#                                              the OBS half; the caller must fail
-#                                              the run so the mail actually goes out
-#   2  bad usage / inventory unreadable
+#  10  targets switched off                 -- changes made, commit them
+#   2  bad usage / inventory unreadable / recipes could not be synced
 #   3  cannot express the change             -- see the wildcard note below
+#
+# ⚰️ 11 IS RETIRED (2026-07-22) and must not come back with a new meaning. It said
+# "COPR disabled AND obs rows fell, a human must click `build disable`", and the
+# watcher failed the run on it. The measurement in
+# proofs/obs-publish-retention-MEASURED-x86_64.md removed the human: an
+# unresolvable package keeps its last published binary, so raising the floor in the
+# recipes switches an OBS target off and fulfils D2/(c) on its own.
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -46,7 +50,11 @@ for f in "$TARGETS" "$PACKIT"; do
     [ -r "$f" ] || { echo "ERROR: cannot read $f -- refusing to decide anything" >&2; exit 2; }
 done
 
-python3 - "$DECL" "$TARGETS" "$PACKIT" <<'PY'
+# `rc=0; ... || rc=$?` and NOT a bare call: `set -e` is on, so a bare heredoc call
+# that exits 10 would kill the script before the next line ever runs. Same trap the
+# watcher documents for its own `case`, one level down.
+rc=0
+python3 - "$DECL" "$TARGETS" "$PACKIT" <<'PY' || rc=$?
 import re, sys, datetime
 
 decl_s, targets_p, packit_p = sys.argv[1], sys.argv[2], sys.argv[3]
@@ -173,7 +181,14 @@ else:
 # prevent, so the row moves in the same commit as the target it describes.
 today = datetime.date.today().isoformat()
 src = open(targets_p, encoding="utf-8").read().split("\n")
-for r in copr_fall:
+# OBS rows move too, as of 2026-07-22. They did not before, because switching an
+# OBS target off was believed to need `build disable` -- a package meta write no
+# token can do -- so the row was left for a human to flip after clicking. Measured
+# since (proofs/obs-publish-retention-MEASURED-x86_64.md): once msrv-sync.sh raises
+# the floor in the recipes, a below-floor target goes `unresolvable` BY ITSELF and
+# keeps its last published binary. The row describes that reality, and the reality
+# now arrives without anyone clicking, so the row moves in the same change.
+for r in copr_fall + obs_fall:
     old = src[r["n"]]
     f = old.split("\t")
     f[3] = "out"
@@ -189,13 +204,37 @@ changed = True
 
 if obs_fall:
     print("")
-    print("OBS targets fell too and CANNOT be switched off from here:")
+    print("OBS targets fell below the new floor as well:")
     for r in obs_fall:
         print(f"  {r['target']} (rustc {r['rustc']})")
-    print("`build disable` writes the OBS package meta and no OBS token can do that")
-    print("(runservice/branch/release/rebuild/workflow only). Run it by hand:")
-    print("  osc meta pkg -e home:gmipf:media-preservation redumper-gui")
-    sys.exit(11)
+    print("No package meta and no credential needed. Once the floor is written into")
+    print("the recipes (next step), the resolver refuses these by itself: they go")
+    print("`unresolvable` and KEEP their last published binary -- measured 2026-07-22,")
+    print("proofs/obs-publish-retention-MEASURED-x86_64.md. That IS D2/(c).")
+    print("`build disable` would only hide the status line; it is not what preserves")
+    print("the artifact, which is what this script assumed until that measurement.")
 
 sys.exit(10 if changed else 0)
 PY
+
+# The inventory row and the floor literal in the recipes are two halves of ONE
+# fact. A caller that flipped rows without raising the literal would leave the
+# recipes silently lagging -- the exact disease rust-targets.tsv exists to end,
+# and the one this script had until today. So the sync happens HERE, in the same
+# change, and does not depend on any caller remembering it.
+#
+# 🔴 And it is not optional decoration: without the raised literal there is no
+# `unresolvable`. `BuildRequires: rust >= 1.92` admits every rustc from 1.92 up,
+# so a target that cannot build the new code still passes the resolver, starts,
+# and dies in the middle of cargo with a message about some crate.
+if [ "$rc" = 10 ]; then
+    src=0
+    bash "$REPO/scripts/msrv-sync.sh" || src=$?
+    case "$src" in
+        0|10) : ;;
+        *)  echo "ERROR: msrv-sync.sh exited $src -- the inventory was changed but the" >&2
+            echo "       recipes were NOT. Do not commit this half-state." >&2
+            exit 2 ;;
+    esac
+fi
+exit "$rc"

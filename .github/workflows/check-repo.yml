@@ -1,0 +1,45 @@
+name: check-repo
+
+# The offline checks, on every push -- because until 2026-07-22 NOTHING here ran
+# them. `scripts/status.sh` is a human "sync" tool: you have to remember to type
+# it. `scripts/proof-status.sh` is wired in as a git hook, and a hook lives in the
+# CLONE (`git config core.hooksPath .githooks`, once per clone) -- so a push from
+# a fresh clone, or from a machine where that config was never set, sails past it.
+#
+# ⭐ A check nobody starts is not a channel. That is the same finding that got the
+# ::warning:: thrown out of watch-redumper-gui.yml on 2026-07-20, one level up: a
+# report with no delivery is a report nobody reads.
+#
+# ⚠️ HONEST LIMIT, so nobody reads this as "the repository is checked in CI":
+# status.sh's other blocks need COPR, OBS and GitHub. The OBS API is not readable
+# anonymously (401 even for a public project), so they CANNOT run here, and this
+# workflow deliberately does not pretend to. What runs here is what is decidable
+# from the checkout alone. The rest stays a "sync" step at the keyboard.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # The one number rpm and dpkg cannot deduplicate: the Rust floor is a
+      # literal in FOUR places (fedora spec, opensuse spec, and twice in
+      # debian/control). Until today status.sh guarded exactly one of them, and
+      # nothing wrote any of them. Both halves are fixed; this is the guard.
+      - name: Rust floor — every declaration against rust-targets.tsv
+        run: bash scripts/msrv-sync.sh --check
+
+      # Exits 1 on drift or on a mechanism fragment with no ledger row. Runs as a
+      # pre-commit hook too; this is the copy that does not depend on a clone
+      # having been configured.
+      - name: Proof ledger — drift and coverage
+        run: bash scripts/proof-status.sh
