@@ -1,3 +1,9 @@
+redumper-mpf (735-1) UNRELEASED; urgency=medium
+
+  * Automated: consumer moved its bundled redumper build b735; the pin follows.
+
+ -- gmipf <gmipf64@gmail.com>  Fri, 24 Jul 2026 15:16:54 +0000
+
 redumper-mpf (732-2) UNRELEASED; urgency=medium
 
   * Add aarch64 (arm64) support: the linux-arm64 upstream binary travels as a
