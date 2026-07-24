@@ -220,9 +220,26 @@ jobs:
           # BEFORE this is committed. Loud on failure: this is a real breakage, not
           # a handoff to a human.
           sudo apt-get install -y -qq rpm >/dev/null
-          T=$(mktemp -d)
-          spectool -g -R --define "_topdir $T" fedora/redumper-gui/redumper-gui.spec \
-            || { echo "::error::could not fetch Source0 -- is the release asset published?"; exit 1; }
+          T=$(mktemp -d); mkdir -p "$T/SOURCES"
+          # NOT spectool. spectool lives in rpmdevtools, which `rpm` does not pull
+          # in, and on the Ubuntu runner the binary may not even carry that name
+          # (rpmdev-spectool). This step went red on the FIRST real new release
+          # (1.0.3) with `spectool: command not found` -- it had been built after
+          # the 1.0.2 miss and never run in the one state that exercises it, a new
+          # tag present. rpmspec IS installed, so resolve the sources with it: every
+          # SourceN that is a URL is fetched, the local ones are copied in below.
+          # One fewer package, and testable off a Fedora box (measured 2026-07-24:
+          # the 1.0.2 asset fetched, a 9.9.9 URL 404'd).
+          # mapfile from a process substitution, NOT `... | while`: a curl failure
+          # in a pipe subshell would `exit 1` only the subshell and the step would
+          # sail on green. Here the loop runs in the main shell under `set -e`.
+          mapfile -t src_urls < <(rpmspec -P fedora/redumper-gui/redumper-gui.spec \
+            | awk '/^Source[0-9]*:[[:space:]]*[a-z][a-z0-9+.-]*:\/\// { print $2 }')
+          [ "${#src_urls[@]}" -gt 0 ] || { echo "::error::no URL Source found in the spec -- did the Source0 line change?"; exit 1; }
+          for u in "${src_urls[@]}"; do
+            curl -fsSL "$u" -o "$T/SOURCES/$(basename "$u")" \
+              || { echo "::error::could not fetch $u -- is the release asset published?"; exit 1; }
+          done
           cp fedora/redumper-gui/redumper-gui.desktop fedora/redumper-gui/redumper-gui.1 "$T/SOURCES/" 2>/dev/null || true
           if ! rpmbuild -bp --nodeps --define "_topdir $T" fedora/redumper-gui/redumper-gui.spec; then
             echo "::error::%prep failed for ${VERSION}. Most likely a carried patch no longer applies because upstream implemented it -- check fedora/redumper-gui/*.patch against the new source before this ships."
