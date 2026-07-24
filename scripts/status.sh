@@ -478,6 +478,87 @@ fi
 # yourself") would slip past. A is mechanical and cannot. If you add a watcher,
 # A is the one that guarantees you get caught; keep B's vocabulary in mind when
 # writing a new guard.
+# --- stiller Fehlschlag #7b: OBS baut, aber eine ALTE Revision -----------------
+# 🔴 GEFUNDEN 2026-07-24, und der Weg dahin ist der eigentliche Befund. OBS
+# antwortete einem Trigger-Lauf 8x `503`; der Lauf wurde rot, das war sichtbar.
+# UNSICHTBAR war der Zustand danach: der Trigger kommt NICHT von selbst wieder
+# (jeder Aufrufer hat `if: needs.watch.outputs.changed == 'true'`, die Watcher
+# laufen stuendlich, der Trigger nur bei einem Bump), also baute OBS weiter die
+# vorige Revision -- mpf 20260724132502 waehrend git auf 20260724150633 stand.
+# Alle Builds gruen, `status.sh` gruen.
+#
+# ⭐ Und der Grund, warum nichts es sah, ist unbequem: der Block direkt darueber
+# meldet „OBS-Stand == git" und meint damit die `_service`-DATEI. Die ist seit
+# #42 Teil 1 KONSTANT -- sie traegt nur noch URLs auf `main`, kein Rezeptinhalt.
+# Sie kann sich also gar nicht mehr unterscheiden, egal welche Version im Spec
+# steht. Der Check ist nicht falsch, er beantwortet weiter korrekt SEINE Frage
+# („wurde ein `_service` nicht committet"). Nur stellte niemand die andere:
+# **baut OBS eigentlich das, was in git steht?**
+# ⭐⭐ Ein Umbau kann eine Pruefung entwerten, ohne sie anzufassen -- und der
+# Umbau war meiner. Nach einer strukturellen Aenderung nicht nur fragen „laeuft
+# der Check noch durch", sondern „kann er ueberhaupt noch rot werden?"
+#
+# Gefragt wird deshalb nach dem ARTEFAKT: die VERSION im veroeffentlichten RPM
+# gegen die Version, die die Spec in git ergibt. Das Release-Feld bleibt aussen
+# vor -- OBS vergibt sein eigenes (`-lp160.74.1`), das ist kein Drift.
+hr "OBS-Aktualitaet — baut OBS die Revision, die in git steht?"
+OBS_REF_REPO=${OBS_REF_REPO:-16.0}
+# Drei Zaehler, nicht zwei. Die erste Fassung zaehlte nur FEHLER und UNKLAR --
+# und meldete danach „jedes Paket veroeffentlicht die Revision aus git",
+# waehrend eine Zeile darueber „mpf ... baut gerade" stand. ⭐ Eine
+# Zusammenfassung, die mehr behauptet als ihre eigenen Zeilen, ist genau der
+# stille Fehlschlag, den dieser Block finden soll: wer nur das Fazit liest,
+# bekommt Entwarnung fuer einen Zustand, der noch offen ist.
+STALE=0; STALE_UNKNOWN=0; STALE_BUILDING=0
+for svc in "$REPO"/opensuse/*/_service; do
+    pkg=$(basename "$(dirname "$svc")")
+    spec="$REPO/opensuse/$pkg/$pkg.spec"
+    [ -f "$spec" ] || continue
+
+    gitver=$(rpmspec -q --srpm --queryformat '%{version}\n' "$spec" 2>/dev/null | head -1)
+    binlist=$(osc api "/build/${OBS_PROJECT}/${OBS_REF_REPO}/x86_64/${pkg}" 2>/dev/null || true)
+    bin=$(printf '%s' "$binlist" | grep -oE "${pkg}-[0-9][^\"]*\.x86_64\.rpm" | head -1)
+
+    # Leere Antwort ist KEINE Entwarnung: nicht abfragbar, kein Binary, oder die
+    # Spec parst nicht -- drei Zustaende, und keiner davon heisst "aktuell".
+    if [ -z "$gitver" ] || [ -z "$bin" ]; then
+        printf '  \033[33mUNKLAR\033[0m %-18s nicht vergleichbar (git=%s obs=%s) — keine Messung, keine Entwarnung\n' \
+            "$pkg" "${gitver:-–}" "${bin:-–}"
+        STALE_UNKNOWN=$((STALE_UNKNOWN + 1)); continue
+    fi
+
+    # <name>-<version>-<release>.x86_64.rpm  ->  <version>
+    rest=${bin#"$pkg"-}; rest=${rest%.x86_64.rpm}; obsver=${rest%-*}
+
+    if [ "$gitver" = "$obsver" ]; then
+        printf '  \033[32mok\033[0m    %-18s %s\n' "$pkg" "$obsver"
+    else
+        # Baut es gerade? Dann ist die alte Version der normale Zwischenzustand.
+        st=$(osc results "$OBS_PROJECT" "$pkg" 2>/dev/null \
+             | awk '{print $NF}' | grep -cE 'building|scheduled|blocked|dispatching|signing|finished' || true)
+        if [ "${st:-0}" -gt 0 ]; then
+            printf '  \033[33m--\033[0m    %-18s git %s, OBS %s — baut gerade (%s Ziele)\n' \
+                "$pkg" "$gitver" "$obsver" "$st"
+            STALE_BUILDING=$((STALE_BUILDING + 1))
+        else
+            printf '  \033[31mFEHLER\033[0m %-18s git %s, OBS veroeffentlicht %s\n' "$pkg" "$gitver" "$obsver"
+            STALE=$((STALE + 1))
+        fi
+    fi
+done
+if [ "$STALE" -gt 0 ]; then
+    echo "  -> ${STALE} Paket(e) bauen eine ALTE Revision, ohne dass irgendwo etwas rot ist."
+    echo "     Wahrscheinlichste Ursache: ein Trigger ging verloren (OBS-Ausfall)."
+    echo "     Nachholen: osc service remoterun ${OBS_PROJECT} <paket>"
+elif [ "$STALE_UNKNOWN" -gt 0 ]; then
+    printf '  \033[33m--\033[0m    %s Paket(e) nicht vergleichbar — kein Befund, aber auch keine Entwarnung\n' \
+        "$STALE_UNKNOWN"
+elif [ "$STALE_BUILDING" -gt 0 ]; then
+    echo "  ${STALE_BUILDING} Paket(e) bauen die neue Revision gerade — nochmal messen, wenn sie durch sind"
+else
+    echo "  jedes Paket veroeffentlicht die Revision aus git"
+fi
+
 hr "Auto-Tracking — kein Paket darf menschenueberwacht sein"
 TRACK_BAD=0
 for d in "$REPO"/fedora/*/; do
