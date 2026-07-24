@@ -24,7 +24,7 @@
 # upgrade` carries an in-place version bump across installs, but it does NOT
 # follow a rename -- a build-number name would strand every machine on the old
 # pin, silently.
-%global rdbuild 733
+%global rdbuild 734
 
 Name:           redumper-rgui
 Version:        %{rdbuild}
@@ -105,6 +105,9 @@ install -p -m 0644 %{SOURCE2} README.md
 %caps(cap_sys_rawio=ep) %{_bindir}/redumper-rgui
 
 %changelog
+* Fri Jul 24 2026 gmipf <gmipf64@gmail.com> - 734-1
+- Automated: consumer moved its bundled redumper build b734; the pin follows. Release reset to 1.
+
 * Sun Jul 19 2026 gmipf <gmipf64@gmail.com> - 733-1
 - Automated: consumer moved its bundled redumper to b733; the pin follows. Release reset to 1.
 

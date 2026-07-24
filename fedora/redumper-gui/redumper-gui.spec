@@ -19,7 +19,7 @@
 %global guidir  %{_libdir}/%{name}
 
 Name:           redumper-gui
-Version:        1.0.2
+Version:        1.0.3
 Release:        1%{?dist}
 Summary:        Desktop frontend for the redumper optical-disc dumper
 
@@ -272,6 +272,9 @@ done
 %{_datadir}/icons/hicolor/*/apps/%{name}.png
 
 %changelog
+* Fri Jul 24 2026 gmipf <gmipf64@gmail.com> - 1.0.3-1
+- Automated sync to upstream redumper-gui release v1.0.3. Release reset to 1.
+
 * Sun Jul 19 2026 gmipf <gmipf64@gmail.com> - 1.0.2-1
 - Update to upstream 1.0.2. It carries the three things the packaging PR asked
   for and upstream granted: a committed Cargo.lock, rust-version = "1.92" and
