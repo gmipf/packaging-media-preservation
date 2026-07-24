@@ -84,18 +84,52 @@ jobs:
           [ -n "$pkgs" ] || { echo "::error::no opensuse/*/_service found"; exit 1; }
           echo "Packages: $(echo $pkgs)"
 
+          # RETRY ON 5xx, AND ONLY ON 5xx. Added 2026-07-24 after build.opensuse.org
+          # answered `503 No server is available` to all 8 packages in one run.
+          # ⭐ That the failure was UNIFORM is the tell: an evenly red sweep talks
+          # about the instrument, not the specimen -- OBS was down, our recipes were
+          # fine. Ten minutes later the API answered 200 again.
+          #
+          # 🔴 WHY A LOST TRIGGER IS NOT SELF-HEALING, which is what made this worth
+          # fixing rather than re-running by hand: every caller gates this workflow
+          # behind `if: needs.watch.outputs.changed == 'true'`. The watchers run
+          # hourly, but the TRIGGER only runs when something was bumped. So a 503 is
+          # a trigger that is LOST, not one that is late -- OBS keeps building the
+          # previous revision until the next unrelated bump happens to sweep it up.
+          # Measured on this very failure: git carried mpf snapshot
+          # 20260724150633.a9425fab while OBS still had 20260724132502.e01984f7
+          # published, hours later, with every build green.
+          #
+          # 4xx is NOT retried: 401/403 means the token is wrong and 404 means the
+          # package is gone. Both are real findings, and repeating them just delays
+          # the report by half a minute.
           rc=0
           for pkg in $pkgs; do
-            code=$(curl -sS -o /tmp/obs-trigger.out -w '%{http_code}' -X POST \
-              -H "Authorization: Token $OBS_TOKEN" \
-              "https://api.opensuse.org/trigger/runservice?project=${PROJECT}&package=${pkg}")
+            code=""
+            for attempt in 1 2 3 4; do
+              code=$(curl -sS -o /tmp/obs-trigger.out -w '%{http_code}' -X POST \
+                -H "Authorization: Token $OBS_TOKEN" \
+                "https://api.opensuse.org/trigger/runservice?project=${PROJECT}&package=${pkg}") || code="000"
+
+              # 000 = curl itself could not complete (DNS, TLS, connection reset).
+              # Same class as a 5xx for our purposes: the request never reached a
+              # server that could answer it.
+              case "$code" in
+                200)   break ;;
+                5??|000)
+                  [ "$attempt" -lt 4 ] || break
+                  echo ":: $pkg — HTTP $code from OBS, retrying in $((attempt * 15))s (attempt $attempt/4)"
+                  sleep $((attempt * 15)) ;;
+                *)     break ;;
+              esac
+            done
 
             if [ "$code" = "200" ]; then
               echo ":: $pkg — services re-run requested"
             else
               # Keep going: one broken package must not hide the others. The
               # response body carries OBS's reason (it never echoes the token).
-              echo "::error::OBS refused the trigger for $pkg (HTTP $code)"
+              echo "::error::OBS refused the trigger for $pkg (HTTP $code after retries)"
               cat /tmp/obs-trigger.out || true
               rc=1
             fi
