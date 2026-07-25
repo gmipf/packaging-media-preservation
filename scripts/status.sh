@@ -503,6 +503,23 @@ fi
 # vor -- OBS vergibt sein eigenes (`-lp160.74.1`), das ist kein Drift.
 hr "OBS-Aktualitaet — baut OBS die Revision, die in git steht?"
 OBS_REF_REPO=${OBS_REF_REPO:-16.0}
+# WELCHES „git" ist hier gemeint? OBS zieht das Rezept SELBST: jedes _service
+# holt Spec und Beiwerk per raw.githubusercontent von `main`. Der Vergleichspunkt
+# ist damit `origin/main` -- dieser Arbeitsbaum kommt im Mechanismus ueberhaupt
+# nicht vor. Ihn zu befragen beantwortet eine Frage, die niemand gestellt hat.
+#
+# Gemessen 2026-07-25, beim ERSTEN echten Feuern dieses Blocks: der Clone stand
+# 3 Commits hinter origin/main, und der Block meldete
+#     FEHLER mpf  git 3.8.3~...a9425fab, OBS veroeffentlicht 3.8.3~...f671c661
+# samt „Trigger ging verloren" -- fuer ein Paket, das exakt in sync war. OBS war
+# NEUER als das, was hier „git" hiess; die Meldung konnte das nicht mal ausdruecken.
+#
+# 🔴 Und die harmlose Richtung ist nicht die gefaehrliche: stehen Clone UND OBS
+# auf derselben ALTEN Revision, sind sie sich einig -> `ok`. Dann verdeckt dieser
+# Block genau den verlorenen Trigger, fuer den er gebaut wurde. Falsch rot nervt,
+# falsch gruen wird nie nachgemessen.
+OBS_REF_GIT=${OBS_REF_GIT:-origin/main}
+
 # Drei Zaehler, nicht zwei. Die erste Fassung zaehlte nur FEHLER und UNKLAR --
 # und meldete danach „jedes Paket veroeffentlicht die Revision aus git",
 # waehrend eine Zeile darueber „mpf ... baut gerade" stand. ⭐ Eine
@@ -510,53 +527,95 @@ OBS_REF_REPO=${OBS_REF_REPO:-16.0}
 # stille Fehlschlag, den dieser Block finden soll: wer nur das Fazit liest,
 # bekommt Entwarnung fuer einen Zustand, der noch offen ist.
 STALE=0; STALE_UNKNOWN=0; STALE_BUILDING=0
-for svc in "$REPO"/opensuse/*/_service; do
-    pkg=$(basename "$(dirname "$svc")")
-    spec="$REPO/opensuse/$pkg/$pkg.spec"
-    [ -f "$spec" ] || continue
 
-    gitver=$(rpmspec -q --srpm --queryformat '%{version}\n' "$spec" 2>/dev/null | head -1)
-    binlist=$(osc api "/build/${OBS_PROJECT}/${OBS_REF_REPO}/x86_64/${pkg}" 2>/dev/null || true)
-    bin=$(printf '%s' "$binlist" | grep -oE "${pkg}-[0-9][^\"]*\.x86_64\.rpm" | head -1)
+OBS_REF_OK=1
+git -C "$REPO" fetch -q origin main 2>/dev/null || OBS_REF_OK=0
+git -C "$REPO" rev-parse --verify -q "${OBS_REF_GIT}^{commit}" >/dev/null || OBS_REF_OK=0
 
-    # Leere Antwort ist KEINE Entwarnung: nicht abfragbar, kein Binary, oder die
-    # Spec parst nicht -- drei Zustaende, und keiner davon heisst "aktuell".
-    if [ -z "$gitver" ] || [ -z "$bin" ]; then
-        printf '  \033[33mUNKLAR\033[0m %-18s nicht vergleichbar (git=%s obs=%s) — keine Messung, keine Entwarnung\n' \
-            "$pkg" "${gitver:-–}" "${bin:-–}"
-        STALE_UNKNOWN=$((STALE_UNKNOWN + 1)); continue
-    fi
-
-    # <name>-<version>-<release>.x86_64.rpm  ->  <version>
-    rest=${bin#"$pkg"-}; rest=${rest%.x86_64.rpm}; obsver=${rest%-*}
-
-    if [ "$gitver" = "$obsver" ]; then
-        printf '  \033[32mok\033[0m    %-18s %s\n' "$pkg" "$obsver"
-    else
-        # Baut es gerade? Dann ist die alte Version der normale Zwischenzustand.
-        st=$(osc results "$OBS_PROJECT" "$pkg" 2>/dev/null \
-             | awk '{print $NF}' | grep -cE 'building|scheduled|blocked|dispatching|signing|finished' || true)
-        if [ "${st:-0}" -gt 0 ]; then
-            printf '  \033[33m--\033[0m    %-18s git %s, OBS %s — baut gerade (%s Ziele)\n' \
-                "$pkg" "$gitver" "$obsver" "$st"
-            STALE_BUILDING=$((STALE_BUILDING + 1))
-        else
-            printf '  \033[31mFEHLER\033[0m %-18s git %s, OBS veroeffentlicht %s\n' "$pkg" "$gitver" "$obsver"
-            STALE=$((STALE + 1))
-        fi
-    fi
-done
-if [ "$STALE" -gt 0 ]; then
-    echo "  -> ${STALE} Paket(e) bauen eine ALTE Revision, ohne dass irgendwo etwas rot ist."
-    echo "     Wahrscheinlichste Ursache: ein Trigger ging verloren (OBS-Ausfall)."
-    echo "     Nachholen: osc service remoterun ${OBS_PROJECT} <paket>"
-elif [ "$STALE_UNKNOWN" -gt 0 ]; then
-    printf '  \033[33m--\033[0m    %s Paket(e) nicht vergleichbar — kein Befund, aber auch keine Entwarnung\n' \
-        "$STALE_UNKNOWN"
-elif [ "$STALE_BUILDING" -gt 0 ]; then
-    echo "  ${STALE_BUILDING} Paket(e) bauen die neue Revision gerade — nochmal messen, wenn sie durch sind"
+if [ "$OBS_REF_OK" = 0 ]; then
+    # KEIN stiller Rueckfall auf den Arbeitsbaum -- das waere exakt der Fehler,
+    # den dieser Block seit heute vermeidet. Dritter Zustand statt Entwarnung.
+    # Und das Fazit steht bewusst IM else-Zweig: stuende es draussen, waeren hier
+    # alle drei Zaehler 0 und es druckte „jedes Paket ... aktuell" -- eine
+    # Entwarnung, die aus einer NICHT durchgefuehrten Messung entsteht.
+    printf '  \033[33mnicht messbar\033[0m %s nicht abrufbar (offline? kein Remote?)\n' "$OBS_REF_GIT"
+    echo "     Ohne die kanonische Revision bliebe nur der Arbeitsbaum, und der kann"
+    echo "     falsches GRUEN erzeugen. Lieber keine Aussage als eine unbelegte."
 else
-    echo "  jedes Paket veroeffentlicht die Revision aus git"
+    behind=$(git -C "$REPO" rev-list --count "HEAD..${OBS_REF_GIT}" 2>/dev/null || echo 0)
+    if [ "${behind:-0}" -gt 0 ]; then
+        printf '  (dein Clone ist %s Commit(s) hinter %s — verglichen wird %s, nicht dein Arbeitsbaum)\n' \
+            "$behind" "$OBS_REF_GIT" "$OBS_REF_GIT"
+    fi
+
+    # Die Paketliste kommt EBENFALLS aus origin/main: ein Paket, das dort schon
+    # existiert und in diesem Clone noch nicht, fiele sonst lautlos aus der
+    # Pruefung -- und eines, das hier noch herumliegt und dort geloescht ist,
+    # wuerde erfunden. Der Suchraum gehoert zur Messung, nicht zum Zufall.
+    svcs=$(git -C "$REPO" ls-tree -r --name-only "$OBS_REF_GIT" opensuse/ | grep '/_service$' || true)
+    if [ -z "$svcs" ]; then
+        printf '  \033[31mFEHLER\033[0m kein opensuse/*/_service in %s — leerer Suchraum ist keine Entwarnung\n' \
+            "$OBS_REF_GIT"
+        STALE_UNKNOWN=$((STALE_UNKNOWN + 1))
+    fi
+
+    tmpspec=$(mktemp)
+    while read -r svc; do
+        [ -n "$svc" ] || continue
+        pkg=$(basename "$(dirname "$svc")")
+        specblob="${OBS_REF_GIT}:opensuse/$pkg/$pkg.spec"
+        git -C "$REPO" cat-file -e "$specblob" 2>/dev/null || continue
+        git -C "$REPO" show "$specblob" > "$tmpspec" 2>/dev/null
+
+        gitver=$(rpmspec -q --srpm --queryformat '%{version}\n' "$tmpspec" 2>/dev/null | head -1)
+        binlist=$(osc api "/build/${OBS_PROJECT}/${OBS_REF_REPO}/x86_64/${pkg}" 2>/dev/null || true)
+        bin=$(printf '%s' "$binlist" | grep -oE "${pkg}-[0-9][^\"]*\.x86_64\.rpm" | head -1)
+
+        # Leere Antwort ist KEINE Entwarnung: nicht abfragbar, kein Binary, oder die
+        # Spec parst nicht -- drei Zustaende, und keiner davon heisst "aktuell".
+        if [ -z "$gitver" ] || [ -z "$bin" ]; then
+            printf '  \033[33mUNKLAR\033[0m %-18s nicht vergleichbar (main=%s obs=%s) — keine Messung, keine Entwarnung\n' \
+                "$pkg" "${gitver:-–}" "${bin:-–}"
+            STALE_UNKNOWN=$((STALE_UNKNOWN + 1)); continue
+        fi
+
+        # <name>-<version>-<release>.x86_64.rpm  ->  <version>
+        rest=${bin#"$pkg"-}; rest=${rest%.x86_64.rpm}; obsver=${rest%-*}
+
+        if [ "$gitver" = "$obsver" ]; then
+            printf '  \033[32mok\033[0m    %-18s %s\n' "$pkg" "$obsver"
+        else
+            # Baut es gerade? Dann ist die alte Version der normale Zwischenzustand.
+            st=$(osc results "$OBS_PROJECT" "$pkg" 2>/dev/null \
+                 | awk '{print $NF}' | grep -cE 'building|scheduled|blocked|dispatching|signing|finished' || true)
+            if [ "${st:-0}" -gt 0 ]; then
+                printf '  \033[33m--\033[0m    %-18s main %s, OBS %s — baut gerade (%s Ziele)\n' \
+                    "$pkg" "$gitver" "$obsver" "$st"
+                STALE_BUILDING=$((STALE_BUILDING + 1))
+            else
+                # Bewusst OHNE Richtungsaussage („alt"/„neu"): unsere Versionen
+                # tragen `~`, das sortiert in RPM VOR allem, `sort -V` dreht es um.
+                # Wer hier ohne rpm-Semantik „ALTE Revision" schreibt, baut denselben
+                # Fehler wie oben nochmal -- nur leiser.
+                printf '  \033[31mFEHLER\033[0m %-18s main %s, OBS veroeffentlicht %s\n' "$pkg" "$gitver" "$obsver"
+                STALE=$((STALE + 1))
+            fi
+        fi
+    done <<<"$svcs"
+    rm -f "$tmpspec"
+
+    if [ "$STALE" -gt 0 ]; then
+        echo "  -> ${STALE} Paket(e) veroeffentlichen etwas anderes als ${OBS_REF_GIT}, ohne dass irgendwo etwas rot ist."
+        echo "     Wahrscheinlichste Ursache: ein Trigger ging verloren (OBS-Ausfall)."
+        echo "     Nachholen: osc service remoterun ${OBS_PROJECT} <paket>"
+    elif [ "$STALE_UNKNOWN" -gt 0 ]; then
+        printf '  \033[33m--\033[0m    %s Paket(e) nicht vergleichbar — kein Befund, aber auch keine Entwarnung\n' \
+            "$STALE_UNKNOWN"
+    elif [ "$STALE_BUILDING" -gt 0 ]; then
+        echo "  ${STALE_BUILDING} Paket(e) bauen die neue Revision gerade — nochmal messen, wenn sie durch sind"
+    else
+        echo "  jedes Paket veroeffentlicht die Revision aus ${OBS_REF_GIT}"
+    fi
 fi
 
 hr "Auto-Tracking — kein Paket darf menschenueberwacht sein"
