@@ -1,3 +1,9 @@
+redumper-rgui (736-1) UNRELEASED; urgency=medium
+
+  * Automated: consumer moved its bundled redumper build b736; the pin follows.
+
+ -- gmipf <gmipf64@gmail.com>  Tue, 28 Jul 2026 00:13:34 +0000
+
 redumper-rgui (734-1) UNRELEASED; urgency=medium
 
   * Automated: consumer moved its bundled redumper build b734; the pin follows.
