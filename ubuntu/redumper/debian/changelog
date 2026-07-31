@@ -1,3 +1,9 @@
+redumper (739-1) UNRELEASED; urgency=medium
+
+  * Automated sync to upstream redumper release b739.
+
+ -- gmipf <gmipf64@gmail.com>  Fri, 31 Jul 2026 13:16:31 +0000
+
 redumper (737-1) UNRELEASED; urgency=medium
 
   * Automated sync to upstream redumper release b737.
