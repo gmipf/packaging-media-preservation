@@ -1,3 +1,9 @@
+redumper-mpf (737-1) UNRELEASED; urgency=medium
+
+  * Automated: consumer moved its bundled redumper build b737; the pin follows.
+
+ -- gmipf <gmipf64@gmail.com>  Fri, 31 Jul 2026 05:17:19 +0000
+
 redumper-mpf (735-1) UNRELEASED; urgency=medium
 
   * Automated: consumer moved its bundled redumper build b735; the pin follows.
