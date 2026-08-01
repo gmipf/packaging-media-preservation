@@ -19,7 +19,7 @@
 %global guidir  %{_libdir}/%{name}
 
 Name:           redumper-gui
-Version:        1.0.4
+Version:        1.0.5
 Release:        1%{?dist}
 Summary:        Desktop frontend for the redumper optical-disc dumper
 
@@ -272,6 +272,9 @@ done
 %{_datadir}/icons/hicolor/*/apps/%{name}.png
 
 %changelog
+* Sat Aug 01 2026 gmipf <gmipf64@gmail.com> - 1.0.5-1
+- Automated sync to upstream redumper-gui release v1.0.5. Release reset to 1.
+
 * Tue Jul 28 2026 gmipf <gmipf64@gmail.com> - 1.0.4-1
 - Automated sync to upstream redumper-gui release v1.0.4. Release reset to 1.
 
