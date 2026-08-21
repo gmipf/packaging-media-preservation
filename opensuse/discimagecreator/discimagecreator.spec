@@ -6,8 +6,8 @@
 # plus short SHA: dicsnap = <YYYYMMDDHHMMSS>.<short-SHA>. watch-dic-releases
 # rewrites dicsnap / diccommit on every new master commit; diccommit is the
 # full SHA used for the source archive.
-%global dicsnap      20260720163205.0a61a018
-%global diccommit    0a61a0185cdc905b34d7b9aca3220d47cda4426f
+%global dicsnap      20260821142435.63b936f5
+%global diccommit    63b936f57197c207be0da580cde0d44adb1d4329
 %global eccedcver    20240901
 %global dvdauthver   1.4
 %global unscramblver 0.5.5
@@ -296,6 +296,9 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
 %{_datadir}/permissions/permissions.d/discimagecreator
 
 %changelog
+* Fri Aug 21 2026 gmipf <gmipf64@gmail.com> - 20260821142435.63b936f5-0
+- Automated master-snapshot sync to upstream DiscImageCreator commit 63b936f5 (committed 20260821142435 UTC).
+
 * Mon Jul 20 2026 gmipf <gmipf64@gmail.com> - 20260720163205.0a61a018-0
 - Automated master-snapshot sync to upstream DiscImageCreator commit 0a61a018 (committed 20260720163205 UTC).
 

@@ -1,3 +1,9 @@
+discimagecreator (20260821142435.63b936f5-1) UNRELEASED; urgency=medium
+
+  * Automated master-snapshot sync to upstream DiscImageCreator commit 63b936f5 (committed 20260821142435 UTC).
+
+ -- gmipf <gmipf64@gmail.com>  Fri, 21 Aug 2026 14:47:45 +0000
+
 discimagecreator (20260720163205.0a61a018-1) UNRELEASED; urgency=medium
 
   * Automated master-snapshot sync to upstream DiscImageCreator commit 0a61a018 (committed 20260720163205 UTC).
