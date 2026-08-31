@@ -2,7 +2,7 @@ Format: 3.0 (quilt)
 Source: mpf
 Binary: mpf, mpf-check, mpf-cli, mpf-gui
 Architecture: all amd64 arm64
-Version: 3.9.0~20260829132227.c4ec7d61-1
+Version: 3.9.0~20260831175211.a96af999-1
 Maintainer: gmipf <gmipf64@gmail.com>
 Homepage: https://github.com/SabreTools/MPF
 Standards-Version: 4.6.2
