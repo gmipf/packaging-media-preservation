@@ -1,3 +1,9 @@
+redumper-rgui (750-1) UNRELEASED; urgency=medium
+
+  * Automated: consumer moved its bundled redumper build b750; the pin follows.
+
+ -- gmipf <gmipf64@gmail.com>  Thu, 10 Sep 2026 04:55:01 +0000
+
 redumper-rgui (739-1) UNRELEASED; urgency=medium
 
   * Automated: consumer moved its bundled redumper build b739; the pin follows.
