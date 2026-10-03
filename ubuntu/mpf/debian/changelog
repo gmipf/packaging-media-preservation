@@ -1,3 +1,9 @@
+mpf (3.10.0~20261003183705.e3116f0d-1) UNRELEASED; urgency=medium
+
+  * Automated rolling-snapshot sync to upstream MPF commit e3116f0d (published 20261003183705 UTC).
+
+ -- gmipf <gmipf64@gmail.com>  Sat, 03 Oct 2026 19:31:23 +0000
+
 mpf (3.10.0~20260929220436.3ac3a939-1) UNRELEASED; urgency=medium
 
   * Automated rolling-snapshot sync to upstream MPF commit 3ac3a939 (published 20260929220436 UTC).
