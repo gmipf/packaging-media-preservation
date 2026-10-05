@@ -1,3 +1,9 @@
+mpf (3.10.0~20261005173957.bade5871-1) UNRELEASED; urgency=medium
+
+  * Automated rolling-snapshot sync to upstream MPF commit bade5871 (published 20261005173957 UTC).
+
+ -- gmipf <gmipf64@gmail.com>  Mon, 05 Oct 2026 22:55:51 +0000
+
 mpf (3.10.0~20261005153644.f78a628b-1) UNRELEASED; urgency=medium
 
   * Automated rolling-snapshot sync to upstream MPF commit f78a628b (published 20261005153644 UTC).
