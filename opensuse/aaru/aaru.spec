@@ -1,5 +1,5 @@
 %global aaruver       6.0.0
-%global aaruprerel    beta.1
+%global aaruprerel    beta.2
 %global aarutag       v%{aaruver}-%{aaruprerel}
 %global aarudir       %{_libdir}/aaru
 
@@ -310,6 +310,9 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
 %{_datadir}/permissions/permissions.d/aaru
 
 %changelog
+* Fri Oct 09 2026 gmipf <gmipf64@gmail.com> - 6.0.0~beta.2-0
+- Automated sync to upstream Aaru v6.0.0-beta.2.
+
 * Sat Jul 18 2026 gmipf <gmipf64@gmail.com> - 6.0.0~beta.1-0
 - Add aarch64 (arm64) support: bundle the upstream linux_arm64 binary tarball
   alongside linux_amd64 and extract the matching one per build arch via %%ifarch;

@@ -1,5 +1,5 @@
 %global aaruver       6.0.0
-%global aaruprerel    beta.1
+%global aaruprerel    beta.2
 %global aarutag       v%{aaruver}-%{aaruprerel}
 %global aarudir       %{_libdir}/aaru
 
@@ -29,7 +29,7 @@ Name:           aaru
 # before this build, so nothing previously published needs to be
 # sort-overridden.
 Version:        %{aaruver}~%{aaruprerel}
-Release:        3%{?dist}
+Release:        1%{?dist}
 Summary:        Data preservation suite for optical, magnetic and solid-state media
 
 License:        GPL-3.0-or-later AND LGPL-2.1-or-later AND MIT
@@ -288,6 +288,9 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
 %{_udevrulesdir}/70-aaru-floppy.rules
 
 %changelog
+* Fri Oct 09 2026 gmipf <gmipf64@gmail.com> - 6.0.0~beta.2-1
+- Automated sync to upstream Aaru v6.0.0-beta.2; Release reset to 1.
+
 * Sat Jul 18 2026 gmipf <gmipf64@gmail.com> - 6.0.0~beta.1-3
 - Add aarch64 (arm64) support. Bundle the upstream linux_arm64 binary tarball
   alongside linux_amd64 (same version macros, so the watcher bumps both in
