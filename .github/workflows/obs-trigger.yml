@@ -73,6 +73,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # OBS fetches every recipe from raw.githubusercontent.com, which answers
+      # with `Cache-Control: max-age=300`. Asked right after a push, OBS can get
+      # the OLD file from a CDN edge -- then the source service sees no change
+      # and the new version is never built -- or a 404 for a file that is brand
+      # new. Measured 2026-10-12: dreamdump's first service run got 404, 15 s
+      # after the push; mpf had sat on OBS at a three-day-old snapshot while
+      # every trigger reported success. So wait out the cache lifetime the CDN
+      # itself announces. ALWAYS: called from a watcher, github.event_name is the
+      # caller's `schedule`, so "only after a push" cannot be told apart.
+      - name: Wait out the raw.githubusercontent.com cache
+        run: |
+          set -euo pipefail
+          ma=$(curl -fsSI "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/README.md" \
+               | tr -d '\r' | sed -n 's/^cache-control:.*max-age=\([0-9][0-9]*\).*/\1/Ip' | head -1 || true)
+          if [ -z "$ma" ]; then
+            echo "::warning::could not read max-age from raw.githubusercontent.com -- waiting the last measured 300 s"
+            ma=300
+          fi
+          echo "raw CDN max-age=${ma}s -> waiting $((ma + 30))s before asking OBS to fetch"
+          sleep $((ma + 30))
+
       - name: Ask OBS to re-run the source services
         env:
           OBS_TOKEN: ${{ secrets.OBS_TOKEN }}
