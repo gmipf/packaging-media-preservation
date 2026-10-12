@@ -133,6 +133,7 @@ Requires:       jq
 Recommends:     redumper-mpf
 Recommends:     aaru5
 Recommends:     discimagecreator
+Recommends:     dreamdump
 
 %description cli
 MPF.CLI orchestrates the disc-dumping workflow from a terminal: it drives
@@ -173,6 +174,7 @@ Requires:       desktop-file-utils
 Recommends:     redumper-mpf
 Recommends:     aaru5
 Recommends:     discimagecreator
+Recommends:     dreamdump
 # Avalonia 11.x ships only the X11 backend; on Wayland sessions the GUI runs
 # through Xwayland.
 #
@@ -272,9 +274,9 @@ install -d %{buildroot}%{_libdir}/mpf-gui
 install -m 0755 gui/MPF %{buildroot}%{_libdir}/mpf-gui/MPF.Avalonia
 
 # --- /usr/bin/ wrappers ---
-# The wrappers seed AND heal ~/.config/mpf/config.json so the three
+# The wrappers seed AND heal ~/.config/mpf/config.json so the four
 # dumper-path keys and the output path are always present and usable. We
-# seed BARE tool names (aaru5, DiscImageCreator.out, redumper) rather than
+# seed BARE tool names (aaru5, DiscImageCreator.out, dreamdump, redumper-mpf) rather than
 # absolute paths: MPF (SabreTools/MPF#979) resolves a bare name through its
 # runtime directory and $PATH, so the config stays valid no matter where
 # the distro installs the dumpers and keeps working after the user
@@ -289,8 +291,8 @@ install -m 0755 gui/MPF %{buildroot}%{_libdir}/mpf-gui/MPF.Avalonia
 # absolute directory in the user's home; MPF creates it on first dump.
 #
 # Behavior at every launch:
-#   * config missing/empty  -> write a minimal 4-key seed
-#   * config exists         -> reset each Aaru/DIC/Redumper key IFF its
+#   * config missing/empty  -> write a minimal 5-key seed
+#   * config exists         -> reset each Aaru/DIC/Dreamdump/Redumper key IFF its
 #                              value no longer resolves (empty, a bare
 #                              name not on $PATH, or a path that no longer
 #                              exists), and reset DefaultOutputPath IFF it
@@ -316,6 +318,7 @@ config="\$config_dir/config.json"
 aaru_p=aaru5
 dic_p=DiscImageCreator.out
 red_p=redumper-mpf
+dd_p=dreamdump
 # Without a HOME there is no sane home-relative output directory; leave the
 # key alone rather than rewriting it to a root-owned "/ISO".
 out_p=""
@@ -345,6 +348,7 @@ if [ ! -s "\$config" ]; then
 {
   "AaruPath": "\$aaru_p",
   "DiscImageCreatorPath": "\$dic_p",
+  "DreamdumpPath": "\$dd_p",
   "RedumperPath": "\$red_p",
   "DefaultOutputPath": "\${out_p:-ISO}"
 }
@@ -353,22 +357,25 @@ elif command -v jq >/dev/null 2>&1; then
     ca=\$(jq -r '.AaruPath // ""' "\$config" 2>/dev/null)
     cd_=\$(jq -r '.DiscImageCreatorPath // ""' "\$config" 2>/dev/null)
     cr=\$(jq -r '.RedumperPath // ""' "\$config" 2>/dev/null)
+    cdd=\$(jq -r '.DreamdumpPath // ""' "\$config" 2>/dev/null)
     co=\$(jq -r '.DefaultOutputPath // ""' "\$config" 2>/dev/null)
-    fa=0; fd=0; fr=0; fo=0
+    fa=0; fd=0; fr=0; fdd=0; fo=0
     resolves "\$ca"  || fa=1
     resolves "\$cd_" || fd=1
     resolves "\$cr"  || fr=1
+    resolves "\$cdd" || fdd=1
     [ -n "\$out_p" ] && { is_abs "\$co" || fo=1; }
-    if [ \$((fa + fd + fr + fo)) -gt 0 ]; then
+    if [ \$((fa + fd + fr + fdd + fo)) -gt 0 ]; then
         tmp=\$(mktemp -p "\$config_dir" .config.json.XXXXXX 2>/dev/null)
         if [ -n "\$tmp" ] && jq \\
-            --arg ap "\$aaru_p" --arg dp "\$dic_p" --arg rp "\$red_p" \\
+            --arg ap "\$aaru_p" --arg dp "\$dic_p" --arg rp "\$red_p" --arg ddp "\$dd_p" \\
             --arg op "\$out_p" \\
-            --argjson fa "\$fa" --argjson fd "\$fd" --argjson fr "\$fr" \\
+            --argjson fa "\$fa" --argjson fd "\$fd" --argjson fr "\$fr" --argjson fdd "\$fdd" \\
             --argjson fo "\$fo" '
             (if \$fa == 1 then .AaruPath = \$ap else . end)
             | (if \$fd == 1 then .DiscImageCreatorPath = \$dp else . end)
             | (if \$fr == 1 then .RedumperPath = \$rp else . end)
+            | (if \$fdd == 1 then .DreamdumpPath = \$ddp else . end)
             | (if \$fo == 1 then .DefaultOutputPath = \$op else . end)
             ' "\$config" > "\$tmp" 2>/dev/null; then
             mv "\$tmp" "\$config"
@@ -464,6 +471,12 @@ install -m 0644 %{SOURCE6} %{buildroot}%{_mandir}/man1/mpf-gui.1
 %{_datadir}/icons/hicolor/*/apps/mpf.png
 
 %changelog
+* Mon Oct 12 2026 gmipf <gmipf64@gmail.com> - 3.11.0~20261012145534.8df12827-0
+- Recommend dreamdump and seed/heal DreamdumpPath in the wrappers, like the
+  other three dumper paths. MPF starts dreamdump itself since July 2026; its
+  default path (Programs/Dreamdump/dreamdump, relative to the bundle) never
+  exists in a /usr-tree install, so choosing Dreamdump in MPF found nothing.
+
 * Mon Oct 12 2026 gmipf <gmipf64@gmail.com> - 3.11.0~20261012145534.8df12827-0
 - Automated rolling-snapshot sync to upstream MPF commit 8df12827 (published 20261012145534 UTC).
 
