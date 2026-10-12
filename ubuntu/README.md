@@ -41,8 +41,8 @@ LBA with `error: SYSTEM (Operation not permitted)`. The capability is the only
 difference between the two runs.
 
 The capability lands on the **dumping tools** only (`redumper`, `redumper-rgui`,
-`redumper-mpf`, `aaru`, `aaru5`, DiscImageCreator). The GUIs and the MPF frontends
-deliberately get none — a process with file capabilities is non-dumpable, so the
+`redumper-mpf`, `aaru`, `aaru5`, DiscImageCreator; `dreamdump` needs none). The GUIs
+and the MPF frontends deliberately get none — a process with file capabilities is non-dumpable, so the
 desktop portal will not authorise it and its file dialogs stop working.
 
 ⚠️ Measure the result with **`/usr/sbin/getcap`, spelled out in full**: on Debian
@@ -127,6 +127,7 @@ outright. That is a property of the container, not a bug in the package — see 
 | `aaru` | binary tarball + source tarball (icons, `.desktop`, MIME xml) | all |
 | `discimagecreator` | DIC + EccEdc + DVDAuth + unscrambler, built from source | all |
 | `mpf` | three release zips (Check, CLI, Avalonia) | all |
+| `dreamdump` | upstream source tarball as the `.orig` (read at build for the manpage and the opcode guard) + the amd64/arm64 release binaries as extras | all |
 | `redumper-gui` | vendored source tarball (crates travel with the source: no build root has network) | **Ubuntu 26.04 + Debian 13** |
 
 `redumper-gui` needs rustc ≥ 1.92 (eframe/egui), and that floor is not written

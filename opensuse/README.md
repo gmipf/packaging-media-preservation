@@ -46,7 +46,7 @@ here is red.
 ```sh
 sudo zypper addrepo https://download.opensuse.org/repositories/home:gmipf:media-preservation/16.0/home:gmipf:media-preservation.repo
 sudo zypper refresh
-sudo zypper install redumper discimagecreator aaru aaru5 mpf redumper-gui
+sudo zypper install redumper discimagecreator aaru aaru5 mpf redumper-gui dreamdump
 ```
 
 For Tumbleweed, swap `16.0` for `openSUSE_Tumbleweed` in the repo URL.
@@ -142,6 +142,10 @@ dumped). Confirmed:
   `redumper-rgui`, `redumper-mpf`, `aaru`, `aaru5`, and DIC's `DiscImageCreator.out`
   + `DVDAuth.out` — seven binaries, matching the seven `permctl` entries.
   DIC's `EccEdc`/`unscrambler` are pure file tools and correctly get none.
+- **`dreamdump` gets none because it needs none**: it sends only INQUIRY, SET CD
+  SPEED and READ CD, all on the kernel's unprivileged list (measured 2026-10-12,
+  `proofs/dreamdump-optical-access-MEASURED-x86_64.md`); its build fails if a new
+  opcode ever appears in the source.
 - **The MPF frontends and the GUIs get none, on purpose.** They orchestrate the
   dumpers; they never talk to a drive. A process holding file capabilities is
   non-dumpable, so the desktop portal refuses to authorise it and every file
@@ -338,8 +342,9 @@ has anything to do with `_service`.
 | Tool             | Kind                              | Recipe files | Notes |
 |------------------|-----------------------------------|--------------|-------|
 | redumper         | static binary                     | 5            | no shlib deps; stamped manpage |
-| redumper-rgui    | static binary, **pinned build**   | 4            | b733 as `/usr/bin/redumper-rgui`; no manpage, by design |
-| redumper-mpf     | static binary, **pinned build**   | 4            | b732 as `/usr/bin/redumper-mpf`; no manpage, by design |
+| redumper-rgui    | static binary, **pinned build**   | 4            | the build Redumper-GUI bundles, as `/usr/bin/redumper-rgui`; no manpage, by design |
+| redumper-mpf     | static binary, **pinned build**   | 4            | the build MPF bundles, as `/usr/bin/redumper-mpf`; no manpage, by design |
+| dreamdump        | static binary (Go), MPF's release | 5            | source tarball read at build: provenance check, opcode guard, generated manpage; **no capability**, none needed |
 | redumper-gui     | **source build** (Rust / egui)    | 5            | vendored crates; 9 icon sizes; **no capability**, by design |
 | aaru5            | NativeAOT binary + sidecar `.so`  | 7            | auto ELF deps; static manpage; udev |
 | aaru             | self-contained .NET (single-file) | 7            | two tarballs; manpage from `--help`; udev; icons/MIME/desktop |

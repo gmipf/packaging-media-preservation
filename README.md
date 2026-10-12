@@ -24,8 +24,9 @@ respective project URLs (see below).
 | [MPF](https://github.com/SabreTools/MPF) | rolling, auto-tracked hourly (binary repackage); meta-package `mpf` pulls in `mpf-check` (validator), `mpf-cli` (headless orchestrator) and `mpf-gui` (Avalonia desktop UI) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [DiscImageCreator](https://github.com/saramibreak/DiscImageCreator) | auto-tracked hourly on new master commits (built from source — upstream binary links against EOL OpenSSL 1.1); bundles DIC + EccEdc + DVDAuth + unscrambler in one package | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Aaru](https://github.com/aaru-dps/Aaru) | auto-tracked hourly on new `v6.0.0-<alpha|beta|rc>.<N>` tags (binary repackage; beta since 2026-07-16); CLI + Avalonia GUI ship as one binary, launch the GUI via `aaru gui` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| [Aaru 5.4.x](https://github.com/aaru-dps/Aaru) (`aaru5`) | version-pinned; **watched hourly, bumped by hand on purpose** — a new 5.4.x would void its blocked drive-access proof, so the watcher fails loudly instead of advancing it silently (binary repackage); the stable 5.4 CLI that MPF drives, installs as `/usr/bin/aaru5` alongside the rolling `aaru` v6 | ✅ | ✅ | ✅ | ✅ | ✅ |
+| [Aaru 5.4.x](https://github.com/aaru-dps/Aaru) (`aaru5`) | version-pinned; **watched hourly, bumped by hand on purpose** — the version MPF bundles is read without a major-version constraint, and the day it lists a 6.x the package named `aaru5` must not silently become Aaru 6 (that is a retirement, decided by hand), so the watcher fails loudly instead (binary repackage); the stable 5.4 CLI that MPF drives, installs as `/usr/bin/aaru5` alongside the rolling `aaru` v6 | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [Redumper-GUI](https://github.com/Deterous/Redumper-GUI) | release tags, built from source (vendored crates) | ✅ | ✅ | ✅ | 26.04 only | 13 only |
+| [dreamdump](https://codeberg.org/MoriGM/dreamdump) | follows the release MPF bundles, auto-tracked hourly from MPF's `publish-nix.sh` (binary repackage); dumps the high-density area of Sega Dreamcast GD-ROMs and is one of the four programs MPF starts itself; needs **no capability** | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `redumper-mpf` / `redumper-rgui` | fixed-name pins with a moving version: the redumper build that MPF (`redumper-mpf`) and Redumper-GUI (`redumper-rgui`) bundle. `redumper-mpf` is **auto-tracked hourly** from MPF's `publish-nix.sh` and upgrades in place; `redumper-rgui` moves with the Redumper-GUI release. Install one only if you use that frontend — the rolling `redumper` is what you want otherwise. They coexist, each installing as `/usr/bin/<name>` | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 [copr]: https://copr.fedorainfracloud.org/coprs/gmipf/media-preservation/
@@ -74,6 +75,11 @@ any GUI (`mpf-gui`, `redumper-gui`) or on the MPF frontends, which orchestrate
 those tools rather than talk to a drive. A process holding file capabilities is
 non-dumpable, and the desktop portal service then refuses to authorise it: giving
 a GUI `cap_sys_rawio` breaks every file dialog it opens.
+
+`dreamdump` gets none because it needs none: everything it sends (INQUIRY,
+SET CD SPEED, READ CD) is on the kernel's unprivileged SG_IO list, measured as a
+plain user on 2026-10-12 ([proof](proofs/dreamdump-optical-access-MEASURED-x86_64.md)).
+Its build fails the day a new SCSI command appears in its source.
 
 Only headless / SSH / cron sessions, which have no seat, need more. For optical
 drives, add yourself to the `cdrom` group. A headless floppy dump needs root: the
@@ -294,7 +300,7 @@ See `.packit.yaml` for the per-tool trigger configuration.
 
 ```sh
 sudo dnf copr enable gmipf/media-preservation
-sudo dnf install redumper discimagecreator aaru aaru5 mpf redumper-gui
+sudo dnf install redumper discimagecreator aaru aaru5 mpf redumper-gui dreamdump
 ```
 
 On enterprise Linux, enable EPEL first:
@@ -319,7 +325,7 @@ a currently-broken Tumbleweed, with no Leap 16.0 chroot.
 ```sh
 sudo zypper addrepo https://download.opensuse.org/repositories/home:gmipf:media-preservation/16.0/home:gmipf:media-preservation.repo
 sudo zypper refresh
-sudo zypper install redumper discimagecreator aaru aaru5 mpf redumper-gui
+sudo zypper install redumper discimagecreator aaru aaru5 mpf redumper-gui dreamdump
 ```
 
 For Tumbleweed, swap `16.0` for `openSUSE_Tumbleweed` in the repo URL.
@@ -338,7 +344,7 @@ echo "deb [signed-by=/usr/share/keyrings/media-preservation.gpg] $REPO/ /" \
   | sudo tee /etc/apt/sources.list.d/media-preservation.list
 
 sudo apt update
-sudo apt install redumper discimagecreator aaru aaru5 mpf
+sudo apt install redumper discimagecreator aaru aaru5 mpf dreamdump
 ```
 
 `redumper-gui` is available on 26.04 only: eframe/egui needs rustc ≥ 1.92, and
@@ -361,7 +367,7 @@ echo "deb [signed-by=/usr/share/keyrings/media-preservation.gpg] $REPO/ /" \
   | sudo tee /etc/apt/sources.list.d/media-preservation.list
 
 sudo apt update
-sudo apt install redumper discimagecreator aaru aaru5 mpf
+sudo apt install redumper discimagecreator aaru aaru5 mpf dreamdump
 ```
 
 Redumper-GUI is available on Debian 13 (trixie) but not Debian 12 (bookworm): it
@@ -380,7 +386,7 @@ the GUI via `aaru gui` or via the `Aaru` desktop entry. `redumper` and
 `discimagecreator` are CLI-only.
 
 `cap_sys_rawio` is preset on the dumping tools (`redumper`, `redumper-rgui`,
-`redumper-mpf`, `aaru`, `aaru5`, DiscImageCreator) so vendor SCSI passthrough
+`redumper-mpf`, `aaru`, `aaru5`, DiscImageCreator; `dreamdump` needs none) so vendor SCSI passthrough
 commands work without sudo — and deliberately **not** on the GUIs or the MPF
 frontends, which drive those tools rather than a drive. Logged in at a local
 desktop seat you also need **no group membership and no root** to read the drives
