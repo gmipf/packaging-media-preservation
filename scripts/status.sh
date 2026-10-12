@@ -270,12 +270,26 @@ if ! RUNS=$(gh run list --limit 40 \
     RUNS=""
 fi
 if [ -n "$RUNS" ]; then
+# Only workflows that still exist on main. A workflow whose file is gone can
+# never run again, so its last red run would stand here forever and train the
+# reader to skip this list (2026-10-13: a throwaway probe from the day before).
+# Those are named below as history, not hidden.
+LIVE=$(sed -n 's/^name:[[:space:]]*//p' "$REPO"/.github/workflows/*.yml | jq -R . | jq -s .)
+GONE=$(jq -r --argjson live "$LIVE" '[.[].workflowName | select(. as $n | $live | index($n) | not)]
+             | unique | join(", ")' <<<"$RUNS")
+RUNS=$(jq --argjson live "$LIVE" '[.[] | select(.workflowName as $n | $live | index($n))]' <<<"$RUNS")
 RED=$(jq -r '[.[] | select(.conclusion == "success" or .conclusion == "failure")]
              | group_by(.workflowName)
              | map(sort_by(.createdAt) | last)
              | .[] | select(.conclusion == "failure")
              | "  \(.createdAt[0:16])  \(.workflowName)  (run \(.databaseId))"' <<<"$RUNS")
-HEALED=$(jq -r '[.[] | select(.conclusion == "failure")] | length' <<<"$RUNS")
+# Red runs that a LATER green run of the same workflow superseded. Counting every
+# red run here (as until 2026-10-13) also counted the ones still listed as open
+# above, and called them superseded.
+HEALED=$(jq -r '[group_by(.workflowName)[]
+                 | (map(select(.conclusion == "success") | .createdAt) | max) as $ok
+                 | .[] | select(.conclusion == "failure" and $ok != null and .createdAt < $ok)]
+                | length' <<<"$RUNS")
 if [ -n "$RED" ]; then
     printf '\033[31m%s\033[0m\n' "$RED"
     echo "  -> Grund lesen: gh run view <id> --log-failed"
@@ -285,6 +299,7 @@ fi
 if [ "${HEALED:-0}" -gt 0 ]; then
     echo "  (${HEALED} rote Laeufe im Fenster, seither von einem gruenen Lauf abgeloest)"
 fi
+[ -z "$GONE" ] || echo "  (nur Historie, Datei nicht mehr auf main: ${GONE})"
 fi
 
 # --- silent failure #4: the Debian lane's generated files drift apart ----------
