@@ -22,17 +22,32 @@
 # completeness (which waited on an upstream bug in aaru5 that will never resolve
 # on our schedule). A gate whose arming depends on a stranger never arms.
 #
-# Escape hatch: `git commit --no-verify` -- correct exactly once, when the commit
-# IS the re-measurement and the ledger is being updated in the same breath.
+# Escape hatch: there is none for an agent session. Bypassing this hook is the
+# maintainer's call, made at their own terminal. A red ledger gets its cause fixed.
+#
+# ENTRY: not keyed on the checker's exec bit. Until 2026-10-12 this read
+# `[ -x proof-status.sh ] || exit 0`: an exec bit lost in a sync or a checkout
+# switched the whole check off without a word. Now the checker runs via `bash`.
+# The hook steps aside only in a tree with NEITHER ledger NOR checker. Either
+# one alone is red: a ledger without its checker, or a checker without its
+# ledger (proof-status.sh fails on that itself).
 set -uo pipefail
 
 root=$(git rev-parse --show-toplevel) || exit 0
-[ -x "$root/scripts/proof-status.sh" ] || exit 0
+ledger="$root/scripts/proof-ledger.tsv"
+checker="$root/scripts/proof-status.sh"
+[ -e "$ledger" ] || [ -e "$checker" ] || exit 0
 
-if ! "$root/scripts/proof-status.sh"; then
+if [ ! -f "$checker" ]; then
+    echo "pre-commit: scripts/proof-ledger.tsv ist da, scripts/proof-status.sh fehlt —" >&2
+    echo "            ein Ledger ohne Prüfer prüft nichts. Commit abgebrochen." >&2
+    exit 1
+fi
+
+if ! bash "$checker"; then
     echo
     echo "pre-commit: das Beweis-Ledger ist nicht sauber (siehe oben) — Commit abgebrochen." >&2
     echo "            Beweis nachgemessen? Dann Zeile setzen + 'scripts/proof-status.sh --refresh'." >&2
-    echo "            Bewusste Ausnahme? 'git commit --no-verify'." >&2
+    echo "            Bewusste Ausnahme? Entscheidet nur der Maintainer, nicht die Sitzung." >&2
     exit 1
 fi
