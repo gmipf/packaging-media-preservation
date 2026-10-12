@@ -143,13 +143,16 @@ jobs:
           bash scripts/push-retry.sh -f origin trigger-tmp:build-dic || echo "trigger_failed=1" >> "$GITHUB_OUTPUT"
 
       # The version is on main and OBS is refreshed regardless (the obs job runs
-      # `always()`), but a COPR trigger branch could not be pushed. No later run
-      # retries it -- they all see main already bumped -- so this has to be red.
-      - name: Fail if a COPR trigger could not be pushed
+      # `always()`), but a COPR trigger branch could not be pushed even after
+      # retries. That build is late, not lost: copr-reconcile.yml compares every
+      # spec on main with COPR every six hours and re-pushes the trigger of a
+      # version COPR never got -- and goes red itself if that does not help.
+      # Nothing here needs a person, so this run stays green: a red mail that
+      # asks for nothing only teaches its reader to skip red mails.
+      - name: Note a COPR trigger that copr-reconcile will catch up
         if: steps.sync.outputs.trigger_failed == '1'
         run: |
-          echo "::error::The new version is on main and OBS was asked to refresh, but a COPR trigger branch could not be pushed after retries (see the step above). That COPR build is NOT queued, and no later run will queue it. Re-run it by hand: scripts/build-tool.sh <tool>"
-          exit 1
+          echo "::warning::A COPR trigger branch could not be pushed after retries (see the step above). The version is on main and OBS was asked to refresh; copr-reconcile.yml re-pushes the trigger within six hours."
 
   # Tell OBS to re-pull the recipe from main and rebuild what actually changed.
   # OBS fetches the recipe itself, so there is nothing to upload — this only asks

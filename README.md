@@ -142,7 +142,13 @@ Two things that look like permission errors and are not:
 │   ├── watch-redumper-releases.yml         # hourly watcher for redumper's b<N> tags
 │   ├── watch-mpf-rolling.yml               # hourly watcher for MPF's rolling tag
 │   ├── watch-dic-releases.yml              # hourly watcher for DiscImageCreator master commits
-│   └── watch-aaru-releases.yml             # hourly watcher for Aaru's v6.0.0 pre-release tags
+│   ├── watch-aaru-releases.yml             # hourly watcher for Aaru's v6.0.0 pre-release tags
+│   ├── watch-redumper-gui.yml              # hourly watcher for Redumper-GUI releases and its redumper pin
+│   ├── watch-consumer-pins.yml             # follows the builds MPF bundles (redumper-mpf, aaru5, dreamdump)
+│   ├── watch-distro-lifecycle.yml          # reports distro releases that OBS does not build for yet
+│   ├── obs-trigger.yml                     # asks OBS to re-read the recipes (after every bump, and daily)
+│   ├── copr-reconcile.yml                  # re-pushes a COPR trigger that got lost (every six hours)
+│   └── check-repo.yml                      # repository checks (shellcheck, proof ledger, Rust floor, ...)
 ├── LICENSE                                 # MIT (recipes only; tools keep their own licenses)
 ├── README.md
 └── fedora/
@@ -211,10 +217,18 @@ abstraction layer on top.
 
 ## Automation
 
-Builds are driven by [Packit](https://packit.dev/). Every commit that
-touches a tool's `fedora/<tool>/` path triggers Packit to fetch sources, build
-the SRPM, and ship a build to COPR project `gmipf/media-preservation`. No
-manual `copr-cli build` needed.
+Builds are driven by [Packit](https://packit.dev/). A push to `main` builds
+nothing: every package has its own trigger branch `build-<tool>`, and the
+watcher that bumps a spec on `main` then pushes that branch, so Packit fetches
+the sources, builds the SRPM and ships exactly that one package to COPR project
+`gmipf/media-preservation`. A rebuild by hand goes through
+`scripts/build-tool.sh <tool>`, which also makes sure the same version-release
+is never published twice. No manual `copr-cli build` needed.
+
+If a trigger gets lost on the way (a failed push, an outage on either side),
+`copr-reconcile` notices: every six hours it compares each spec on `main` with
+COPR and re-pushes the trigger of any version COPR never received. For OBS,
+`obs-trigger` asks for every recipe to be re-read once a day.
 
 The same per-tool watchers drive the OBS lane: on an upstream bump they advance
 `ubuntu/<tool>/debian/changelog` and regenerate `opensuse/<tool>/{<tool>.dsc,

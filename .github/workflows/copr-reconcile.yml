@@ -1,0 +1,64 @@
+name: copr-reconcile
+
+# COPR's safety net -- the counterpart of obs-trigger.yml's daily run.
+#
+# A COPR build starts when a watcher pushes the package's trigger branch right
+# after bumping the spec on main. If that push fails even after push-retry.sh,
+# the version sits on main unbuilt, and every later watcher run finds main
+# already bumped and has nothing left to do. Every six hours this compares each
+# spec on main with what COPR has and re-pushes the trigger of any version COPR
+# never got -- only one it never got, so the same NEVRA is never built twice.
+# Anything it must not fix itself (a failed build, COPR ahead of main, a re-push
+# that produced nothing, an API that did not answer) turns this run red.
+# The rules and every state: scripts/copr-reconcile.py.
+
+on:
+  schedule:
+    - cron: '41 */6 * * *'
+  workflow_dispatch:
+  # A change to the reconciler runs its tests and a report, never a heal.
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/copr-reconcile.py'
+      - 'scripts/test-copr-reconcile.py'
+      - 'scripts/push-retry.sh'
+      - '.github/workflows/copr-reconcile.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: copr-reconcile
+  cancel-in-progress: false
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    # rpmspec and rpm's own version comparison: the spec is evaluated the way
+    # Packit evaluates it, and versions are ordered the way dnf orders them.
+    container: registry.fedoraproject.org/fedora:latest
+    steps:
+      - name: Install git and rpm tooling
+        run: dnf -y -q install git-core rpm-build python3-rpm python3-pyyaml
+
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Trust the checkout
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      # A reconciler whose own decisions are broken must not push anything.
+      - name: Decision tests
+        run: python3 scripts/test-copr-reconcile.py
+
+      - name: Compare main with COPR, re-push lost triggers
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" = push ]; then
+            python3 scripts/copr-reconcile.py
+          else
+            python3 scripts/copr-reconcile.py --heal
+          fi
