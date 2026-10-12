@@ -17,7 +17,6 @@ TEMPLATE=$2
 # Optional fallback version (the spec's %{version}, with rpm's ~ turned back
 # into -) used to stamp .TH when the binary itself can't be queried here.
 FALLBACK_VERSION=$(printf '%s' "${3:-}" | tr '~' '-')
-MARKER='@AARU_COMMAND_REFERENCE@'
 
 # Private throwaway work dir (HOME + side files), auto-removed on exit.
 # Aaru creates a SQLite database and writes ~/.config/Aaru.json on first

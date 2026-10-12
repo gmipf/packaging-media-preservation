@@ -300,7 +300,7 @@ jobs:
             printf '# build-%s — %s (Fedora/COPR trigger branch)\n\nAuto-managed **trigger branch**: a push here fires that one COPR build via\nPackit, nothing else rebuilds. Canonical source is `main` (do not edit here).\nPackaging: `fedora/%s/`.\n' "$1" "$1" "$1" > README.md
             git add README.md
             git commit -q -m "trigger: $1 build (branch landing README)"
-            git push -f origin "trigger-tmp:build-$1"
+            bash scripts/push-retry.sh -f origin "trigger-tmp:build-$1" || echo "trigger_failed=1" >> "$GITHUB_OUTPUT"
             git reset -q --hard HEAD~1
           }
           trigger redumper-gui
@@ -325,10 +325,20 @@ jobs:
       # sends no mail, so it had to fail) and WRONG about what it was for. Both
       # halves came from the same day; only one of them was measured.
 
+      # The version is on main and OBS is refreshed regardless (the obs job runs
+      # `always()`), but a COPR trigger branch could not be pushed. No later run
+      # retries it -- they all see main already bumped -- so this has to be red.
+      - name: Fail if a COPR trigger could not be pushed
+        if: steps.commit.outputs.trigger_failed == '1'
+        run: |
+          echo "::error::The new version is on main and OBS was asked to refresh, but a COPR trigger branch could not be pushed after retries (see the step above). That COPR build is NOT queued, and no later run will queue it. Re-run it by hand: scripts/build-tool.sh <tool>"
+          exit 1
+
   # Ask OBS to re-pull the recipe from main and rebuild. OBS fetches the recipe
   # itself, so nothing is uploaded here.
   obs:
     needs: watch
-    if: needs.watch.outputs.changed == 'true'
+    # always(): OBS must not be skipped because the COPR trigger failed.
+    if: always() && needs.watch.outputs.changed == 'true'
     uses: ./.github/workflows/obs-trigger.yml
     secrets: inherit

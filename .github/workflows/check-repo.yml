@@ -43,3 +43,35 @@ jobs:
       # having been configured.
       - name: Proof ledger — drift and coverage
         run: bash scripts/proof-status.sh
+
+      # Every shell script in the repo, at warning level. Added 2026-10-12, when it
+      # found exactly one thing (an unused variable, three copies) -- so the bar
+      # starts clean and stays clean. Nothing linted these before, in CI or out.
+      - name: shellcheck — every tracked *.sh
+        run: |
+          set -euo pipefail
+          files=$(git ls-files '*.sh')
+          [ -n "$files" ] || { echo "::error::no *.sh found -- the check would pass on nothing"; exit 1; }
+          echo "$files" | xargs shellcheck -S warning -f gcc
+          echo "shellcheck: $(echo "$files" | wc -l) scripts clean"
+
+      # A generator the Debian lane must carry as a COPY (it cannot fetch by URL)
+      # has to stay byte-identical to the Fedora one, or one lane quietly runs an
+      # older guard. Only the generator SCRIPTS: the manpage templates (*.1.in)
+      # differ on purpose (Debian installs to /usr/lib, uses a symlink, keeps the
+      # license under /usr/share/doc).
+      - name: Shared generator scripts are identical across lanes
+        run: |
+          set -euo pipefail
+          rc=0 n=0
+          for f in fedora/*/*-build.sh fedora/*/*-manpage.sh; do
+            [ -e "$f" ] || continue
+            pkg=$(basename "$(dirname "$f")"); name=$(basename "$f")
+            for c in "opensuse/$pkg/$name" "ubuntu/$pkg/debian/$name"; do
+              [ -e "$c" ] || continue
+              n=$((n + 1))
+              if cmp -s "$f" "$c"; then echo "ok   $c"; else echo "::error::$c differs from $f"; rc=1; fi
+            done
+          done
+          [ "$n" -gt 0 ] || { echo "::error::compared nothing -- the layout moved"; exit 1; }
+          exit $rc

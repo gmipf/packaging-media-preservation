@@ -184,14 +184,23 @@ jobs:
           printf '# build-aaru — Aaru (Fedora/COPR trigger branch)\n\nAuto-managed **trigger branch** for the `aaru` package: a push here fires\nthe aaru COPR build via Packit, nothing else rebuilds. Canonical source is\n`main` (do not edit here). Packaging: `fedora/aaru/`.\n' > README.md
           git add README.md
           git commit -q -m "trigger: aaru build (branch landing README)"
-          git push -f origin trigger-tmp:build-aaru
+          bash scripts/push-retry.sh -f origin trigger-tmp:build-aaru || echo "trigger_failed=1" >> "$GITHUB_OUTPUT"
 
+      # The version is on main and OBS is refreshed regardless (the obs job runs
+      # `always()`), but a COPR trigger branch could not be pushed. No later run
+      # retries it -- they all see main already bumped -- so this has to be red.
+      - name: Fail if a COPR trigger could not be pushed
+        if: steps.sync.outputs.trigger_failed == '1'
+        run: |
+          echo "::error::The new version is on main and OBS was asked to refresh, but a COPR trigger branch could not be pushed after retries (see the step above). That COPR build is NOT queued, and no later run will queue it. Re-run it by hand: scripts/build-tool.sh <tool>"
+          exit 1
 
   # Tell OBS to re-pull the recipe from main and rebuild what actually changed.
   # OBS fetches the recipe itself, so there is nothing to upload — this only asks
   # it to re-run the source services. See .github/workflows/obs-trigger.yml.
   obs:
     needs: watch
-    if: needs.watch.outputs.changed == 'true'
+    # always(): OBS must not be skipped because the COPR trigger failed.
+    if: always() && needs.watch.outputs.changed == 'true'
     uses: ./.github/workflows/obs-trigger.yml
     secrets: inherit

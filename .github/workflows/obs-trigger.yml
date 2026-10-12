@@ -45,6 +45,14 @@ name: obs-trigger
 on:
   workflow_call:
   workflow_dispatch:
+  # Daily safety net (2026-10-12). Every watcher calls this right after its bump,
+  # but a run that fails or never starts leaves OBS behind and nothing ever asks
+  # again: the next run finds main already bumped. That day GitHub answered
+  # pushes with 500s and the mpf 3.11.0 refresh was skipped. Refreshing an
+  # unchanged package is a free no-op (see above), so once a day for every
+  # package caps any such gap at a day, whatever caused it.
+  schedule:
+    - cron: '23 5 * * *'
   # Covers recipe edits pushed by a human. Watcher commits are made with the
   # default GITHUB_TOKEN, and GitHub deliberately does not start workflows from
   # those — which is why every watcher calls this workflow explicitly instead.
