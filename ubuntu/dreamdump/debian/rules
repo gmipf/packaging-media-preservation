@@ -27,7 +27,12 @@ override_dh_auto_build:
 override_dh_auto_install:
 	install -D -m 0755 dreamdump-_linux_$(DEB_HOST_ARCH) debian/dreamdump/usr/bin/dreamdump
 
+# Runs the binary this build ships, on the builder's CPU -- before install, so
+# on the downloaded asset (selftest copies it and makes it executable).
 override_dh_auto_test:
+ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
+	sh debian/dreamdump-build.sh selftest dreamdump-_linux_$(DEB_HOST_ARCH)
+endif
 
 # Ship upstream's binary as published: stripping or dwz would make the packaged
 # file differ from the release whose provenance the RPM builds check.

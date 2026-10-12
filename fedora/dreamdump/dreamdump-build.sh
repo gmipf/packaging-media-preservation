@@ -1,8 +1,9 @@
 #!/bin/sh
 # Build-time helper for the dreamdump package: two guards and the manpage.
 #
-#   dreamdump-build.sh verify  <source-dir> <source-tarball> <binary>
-#   dreamdump-build.sh manpage <source-dir> <version>            > dreamdump.1
+#   dreamdump-build.sh verify   <source-dir> <source-tarball> <binary>
+#   dreamdump-build.sh manpage  <source-dir> <version>            > dreamdump.1
+#   dreamdump-build.sh selftest <binary>
 #
 # The package repackages upstream's statically linked release binaries and
 # carries the matching source tarball next to them. The source is not compiled
@@ -25,12 +26,23 @@
 #    check is what turns that into a red build and a fresh look at the cap.
 #
 # 3. THE MANPAGE (manpage). dreamdump ships no manpage, no --help and no
-#    --version; run without a command it prints one usage line. So the page is
+#    --version; given an argument that is not a command it prints one usage
+#    line (with no argument at all, only "Missing command argument"). So the
+#    page is
 #    built from the source: command and option NAMES from the code, the drive
 #    table from DRIVES.csv, the caveats from what the code does. The one-line
 #    descriptions are ours -- a second copy of upstream behaviour -- so the
 #    build fails the moment the code's option or command set differs from the
 #    tables below, in either direction.
+#
+# 4. IT RUNS (selftest). Everything above reads the binary or the source; this
+#    executes it, on the builder's own CPU -- on the aarch64 builders the only
+#    run of the arm64 binary before a user's. Given an argument that is not a
+#    command, dreamdump prints its banner and the usage line and exits 0
+#    without opening a drive (measured 2026-10-13). It also writes
+#    ./Game/Game.log, hence a scratch directory, and the binary is copied there
+#    first: the Debian build tests before it installs, on the asset as
+#    downloaded, which need not be executable.
 #
 # Every lookup that comes back EMPTY fails. An empty answer here means the
 # upstream layout moved, never "nothing to report".
@@ -243,7 +255,24 @@ the source has an option, a command or a SCSI command this page does not
 account for.
 EOF
     ;;
+selftest)
+    BIN=${2:?selftest <binary>}
+    [ -f "$BIN" ] || fail "selftest: $BIN not found"
+    dir=$(mktemp -d)
+    cp "$BIN" "$dir/dreamdump"
+    chmod 0755 "$dir/dreamdump"
+    rc=0
+    out=$(cd "$dir" && ./dreamdump selftest 2>&1) || rc=$?
+    rm -rf "$dir"
+    printf '%s\n' "$out" >&2
+    case $out in
+        *"dreamdump (build: "*"--drive="*) ;;
+        *) fail "selftest: $BIN did not print its banner and usage line" ;;
+    esac
+    [ "$rc" = 0 ] || fail "selftest: $BIN exited $rc"
+    echo "selftest ok: $BIN runs on $(uname -m)" >&2
+    ;;
 *)
-    fail "usage: dreamdump-build.sh verify <source-dir> <tarball> <binary> | manpage <source-dir> <version>"
+    fail "usage: dreamdump-build.sh verify <source-dir> <tarball> <binary> | manpage <source-dir> <version> | selftest <binary>"
     ;;
 esac

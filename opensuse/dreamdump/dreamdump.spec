@@ -79,6 +79,11 @@ install -D -p -m 0755 %{SOURCE1} %{buildroot}%{_bindir}/dreamdump
 %endif
 install -D -p -m 0644 dreamdump.1 %{buildroot}%{_mandir}/man1/dreamdump.1
 
+%check
+# Run the binary just installed, on this builder's CPU: on aarch64 the only
+# run of the arm64 binary before a user's (selftest in dreamdump-build.sh).
+sh %{SOURCE3} selftest %{buildroot}%{_bindir}/dreamdump
+
 %files
 %license LICENSE
 %doc README.md DRIVES.csv
@@ -86,6 +91,10 @@ install -D -p -m 0644 dreamdump.1 %{buildroot}%{_mandir}/man1/dreamdump.1
 %{_mandir}/man1/dreamdump.1*
 
 %changelog
+* Mon Oct 12 2026 gmipf <gmipf64@gmail.com> - 0.6.0-0
+- %%check runs the packaged binary (dreamdump-build.sh selftest): on aarch64
+  the first execution of the arm64 binary before a user's.
+
 * Mon Oct 12 2026 gmipf <gmipf64@gmail.com> - 0.6.0-0
 - Initial package. Repackages upstream's static release binaries for x86_64
   and aarch64, at the dreamdump release MPF bundles (0.6.0).
