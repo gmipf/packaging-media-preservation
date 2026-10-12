@@ -181,6 +181,7 @@ jobs:
           done
           [ -n "$pushed" ] || { echo "::error::could not push to main after 3 attempts"; exit 1; }
           git checkout -q -b trigger-tmp
+          # shellcheck disable=SC2016  # the backticks are Markdown, meant literally
           printf '# build-aaru — Aaru (Fedora/COPR trigger branch)\n\nAuto-managed **trigger branch** for the `aaru` package: a push here fires\nthe aaru COPR build via Packit, nothing else rebuilds. Canonical source is\n`main` (do not edit here). Packaging: `fedora/aaru/`.\n' > README.md
           git add README.md
           git commit -q -m "trigger: aaru build (branch landing README)"

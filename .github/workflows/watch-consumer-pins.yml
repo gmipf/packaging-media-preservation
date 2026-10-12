@@ -131,8 +131,7 @@ jobs:
           for entry in "redumper-mpf rdbuild $MPF_RD fedora/redumper-mpf/redumper-mpf.spec auto" \
                        "aaru5 aaruver $MPF_AA fedora/aaru5/aaru5.spec guard" \
                        "dreamdump ddver $MPF_DD fedora/dreamdump/dreamdump.spec auto"; do
-            set -- $entry
-            name=$1 macro=$2 want=$3 spec=$4 policy=$5
+            read -r name macro want spec policy <<<"$entry"
             have=$(grep -oP "^%global[[:space:]]+${macro}[[:space:]]+\K\S+" "$spec")
             [ -n "$have" ] || { echo "::error::$spec has no '%global $macro' line"; exit 1; }
             if [ "$have" = "$want" ]; then
@@ -187,6 +186,7 @@ jobs:
           # ever move one pin, so the shape was latent rather than wrong.
           trigger() {
             git checkout -q -B trigger-tmp
+            # shellcheck disable=SC2016  # the backticks are Markdown, meant literally
             printf '# build-%s — %s (Fedora/COPR trigger branch)\n\nAuto-managed **trigger branch**: a push here fires that one COPR build via\nPackit, nothing else rebuilds. Canonical source is `main` (do not edit here).\nPackaging: `fedora/%s/`.\n' "$1" "$1" "$1" > README.md
             git add README.md
             git commit -q -m "trigger: $1 build (branch landing README)"

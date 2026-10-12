@@ -138,6 +138,7 @@ jobs:
           done
           [ -n "$pushed" ] || { echo "::error::could not push to main after 3 attempts"; exit 1; }
           git checkout -q -b trigger-tmp
+          # shellcheck disable=SC2016  # the backticks are Markdown, meant literally
           printf '# build-redumper — redumper (Fedora/COPR trigger branch)\n\nAuto-managed **trigger branch** for the `redumper` package: a push here\nfires the redumper COPR build via Packit, nothing else rebuilds. Canonical\nsource is `main` (do not edit here). Packaging: `fedora/redumper/`.\n' > README.md
           git add README.md
           git commit -q -m "trigger: redumper build (branch landing README)"

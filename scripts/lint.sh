@@ -19,6 +19,9 @@
 #                   an XML comment once broke a _service on OBS)
 #   desktop-file-validate   every .desktop file, errors and warnings
 #   yamllint        workflows, .packit.yaml (rules: .yamllint)
+#   actionlint      workflows: expressions, contexts, needs/outputs references,
+#                   and shellcheck on every `run:` block (style level -- found 9
+#                   on 2026-10-13, all fixed or disabled with a reason)
 #   packit          .packit.yaml against Packit's own schema
 set -uo pipefail
 
@@ -98,6 +101,12 @@ if have yamllint; then
     mapfile -t yml < <(git ls-files '*.yml' '*.yaml' .yamllint)
     if yamllint -s -f parsable "${yml[@]}"; then ok "yamllint (${#yml[@]} files)"
     else bad "yamllint found the above"; fi
+fi
+
+# --- actionlint -------------------------------------------------------------
+if have actionlint; then
+    if actionlint -oneline; then ok "actionlint ($(git ls-files '.github/workflows/*.yml' | wc -l) workflows)"
+    else bad "actionlint found the above"; fi
 fi
 
 # --- packit -----------------------------------------------------------------

@@ -67,16 +67,31 @@ jobs:
 
   # Every lint rule, through the script the pre-commit hook runs too
   # (scripts/lint.sh lists them: whitespace, shellcheck incl. shebang files,
-  # xmllint, desktop-file-validate, yamllint, packit validate). Here every tool
-  # is installed, so a rule cannot be skipped. Fedora, because each tool comes
-  # from its own repositories -- the same versions as on the maintainer's
-  # machine, packit included.
+  # xmllint, desktop-file-validate, yamllint, actionlint, packit validate). Here
+  # every tool is installed, so a rule cannot be skipped. Fedora, because each
+  # tool but actionlint comes from its own repositories -- the same versions as
+  # on the maintainer's machine, packit included.
   lint:
     runs-on: ubuntu-latest
     container: registry.fedoraproject.org/fedora:latest
     steps:
       - name: Install the linters
-        run: dnf -y -q install git-core /usr/bin/shellcheck /usr/bin/xmllint /usr/bin/desktop-file-validate /usr/bin/yamllint /usr/bin/packit
+        run: dnf -y -q install git-core tar gzip /usr/bin/shellcheck /usr/bin/xmllint /usr/bin/desktop-file-validate /usr/bin/yamllint /usr/bin/packit
+
+      # Not packaged for Fedora. The release binary, pinned by version AND by
+      # checksum -- the hash below was read from a download verified against the
+      # release's checksums file on 2026-10-13, so this does not trust a file
+      # fetched from the same place as the binary.
+      - name: Install actionlint
+        env:
+          V: 1.7.12
+          SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+        run: |
+          set -euo pipefail
+          curl -fsSL -o /tmp/actionlint.tgz "https://github.com/rhysd/actionlint/releases/download/v${V}/actionlint_${V}_linux_amd64.tar.gz"
+          echo "${SHA256}  /tmp/actionlint.tgz" | sha256sum -c -
+          tar xzf /tmp/actionlint.tgz -C /usr/local/bin actionlint
+          actionlint -version
 
       - uses: actions/checkout@v5
 

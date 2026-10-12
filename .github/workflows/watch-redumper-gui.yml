@@ -297,6 +297,7 @@ jobs:
           # silence. COPR kept shipping 729-4 under a GUI tested against b733.
           trigger() {
             git checkout -q -B trigger-tmp
+            # shellcheck disable=SC2016  # the backticks are Markdown, meant literally
             printf '# build-%s — %s (Fedora/COPR trigger branch)\n\nAuto-managed **trigger branch**: a push here fires that one COPR build via\nPackit, nothing else rebuilds. Canonical source is `main` (do not edit here).\nPackaging: `fedora/%s/`.\n' "$1" "$1" "$1" > README.md
             git add README.md
             git commit -q -m "trigger: $1 build (branch landing README)"

@@ -111,7 +111,7 @@ jobs:
           pkgs=$(find opensuse -mindepth 2 -maxdepth 2 -name _service \
                  -printf '%h\n' | xargs -r -n1 basename | sort)
           [ -n "$pkgs" ] || { echo "::error::no opensuse/*/_service found"; exit 1; }
-          echo "Packages: $(echo $pkgs)"
+          echo "Packages: ${pkgs//$'\n'/ }"
 
           # RETRY ON 5xx, AND ONLY ON 5xx. Added 2026-07-24 after build.opensuse.org
           # answered `503 No server is available` to all 8 packages in one run.
