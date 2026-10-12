@@ -230,6 +230,10 @@ If a trigger gets lost on the way (a failed push, an outage on either side),
 COPR and re-pushes the trigger of any version COPR never received. For OBS,
 `obs-trigger` asks for every recipe to be re-read once a day.
 
+"Hourly" is the schedule, not a promise: GitHub starts scheduled workflows
+late when it is busy, and here they have run 3 to 10 hours apart (October
+2026). A new upstream release usually arrives the same day.
+
 The same per-tool watchers drive the OBS lane: on an upstream bump they advance
 `ubuntu/<tool>/debian/changelog` and regenerate `opensuse/<tool>/{<tool>.dsc,
 debian.tar.gz,_service}` in the same commit, then ask OBS to re-run its source
