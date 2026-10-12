@@ -232,10 +232,10 @@ install -D -m 0644 %{SOURCE3} %{buildroot}%{_mandir}/man1/redumper.1
   llvm-libunwind-static / glibc-static — none of these are needed in
   the chroot anymore. Build time per chroot drops from minutes to
   seconds and the spec is no longer exposed to upstream toolchain
-  drift (no more googletest %prep patch, no more C++20-module
+  drift (no more googletest %%prep patch, no more C++20-module
   surprises on clang bumps).
 - LICENSE and README are pulled from raw.githubusercontent at the
-  tagged revision so %license / %doc still work without the source
+  tagged revision so %%license / %%doc still work without the source
   tarball.
 
 * Mon Jun 15 2026 gmipf <gmipf64@gmail.com> - 724-2

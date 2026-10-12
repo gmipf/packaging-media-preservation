@@ -160,7 +160,7 @@ fi
 # All three helper makefiles omit -fPIE; the default ld invokes -pie (PIE
 # hardening), which then rejects non-PIC relocations. Append -fPIE to the
 # first CFLAGS/CXXFLAGS assignment in each makefile. LDFLAGS=-pie is added
-# at make-invocation time in %build.
+# at make-invocation time in %%build.
 sed -i -e '0,/^CFLAGS\s*:=/{/^CFLAGS\s*:=/s/$/ -fPIE/}' \
        -e '0,/^CXXFLAGS\s*:=/{/^CXXFLAGS\s*:=/s/$/ -fPIE/}' \
     EccEdc-%{eccedcver}/EccEdc/makefile \
@@ -173,15 +173,15 @@ sed -i -e '0,/^CFLAGS\s*:=/{/^CFLAGS\s*:=/s/$/ -fPIE/}' \
 %meson_build
 
 # Three helper tools via their bundled makefiles. CXX=g++ forces the
-# compiler; LDFLAGS=-pie pairs with the -fPIE injection in %prep so the
+# compiler; LDFLAGS=-pie pairs with the -fPIE injection in %%prep so the
 # default PIE-hardened linker accepts the final binary.
 make -C EccEdc-%{eccedcver}/EccEdc       CXX=g++ LDFLAGS=-pie %{?_smp_mflags}
 make -C DVDAuth-%{dvdauthver}/DVDAuth    CXX=g++ LDFLAGS=-pie %{?_smp_mflags}
 make -C unscrambler-%{unscramblver}      CXX=g++ LDFLAGS=-pie %{?_smp_mflags}
 
 %install
-# meson installs binary to %{_bindir}/DiscImageCreator and data files
-# to %{_datadir}/DiscImageCreator/ (CamelCase project_name as subdir).
+# meson installs binary to %%{_bindir}/DiscImageCreator and data files
+# to %%{_datadir}/DiscImageCreator/ (CamelCase project_name as subdir).
 %meson_install
 
 # Move binary into libexec under its upstream-original filename
@@ -231,7 +231,7 @@ ln -s %{name}.1 %{buildroot}%{_mandir}/man1/dvdauth.1
 ln -s %{name}.1 %{buildroot}%{_mandir}/man1/unscrambler.1
 
 # udev rule for USB-floppy access (see Source5). No scriptlet needed: the
-# udev package ships a file trigger on %{_udevrulesdir} that reloads rules
+# udev package ships a file trigger on %%{_udevrulesdir} that reloads rules
 # automatically when this file lands.
 install -D -m 0644 %{SOURCE5} \
     %{buildroot}%{_udevrulesdir}/70-discimagecreator-floppy.rules

@@ -23,6 +23,10 @@
 #                   and shellcheck on every `run:` block (style level -- found 9
 #                   on 2026-10-13, all fixed or disabled with a reason)
 #   packit          .packit.yaml against Packit's own schema
+#   rpmlint         the specs of both RPM lanes, errors and warnings; one
+#                   declared exception list (NO_CHECK, below), checked both ways
+#   groff           every tracked manpage and template, -ww (groff exits 0 on
+#                   a warning, so any output is a finding)
 set -uo pipefail
 
 ROOT=$(git rev-parse --show-toplevel) || exit 2
@@ -114,6 +118,49 @@ if have packit; then
     # Its log is long and full of harmless dist-git warnings; shown only on failure.
     if out=$(packit validate . 2>&1); then ok "packit validate (.packit.yaml)"
     else bad "packit validate:"; printf '%s\n' "$out" | tail -20 >&2; fi
+fi
+
+# --- rpmlint ----------------------------------------------------------------
+# 2026-10-13: 59 warnings, 0 errors. 45 were macros in comments and %changelog
+# text -- rpm expands those too, and the changelogs really did render wrong
+# (%license became the license string). Escaped as %%, now 0. The other 14 are
+# no-%check-section: these packages repackage upstream binaries and nothing
+# runs them at build time yet (dreamdump shows the shape: a selftest in
+# %check). They are DECLARED here instead of filtered blindly, and the list is
+# checked both ways -- a spec that gains a %check must leave it, and a new spec
+# without one is red.
+NO_CHECK="aaru aaru5 discimagecreator mpf redumper redumper-mpf redumper-rgui"
+if have rpmlint; then
+    mapfile -t specs < <(git ls-files 'fedora/*.spec' 'opensuse/*.spec')
+    out=$(rpmlint "${specs[@]}" 2>&1)
+    findings=$(grep -E ': [EW]: ' <<<"$out" | grep -v ': W: no-%check-section$')
+    if [ "${#specs[@]}" -eq 0 ]; then bad "rpmlint: no spec found -- the layout moved"
+    elif ! grep -qE "${#specs[@]} specfiles checked" <<<"$out"; then
+        bad "rpmlint did not report checking ${#specs[@]} specs:"; tail -5 <<<"$out" >&2
+    elif [ -n "$findings" ]; then bad "rpmlint:"; printf '%s\n' "$findings" >&2
+    else ok "rpmlint (${#specs[@]} specs)"; fi
+    for s in "${specs[@]}"; do
+        n=$(basename "$s" .spec)
+        case " $NO_CHECK " in *" $n "*) listed=1 ;; *) listed=0 ;; esac
+        if grep -q '^%check' "$s"; then
+            [ "$listed" = 0 ] || bad "$s has a %check now -- remove $n from NO_CHECK in scripts/lint.sh"
+        else
+            [ "$listed" = 1 ] || bad "$s has no %check section and $n is not in NO_CHECK"
+        fi
+    done
+fi
+
+# --- groff ------------------------------------------------------------------
+if have groff; then
+    mapfile -t man < <(git ls-files '*.[1-8]' '*.[1-8].in')
+    warn=""
+    for m in "${man[@]}"; do
+        w=$(LC_ALL=C groff -ww -z -man "$m" 2>&1) || w="${w:-groff failed}"
+        [ -z "$w" ] || warn="$warn$m: $w"$'\n'
+    done
+    if [ "${#man[@]}" -eq 0 ]; then bad "groff: no manpage found -- the layout moved"
+    elif [ -n "$warn" ]; then bad "groff:"; printf '%s' "$warn" >&2
+    else ok "groff -ww (${#man[@]} manpages)"; fi
 fi
 
 if [ -n "$skipped" ]; then

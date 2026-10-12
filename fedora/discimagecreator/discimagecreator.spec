@@ -124,7 +124,7 @@ sed -i '1i #include <limits.h>' \
 grep -q 'fs\.copyfile(' meson.build
 sed -i '/fs\.copyfile(/d' meson.build
 
-# rpm's %doc copy helper on EL9 (rpm 4.16) doesn't quote filenames, so the
+# rpm's %%doc copy helper on EL9 (rpm 4.16) doesn't quote filenames, so the
 # '&' in upstream's "Firmware&Tool.md" backgrounds the cp and the file never
 # reaches the doc dir (works on Fedora / EL10 rpm 4.19+, fails on EL9). Rename
 # it to a shell-safe name -- it's pure documentation, nothing references the
@@ -163,7 +163,7 @@ fi
 # (PIE hardening), which then rejects non-PIC relocations from the .o
 # files. Append -fPIE to the first CFLAGS/CXXFLAGS assignment in each
 # makefile so the implicit %.o rules pick it up. LDFLAGS=-pie is added
-# at make-invocation time in %build.
+# at make-invocation time in %%build.
 sed -i -e '0,/^CFLAGS\s*:=/{/^CFLAGS\s*:=/s/$/ -fPIE/}' \
        -e '0,/^CXXFLAGS\s*:=/{/^CXXFLAGS\s*:=/s/$/ -fPIE/}' \
     EccEdc-%{eccedcver}/EccEdc/makefile \
@@ -177,15 +177,15 @@ sed -i -e '0,/^CFLAGS\s*:=/{/^CFLAGS\s*:=/s/$/ -fPIE/}' \
 
 # Three helper tools via their bundled makefiles. CXX=g++ forces the
 # compiler (the makefiles default to $(CXX) which may not be set in COPR
-# clean chroots). LDFLAGS=-pie pairs with the -fPIE injection in %prep
+# clean chroots). LDFLAGS=-pie pairs with the -fPIE injection in %%prep
 # so Fedora's default PIE-hardened linker accepts the final binary.
 make -C EccEdc-%{eccedcver}/EccEdc       CXX=g++ LDFLAGS=-pie %{?_smp_mflags}
 make -C DVDAuth-%{dvdauthver}/DVDAuth    CXX=g++ LDFLAGS=-pie %{?_smp_mflags}
 make -C unscrambler-%{unscramblver}      CXX=g++ LDFLAGS=-pie %{?_smp_mflags}
 
 %install
-# meson installs binary to %{_bindir}/DiscImageCreator and data files
-# to %{_datadir}/DiscImageCreator/ (CamelCase project_name as subdir).
+# meson installs binary to %%{_bindir}/DiscImageCreator and data files
+# to %%{_datadir}/DiscImageCreator/ (CamelCase project_name as subdir).
 %meson_install
 
 # Move binary into libexec under its upstream-original filename
@@ -422,11 +422,11 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
 - Source builds for all four binaries; no upstream binary blobs
 - Main DIC builds via meson against system libarchive/zlib/openssl
 - Helper tools build via their bundled makefiles
-- Real binaries live in %{_libexecdir}/discimagecreator/; /usr/bin/
+- Real binaries live in %%{_libexecdir}/discimagecreator/; /usr/bin/
   has lowercase aliases (discimagecreator, eccedc, dvdauth, unscrambler)
   plus dic short-form and DiscImageCreator.out for MPF compatibility
 - cap_sys_rawio set on the main binary and DVDAuth.out for vendor SCSI
   passthrough commands without sudo
 - Hardcoded /usr/share/DiscImageCreator/ probe path patched to lowercase
-  /usr/share/discimagecreator/ in %prep
+  /usr/share/discimagecreator/ in %%prep
 - Includes discimagecreator(1) manpage with symlinks for every alias

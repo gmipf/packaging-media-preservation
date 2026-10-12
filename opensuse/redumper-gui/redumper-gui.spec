@@ -194,7 +194,7 @@ cargo build --release --offline
 # rather than a wrapper script. That is not cosmetic: the GUI locates its
 # helpers with std::env::current_exe(), which on Linux reads /proc/self/exe
 # and therefore RESOLVES the symlink. Invoked as /usr/bin/redumper-gui, the
-# process still sees itself in %{guidir} and looks for its siblings there --
+# process still sees itself in %%{guidir} and looks for its siblings there --
 # which is where we put them.
 install -D -m 0755 target/release/%{name} %{buildroot}%{guidir}/%{name}
 

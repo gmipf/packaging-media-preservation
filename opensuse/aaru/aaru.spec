@@ -64,8 +64,8 @@ BuildRequires:  xz
 BuildRequires:  systemd-rpm-macros
 # Renders the small hicolor sizes upstream does not ship (see %%install).
 BuildRequires:  ImageMagick
-# The aaru(1) manpage is generated at %build time by running the shipped
-# binary's `--help` (see %build), so the binary's native runtime deps
+# The aaru(1) manpage is generated at %%build time by running the shipped
+# binary's `--help` (see %%build), so the binary's native runtime deps
 # must be present in the build root as well, not just at install time.
 BuildRequires:  gawk
 BuildRequires:  libicu
@@ -117,7 +117,7 @@ Requires:       zlib
 
 # Desktop integration — openSUSE also ships file triggers that auto-refresh
 # the MIME, desktop and icon-cache databases when something installs into
-# their tree, so no explicit %post scriptlets are needed for those.
+# their tree, so no explicit %%post scriptlets are needed for those.
 Requires:       shared-mime-info
 Requires:       desktop-file-utils
 Requires:       hicolor-icon-theme
@@ -187,7 +187,7 @@ tar -xJf %{SOURCE1} -C src
 #
 # The generator is self-healing: on a build root where the prebuilt binary
 # can't start (runtime-library SONAME drift), it ships the curated page
-# with a short note instead of failing the build. %{version} is the .TH
+# with a short note instead of failing the build. %%{version} is the .TH
 # version fallback for that degraded case. The prebuilt binary is known to
 # run on both Leap and Tumbleweed build roots (verified via mock).
 sh %{SOURCE3} ./aaru %{SOURCE2} %{version} > aaru.1
@@ -245,11 +245,11 @@ for sz in 16 22 24 32 48 64 128 256 512; do
         || { echo "icon ${sz}x${sz} missing or empty"; exit 1; }
 done
 
-# Manpage (generated from the binary at %build time — see above)
+# Manpage (generated from the binary at %%build time — see above)
 install -D -m 0644 aaru.1 %{buildroot}%{_mandir}/man1/aaru.1
 
 # udev rule for USB-floppy access (see Source4). No scriptlet needed:
-# the udev package ships a file trigger on %{_udevrulesdir} that reloads
+# the udev package ships a file trigger on %%{_udevrulesdir} that reloads
 # rules automatically when this file lands.
 install -D -m 0644 %{SOURCE4} \
     %{buildroot}%{_udevrulesdir}/70-aaru-floppy.rules

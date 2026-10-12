@@ -132,7 +132,7 @@ tar -xJf %{SOURCE0}
 # The generator probes first whether the prebuilt binary runs in this build
 # root; if it does not (a newer distro can ship runtime SONAMEs this .NET 5
 # NativeAOT binary was never linked against), it emits the curated page with a
-# short note instead of the reference and passes %{version} through, rather
+# short note instead of the reference and passes %%{version} through, rather
 # than failing the build.
 sh %{SOURCE3} ./aaru %{SOURCE1} %{version} > aaru5.1
 
@@ -261,7 +261,7 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
   the drive is usable right after installing.
 
 * Sat Jul 11 2026 gmipf <gmipf64@gmail.com> - 5.4.2-4
-- Own the private %{aarudir} directory in %%files. It was previously left
+- Own the private %%{aarudir} directory in %%files. It was previously left
   unowned, so uninstalling the package orphaned /usr/lib64/aaru5. Surfaced by
   openSUSE's stricter 50-check-filelist post-build check (which fails the build
   on unowned directories, where Fedora only warns).
@@ -297,7 +297,7 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
   The Media Preservation Frontend (MPF) supports only the latest stable
   Aaru; the rolling v6 alpha shipped as `aaru` has an incompatible
   command interface and does not work in MPF. This package installs
-  alongside `aaru` (separate binary /usr/bin/aaru5, libdir %{_libdir}/aaru5,
+  alongside `aaru` (separate binary /usr/bin/aaru5, libdir %%{_libdir}/aaru5,
   manpage aaru5.1) so the rolling standalone build stays untouched.
 - Repackage of the upstream prebuilt linux_amd64 NativeAOT binary plus its
   libe_sqlite3.so sidecar; no source tarball is pulled since this backend

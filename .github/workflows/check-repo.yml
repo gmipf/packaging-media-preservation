@@ -76,7 +76,7 @@ jobs:
     container: registry.fedoraproject.org/fedora:latest
     steps:
       - name: Install the linters
-        run: dnf -y -q install git-core tar gzip /usr/bin/shellcheck /usr/bin/xmllint /usr/bin/desktop-file-validate /usr/bin/yamllint /usr/bin/packit
+        run: dnf -y -q install git-core tar gzip /usr/bin/shellcheck /usr/bin/xmllint /usr/bin/desktop-file-validate /usr/bin/yamllint /usr/bin/packit /usr/bin/rpmlint /usr/bin/groff rpm-build systemd-rpm-macros
 
       # Not packaged for Fedora. The release binary, pinned by version AND by
       # checksum -- the hash below was read from a download verified against the

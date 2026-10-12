@@ -775,7 +775,7 @@ install -m 0644 %{SOURCE6} %{buildroot}%{_mandir}/man1/mpf-gui.1
 - Automated rolling-snapshot sync to upstream MPF commit eb239b60
   (rolling tag, published 20260703023433 UTC); Release reset to 1.
 - Portability for openSUSE (Leap 15.6 + Tumbleweed) on check/cli/gui: the
-  .NET runtime Requires are renamed under a %if 0%{?suse_version} guard
+  .NET runtime Requires are renamed under a %%if 0%%{?suse_version} guard
   (krb5-libs->krb5, openssl-libs->libopenssl3, zlib->libz1, libunwind by its
   stable soname since Leap ships `libunwind` and Tumbleweed `libunwind8`);
   `libicu` and `jq` stay portable. Fedora/EL names unchanged. All four

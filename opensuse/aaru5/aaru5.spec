@@ -150,11 +150,11 @@ install -D -m 0644 README.md       %{buildroot}%{aarudir}/README.md
 install -D -m 0644 Changelog.md    %{buildroot}%{aarudir}/Changelog.md
 install -D -m 0644 CONTRIBUTING.md %{buildroot}%{aarudir}/CONTRIBUTING.md
 
-# Manpage (static, stamped at %build).
+# Manpage (static, stamped at %%build).
 install -D -m 0644 aaru5.1 %{buildroot}%{_mandir}/man1/aaru5.1
 
 # udev rule for USB-floppy access (see Source2). No scriptlet needed:
-# the udev package ships a file trigger on %{_udevrulesdir} that reloads
+# the udev package ships a file trigger on %%{_udevrulesdir} that reloads
 # rules automatically when this file lands.
 install -D -m 0644 %{SOURCE2} \
     %{buildroot}%{_udevrulesdir}/70-aaru5-floppy.rules

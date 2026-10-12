@@ -21,7 +21,7 @@ Name:           aaru
 # Tilde-style pre-release (mirrors upstream pkg/rpm/aaru.spec):
 #   6.0.0~alpha.19  <  6.0.0~beta.1  <  6.0.0~rc.1  <  6.0.0  <  6.0.1
 # The whole pre-release track sorts itself, so advancing it is just
-# %{aaruprerel} (watch-aaru-releases.yml rewrites that one line): `~`
+# %%{aaruprerel} (watch-aaru-releases.yml rewrites that one line): `~`
 # sorts before everything, and rpm compares what follows alphabetically
 # — which is exactly alpha < beta < rc. Future stable v6.0.0 will sort
 # higher automatically — no clever leading-0 dance in Release needed. No
@@ -69,8 +69,8 @@ BuildRequires:  systemd-rpm-macros
 # Resolvable on every chroot we build -- on EL it comes from EPEL, which the
 # buildroot has.
 BuildRequires:  ImageMagick
-# The aaru(1) manpage is generated at %build time by running the shipped
-# binary's `--help` (see %build), so the binary's native runtime deps
+# The aaru(1) manpage is generated at %%build time by running the shipped
+# binary's `--help` (see %%build), so the binary's native runtime deps
 # must be present in the build root as well, not just at install time.
 BuildRequires:  gawk
 BuildRequires:  libicu
@@ -113,7 +113,7 @@ Requires:       zlib
 # Desktop integration — the three packages also provide Fedora file
 # triggers that auto-refresh the MIME, desktop and icon-cache databases
 # whenever something installs into their respective tree, so no
-# explicit %post / %posttrans scriptlets are needed.
+# explicit %%post / %%posttrans scriptlets are needed.
 Requires:       shared-mime-info
 Requires:       desktop-file-utils
 Requires:       hicolor-icon-theme
@@ -177,7 +177,7 @@ tar -xJf %{SOURCE1} -C src
 # binary can't start (e.g. a newer Fedora whose libicu/openssl SONAMEs
 # the self-contained .NET bundle was not linked against — currently
 # rawhide), it ships the curated page with a short note in place of the
-# generated reference instead of failing the build. %{version} is passed
+# generated reference instead of failing the build. %%{version} is passed
 # as the .TH version fallback for that degraded case.
 sh %{SOURCE3} ./aaru %{SOURCE2} %{version} > aaru.1
 
@@ -238,7 +238,7 @@ for sz in 16 22 24 32 48 64 128 256 512; do
         || { echo "icon ${sz}x${sz} missing or empty"; exit 1; }
 done
 
-# Manpage (generated from the binary at %build time — see above)
+# Manpage (generated from the binary at %%build time — see above)
 install -D -m 0644 aaru.1 %{buildroot}%{_mandir}/man1/aaru.1
 
 # udev rule for USB-floppy access (see Source4). See the %%post scriptlet: the
@@ -334,7 +334,7 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
   the drive is usable right after installing.
 
 * Sat Jul 11 2026 gmipf <gmipf64@gmail.com> - 6.0.0~alpha.19-6
-- Own the private %{aarudir} directory in %%files. It was previously left
+- Own the private %%{aarudir} directory in %%files. It was previously left
   unowned, so uninstalling the package orphaned /usr/lib64/aaru. Surfaced by
   openSUSE's stricter 50-check-filelist post-build check (which fails the build
   on unowned directories, where Fedora only warns).
@@ -364,12 +364,12 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
   sysusers.d needed); users still add themselves with
   `usermod -aG cdrom <user>`.
 - Portability for openSUSE (Leap 15.6 + Tumbleweed): the .NET runtime libs
-  are renamed under a %if 0%{?suse_version} guard (krb5-libs->krb5,
+  are renamed under a %%if 0%%{?suse_version} guard (krb5-libs->krb5,
   openssl-libs->libopenssl3, zlib->libz1, libunwind required by its stable
   soname since Leap ships `libunwind` and Tumbleweed `libunwind8`); `libicu`
   stays portable (openSUSE's ICU packages all provide the virtual `libicu`,
   and .NET fatally aborts without ICU). Fedora/EL names are unchanged. The
-  prebuilt binary runs at %build on both openSUSE chroots, so the full
+  prebuilt binary runs at %%build on both openSUSE chroots, so the full
   generated manpage reference is captured there too; verified via mock.
 
 * Tue Jun 30 2026 gmipf <gmipf64@gmail.com> - 6.0.0~alpha.19-3
@@ -379,7 +379,7 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
   self-contained .NET bundle links), ship the curated page with a short
   note in place of the auto-generated command reference instead of
   failing the whole build. Stable Fedora (43/44) still gets the full
-  generated reference. %{version} is passed to the generator as the .TH
+  generated reference. %%{version} is passed to the generator as the .TH
   version fallback for that degraded case.
 
 * Mon Jun 29 2026 gmipf <gmipf64@gmail.com> - 6.0.0~alpha.19-2
@@ -395,7 +395,7 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
   build host locale; runs offline against bundled data.
 - Add BuildRequires for the .NET native runtime libraries (libicu,
   krb5-libs, libunwind, openssl-libs, zlib) and gawk so the binary can
-  run during %build.
+  run during %%build.
 
 * Mon Jun 15 2026 gmipf <gmipf64@gmail.com> - 6.0.0~alpha.19-1
 - Wipe COPR package history (copr-cli delete-package aaru) and
@@ -410,16 +410,16 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
 - Migrate to upstream-style tilde versioning (Version: 6.0.0~alpha.19,
   Release: 1). Matches the upstream pkg/rpm/aaru.spec convention and
   removes the leading-0.Release hack now that ~ does the pre-release
-  sort cleanly. Future bumps will just edit %{aaruprerel}.
+  sort cleanly. Future bumps will just edit %%{aaruprerel}.
 - Bump Epoch to 1 (was implicit 0): the new Version sorts LOWER than
   the previous Release form (6.0.0~alpha.19 < 6.0.0), so without Epoch
   the format switch would look like a downgrade to dnf. Epoch=1 is
   permanent from here on out.
 
 * Mon Jun 15 2026 gmipf <gmipf64@gmail.com> - 6.0.0-0.alpha.19.2
-- Move install layout from /opt/Aaru to %{_libdir}/aaru — Fedora
+- Move install layout from /opt/Aaru to %%{_libdir}/aaru — Fedora
   packaging guidelines disallow /opt for hosted-COPR packages
-- Drop %post / %postun / %posttrans GTK / MIME / desktop-database
+- Drop %%post / %%postun / %%posttrans GTK / MIME / desktop-database
   refresh scriptlets; Fedora 26+ ships file triggers in
   hicolor-icon-theme / desktop-file-utils / shared-mime-info that
   refresh those caches automatically when files land in their tree
