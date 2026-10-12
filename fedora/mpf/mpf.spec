@@ -1,5 +1,5 @@
 %global mpfver         3.11.0
-%global mpfsnap        20261012145534.8df12827
+%global mpfsnap        20261012203226.fa17a1c9
 %global rolltag        rolling
 
 %global debug_package      %{nil}
@@ -17,7 +17,7 @@ Version:        %{mpfver}~%{mpfsnap}
 # lives in the changelog. (Stuck at 5 here from pre-fix manual bumps of
 # the 71dafe3d snapshot — already shipped as -5, so left as-is to avoid
 # a downgrade; the next snapshot resets it.)
-Release:        2%{?dist}
+Release:        1%{?dist}
 Summary:        Media Preservation Frontend suite (mpf-check, mpf-cli, mpf-gui)
 
 License:        MIT
@@ -481,6 +481,10 @@ install -m 0644 %{SOURCE6} %{buildroot}%{_mandir}/man1/mpf-gui.1
 %{_datadir}/icons/hicolor/*/apps/mpf.png
 
 %changelog
+* Mon Oct 12 2026 gmipf <gmipf64@gmail.com> - 3.11.0~20261012203226.fa17a1c9-1
+- Automated rolling-snapshot sync to upstream MPF commit fa17a1c9
+  (rolling tag, published 20261012203226 UTC); Release reset to 1.
+
 * Mon Oct 12 2026 gmipf <gmipf64@gmail.com> - 3.11.0~20261012145534.8df12827-2
 - Recommend dreamdump and seed/heal DreamdumpPath in the wrappers, like the
   other three dumper paths. MPF starts dreamdump itself since July 2026; its
