@@ -7,6 +7,14 @@ name: watch-consumer-pins
 #
 #   redumper-mpf  <- the redumper build MPF bundles
 #   aaru5         <- the stable Aaru release MPF bundles
+#   dreamdump     <- the dreamdump release MPF bundles. Plain name, no -mpf
+#                    suffix: MPF has followed every dreamdump release the same
+#                    day, so a separate rolling package would carry the same
+#                    version. Before its bump is committed, scripts/
+#                    dreamdump-precheck.sh fetches the new release and runs the
+#                    build's own guards (provenance, no-capability opcodes,
+#                    manpage) -- so a bad release turns THIS run red instead of
+#                    a COPR log nobody opens.
 #
 # aaru5 was GUARDED rather than bumped until 2026-07-19, on the stated grounds
 # that it is "a NativeAOT tree with a static manpage, not a zip" and that
@@ -61,6 +69,8 @@ jobs:
           MPF_AA=$(printf '%s' "$NIX" | grep -oE 'Aaru/releases/download/v[0-9.]+'    | head -1 | sed 's/.*v//')
           [ -n "$MPF_RD" ] || { echo "::error::could not read a redumper b<N> build from MPF publish-nix.sh -- upstream layout changed"; exit 1; }
           [ -n "$MPF_AA" ] || { echo "::error::could not read an Aaru version from MPF publish-nix.sh -- upstream layout changed"; exit 1; }
+          MPF_DD=$(printf '%s' "$NIX" | grep -oE 'dreamdump/releases/download/[0-9][0-9.]*' | head -1 | sed 's|.*/||')
+          [ -n "$MPF_DD" ] || { echo "::error::could not read a dreamdump version from MPF publish-nix.sh -- upstream layout changed"; exit 1; }
 
           command -v rpmspec >/dev/null || sudo apt-get install -y -qq rpm >/dev/null
           BUMPED=""
@@ -119,7 +129,8 @@ jobs:
           # this exception EXPLICITLY rather than counting it as a violation, so
           # the rule check stays meaningful.
           for entry in "redumper-mpf rdbuild $MPF_RD fedora/redumper-mpf/redumper-mpf.spec auto" \
-                       "aaru5 aaruver $MPF_AA fedora/aaru5/aaru5.spec guard"; do
+                       "aaru5 aaruver $MPF_AA fedora/aaru5/aaru5.spec guard" \
+                       "dreamdump ddver $MPF_DD fedora/dreamdump/dreamdump.spec auto"; do
             set -- $entry
             name=$1 macro=$2 want=$3 spec=$4 policy=$5
             have=$(grep -oP "^%global[[:space:]]+${macro}[[:space:]]+\K\S+" "$spec")
@@ -134,6 +145,10 @@ jobs:
             fi
             echo "MPF moved its bundled $name: $have -> $want"
             bash scripts/bump-pin.sh "$name" "$want"
+            if [ "$name" = dreamdump ]; then
+              bash scripts/dreamdump-precheck.sh \
+                || { echo "::error::dreamdump $want fails the build's own guards (see above) -- not bumped. Nothing was pushed."; exit 1; }
+            fi
             BUMPED="${BUMPED}${name} "
           done
 
@@ -175,13 +190,23 @@ jobs:
             printf '# build-%s — %s (Fedora/COPR trigger branch)\n\nAuto-managed **trigger branch**: a push here fires that one COPR build via\nPackit, nothing else rebuilds. Canonical source is `main` (do not edit here).\nPackaging: `fedora/%s/`.\n' "$1" "$1" "$1" > README.md
             git add README.md
             git commit -q -m "trigger: $1 build (branch landing README)"
-            git push -f origin "trigger-tmp:build-$1"
+            bash scripts/push-retry.sh -f origin "trigger-tmp:build-$1" || echo "trigger_failed=1" >> "$GITHUB_OUTPUT"
             git reset -q --hard HEAD~1
           }
           for p in $BUMPED; do trigger "$p"; done
 
+      # The version is on main and OBS is refreshed regardless (the obs job runs
+      # `always()`), but a COPR trigger branch could not be pushed. No later run
+      # retries it -- they all see main already bumped -- so this has to be red.
+      - name: Fail if a COPR trigger could not be pushed
+        if: steps.sync.outputs.trigger_failed == '1'
+        run: |
+          echo "::error::The new version is on main and OBS was asked to refresh, but a COPR trigger branch could not be pushed after retries (see the step above). That COPR build is NOT queued, and no later run will queue it. Re-run it by hand: scripts/build-tool.sh <tool>"
+          exit 1
+
   obs:
     needs: watch
-    if: needs.watch.outputs.changed == 'true'
+    # always(): OBS must not be skipped because the COPR trigger failed.
+    if: always() && needs.watch.outputs.changed == 'true'
     uses: ./.github/workflows/obs-trigger.yml
     secrets: inherit

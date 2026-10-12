@@ -1,0 +1,36 @@
+#!/usr/bin/make -f
+#
+# dreamdump -- repackage of upstream's statically linked release binaries
+# (CGO_ENABLED=0), at the dreamdump release MPF bundles.
+#
+# The .orig tarball is upstream's SOURCE archive, the first Source: of the
+# Fedora spec (scripts/obs/gen-deb.sh); the two binaries arrive next to it as
+# Debtransform-Files extras, under upstream's asset names. Nothing is compiled
+# -- dreamdump needs Go >= 1.26 -- but the source is read: debian/
+# dreamdump-build.sh refuses a SCSI opcode outside the unprivileged set and
+# writes dreamdump(1) from it. Same file as fedora/dreamdump/, byte for byte.
+#
+# The provenance check (binary vcs.revision == source commit) runs in the RPM
+# builds, not here: OBS builds this .deb from the very files it downloaded for
+# the openSUSE RPM of the same package, and that build checks them every time.
+
+UPSTREAM_VERSION := $(shell dpkg-parsechangelog -SVersion | sed -e 's/-[^-]*$$//')
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	sh debian/dreamdump-build.sh manpage . "$(UPSTREAM_VERSION)" > debian/dreamdump.1
+
+# Upstream names its assets after Go's GOARCH, which matches the Debian arch
+# names for both arches shipped here (amd64, arm64).
+override_dh_auto_install:
+	install -D -m 0755 dreamdump-_linux_$(DEB_HOST_ARCH) debian/dreamdump/usr/bin/dreamdump
+
+override_dh_auto_test:
+
+# Ship upstream's binary as published: stripping or dwz would make the packaged
+# file differ from the release whose provenance the RPM builds check.
+override_dh_strip:
+
+override_dh_dwz:

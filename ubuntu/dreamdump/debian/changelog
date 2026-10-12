@@ -1,0 +1,9 @@
+dreamdump (0.6.0-1) UNRELEASED; urgency=medium
+
+  * Initial package: upstream's static release binaries for amd64 and arm64,
+    at the dreamdump release MPF bundles. dreamdump(1) is generated at build
+    time from the source of the same release; the build fails on a SCSI
+    opcode outside INQUIRY / SET CD SPEED / READ CD, because the package
+    ships without cap_sys_rawio.
+
+ -- gmipf <gmipf64@gmail.com>  Mon, 12 Oct 2026 21:10:00 +0000

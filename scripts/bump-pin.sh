@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# bump-pin.sh <redumper-mpf|redumper-rgui|aaru5> <version>
+# bump-pin.sh <redumper-mpf|redumper-rgui|aaru5|dreamdump> <version>
 #
 # Advance a CONSUMER PIN to the upstream revision its consumer now bundles, in all
 # three lanes at once. Every pin has a FIXED package name and a moving version
@@ -23,7 +23,7 @@
 # Every rewrite is verified; a silent sed no-op fails loudly.
 set -euo pipefail
 
-PIN=${1:?usage: bump-pin.sh <redumper-mpf|redumper-rgui|aaru5> <version>}
+PIN=${1:?usage: bump-pin.sh <redumper-mpf|redumper-rgui|aaru5|dreamdump> <version>}
 NEW=${2:?usage: bump-pin.sh <pin> <version>}
 
 # Per pin: which macro drives the version, what an acceptable value looks like,
@@ -39,6 +39,13 @@ case "$PIN" in
         PATTERN='^[0-9]+\.[0-9]+\.[0-9]+$'
         TAG="v${NEW}"
         WHAT="Aaru release ${NEW}" ;;
+    dreamdump)
+        # Plain name, not a -mpf pin: MPF has followed every dreamdump release
+        # the same day, so a second package would carry the same version.
+        MACRO=ddver
+        PATTERN='^[0-9]+\.[0-9]+\.[0-9]+$'
+        TAG="${NEW}"
+        WHAT="dreamdump release ${NEW}" ;;
     *)  echo "unknown pin: $PIN" >&2; exit 2 ;;
 esac
 [[ "$NEW" =~ $PATTERN ]] || { echo "version '$NEW' does not match $PATTERN for $PIN" >&2; exit 2; }

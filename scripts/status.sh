@@ -179,15 +179,19 @@ else
     # Was MPF heute buendelt.
     MPF_RD=$(printf '%s' "$NIX" | grep -oE 'redumper/releases/download/b[0-9]+' | head -1 | grep -oE '[0-9]+$')
     MPF_AA=$(printf '%s' "$NIX" | grep -oE 'Aaru/releases/download/v[0-9.]+'    | head -1 | sed 's/.*v//')
+    MPF_DD=$(printf '%s' "$NIX" | grep -oE 'dreamdump/releases/download/[0-9][0-9.]*' | head -1 | sed 's|.*/||')
 
     # Unsere Pin-Versionen (fester Name, Version = Build). rpmspec, weil Version ein Makro ist.
     verof() { rpmspec -q --queryformat '%{version}\n' "$REPO/fedora/$1/$1.spec" 2>/dev/null | head -1; }
     MPF_PIN=$(verof redumper-mpf)
     AA_PIN=$(verof aaru5)
+    DD_PIN=$(verof dreamdump)
 
     # Wohin zeigen die Konsumenten? Feste Namen -- kein Namensbau mehr aus der Build-Nr.
     PTR_META=$(rpmspec -q --recommends "$REPO/fedora/mpf/mpf.spec"          2>/dev/null | grep -oE '^redumper-mpf'  | head -1)
     PTR_SEED=$(grep -oE '^red_p=redumper-mpf' "$REPO/fedora/mpf/mpf.spec" | head -1 | sed 's/^red_p=//')
+    DD_META=$(rpmspec -q --recommends "$REPO/fedora/mpf/mpf.spec"           2>/dev/null | grep -oE '^dreamdump'     | head -1)
+    DD_SEED=$(grep -oE '^dd_p=dreamdump' "$REPO/fedora/mpf/mpf.spec" | head -1 | sed 's/^dd_p=//')
     RGUI_REQ=$(rpmspec -q --requires "$REPO/fedora/redumper-gui/redumper-gui.spec" 2>/dev/null | grep -oE '^redumper-rgui' | head -1)
 
     # 1. mpf zeigt auf den FESTEN Namen redumper-mpf (Metadaten UND Config-Seed).
@@ -212,8 +216,21 @@ else
         bad "redumper-gui Requires zeigt nicht auf redumper-rgui: ${RGUI_REQ:-?}"
     fi
 
-    # 4. Beide Pin-Rezepte in allen drei Lanes.
-    for pin in redumper-mpf redumper-rgui; do
+    # 3b. dreamdump: MPF startet es selbst (seit 07/2026). Ein Paket unter dem
+    #     schlichten Namen, Version = MPFs Pin (MPF zog bisher jedes Release am selben Tag nach).
+    if [ "$DD_META" = dreamdump ] && [ "$DD_SEED" = dreamdump ]; then
+        ok "mpf -> dreamdump (Recommends + Config-Seed DreamdumpPath)"
+    else
+        bad "mpf zeigt nicht auf dreamdump: Recommends=${DD_META:-?} Seed=${DD_SEED:-?}"
+    fi
+    if [ -n "$MPF_DD" ] && [ "$DD_PIN" = "$MPF_DD" ]; then
+        ok "dreamdump Version ${DD_PIN} == MPF-Bundle ${MPF_DD}"
+    else
+        bad "dreamdump ist ${DD_PIN:-?}, MPF buendelt ${MPF_DD:-?} -> watch-consumer-pins bumpt (oder haengt)"
+    fi
+
+    # 4. Pin-Rezepte in allen drei Lanes.
+    for pin in redumper-mpf redumper-rgui dreamdump; do
         MISS=""
         for lane in fedora ubuntu opensuse; do [ -d "$REPO/$lane/$pin" ] || MISS="$MISS $lane"; done
         [ -z "$MISS" ] && ok "Rezept ${pin} in allen drei Lanes" || bad "Rezept ${pin} FEHLT in:${MISS}"

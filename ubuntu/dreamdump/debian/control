@@ -1,0 +1,33 @@
+Source: dreamdump
+Section: utils
+Priority: optional
+Maintainer: gmipf <gmipf64@gmail.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.2
+Homepage: https://codeberg.org/MoriGM/dreamdump
+Rules-Requires-Root: no
+Vcs-Git: https://github.com/gmipf/packaging-media-preservation.git
+Vcs-Browser: https://github.com/gmipf/packaging-media-preservation
+
+Package: dreamdump
+# The .orig tarball is upstream's source archive; the amd64 and arm64 release
+# binaries travel next to it as Debtransform-Files extras, and debian/rules
+# installs the one matching the build arch. arm64 ships build-tested only.
+Architecture: amd64 arm64
+# No ${shlibs:Depends}: upstream builds with CGO_ENABLED=0, the binary is
+# statically linked and dh_shlibdeps finds nothing.
+Depends: ${misc:Depends}
+Description: dump the high-density area of Sega Dreamcast GD-ROMs
+ dreamdump reads the high-density area of a Sega Dreamcast GD-ROM through raw
+ SCSI READ CD commands, checks each section by reading it repeatedly, and
+ writes the result as track files. MPF uses it as one of its dumping programs.
+ .
+ It needs a drive that can be made to read the high-density area; upstream's
+ record of tested drives is in the manual page and in DRIVES.csv. Other drives
+ are used with default settings and are untested.
+ .
+ No root, no group and no file capability is needed: every SCSI command
+ dreamdump sends (INQUIRY, SET CD SPEED, READ CD) is permitted to any user who
+ can open the drive, which systemd-logind grants to the user at the local seat.
+ .
+ This package follows the dreamdump release MPF bundles.

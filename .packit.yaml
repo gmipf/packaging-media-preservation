@@ -197,6 +197,23 @@ packages:
         # have left a green watcher and a dead SRPM step behind it.
         - bash -c "ls -1 redumper-b*-linux-x64.zip | head -1"
 
+  # dreamdump: the release MPF bundles, under the plain name (one package -- MPF
+  # has followed every dreamdump release the same day). AUTO-tracked hourly by
+  # watch-consumer-pins.yml. Source0 is the codeberg SOURCE tarball, read at
+  # %build for provenance and the manpage; the binaries are Source1/Source2.
+  # The archive is matched by FORM, never by version (same reason as above).
+  dreamdump:
+    paths:
+      - fedora/dreamdump/
+    specfile_path: dreamdump.spec
+    upstream_project_url: https://codeberg.org/MoriGM/dreamdump
+    actions:
+      get-current-version:
+        - bash -c "rpmspec -q --queryformat '%{version}\n' dreamdump.spec | head -1"
+      create-archive:
+        - bash -c "spectool -g dreamdump.spec 1>&2"
+        - bash -c "ls -1 dreamdump-*.tar.gz | head -1"
+
   # Source0 is the VENDORED tarball published as a release asset on THIS repo
   # (scripts/rust-vendor-tarball.sh), not an upstream archive: Rust needs its
   # crates at build time and the COPR chroot has no network. Source1/2 are
@@ -392,6 +409,22 @@ jobs:
     trigger: commit
     branch: ^build-redumper-mpf$
     packages: [redumper-mpf]
+    update_release: false
+    owner: gmipf
+    project: media-preservation
+    targets:
+      - fedora-all-x86_64
+      - epel-all-x86_64
+      - fedora-all-aarch64
+      - epel-all-aarch64
+
+  # dreamdump: MPF's dreamdump release, AUTO-tracked hourly by
+  # watch-consumer-pins.yml. Static Go binaries, so every chroot that has the
+  # arch can take them.
+  - job: copr_build
+    trigger: commit
+    branch: ^build-dreamdump$
+    packages: [dreamdump]
     update_release: false
     owner: gmipf
     project: media-preservation
