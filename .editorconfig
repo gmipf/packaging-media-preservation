@@ -1,0 +1,12 @@
+# For editors. scripts/lint.sh enforces the three [*] rules on every tracked
+# text file, in CI and in the pre-commit hook.
+root = true
+
+[*]
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# make recipes (debian/rules) must be indented with a tab
+[{rules,Makefile,*.mk}]
+indent_style = tab

@@ -11,6 +11,8 @@
 #                 with no ledger line at all.
 #   * a proof or blockade pointing at an artifact that does not exist.
 #   * a blockade whose upstream version moved.
+#   * a lint finding (scripts/lint.sh --hook: the rules CI enforces; a linter not
+#     installed on this machine is named and skipped, CI runs it regardless).
 #
 # WHAT THIS DOES NOT BLOCK:
 #   * the open backlog. A 'not-yet' row is not a failure -- you must be able to
@@ -49,5 +51,11 @@ if ! bash "$checker"; then
     echo "pre-commit: das Beweis-Ledger ist nicht sauber (siehe oben) — Commit abgebrochen." >&2
     echo "            Beweis nachgemessen? Dann Zeile setzen + 'scripts/proof-status.sh --refresh'." >&2
     echo "            Bewusste Ausnahme? Entscheidet nur der Maintainer, nicht die Sitzung." >&2
+    exit 1
+fi
+
+if ! bash "$root/scripts/lint.sh" --hook; then
+    echo
+    echo "pre-commit: Lint-Befund (siehe oben) — Commit abgebrochen." >&2
     exit 1
 fi

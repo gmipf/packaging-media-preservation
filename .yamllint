@@ -1,0 +1,15 @@
+# yamllint, run by scripts/lint.sh. The default rules stay on -- syntax,
+# duplicate keys (YAML keeps the last one silently), indentation, truthy VALUES,
+# spacing -- except three that only measured style here (2026-10-13: 321 + 11 +
+# 10 findings, not one of them a defect):
+extends: default
+
+rules:
+  # Workflow comments explain incidents in full sentences and `run:` blocks carry
+  # long command lines; wrapping them makes them harder to read, not safer.
+  line-length: disable
+  # No file here holds more than one document.
+  document-start: disable
+  # `on:` is the key GitHub Actions requires. Values are still checked.
+  truthy:
+    check-keys: false
