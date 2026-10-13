@@ -11,7 +11,7 @@ name: obs-health
 on:
   schedule:
     # Every 6 h, three hours off copr-reconcile. GitHub throttles schedules, so
-    # this is the plan, not the clock (README, "Automation").
+    # this is the plan, not the clock (docs/how-it-works.md, "Automation").
     - cron: '11 3,9,15,21 * * *'
   workflow_dispatch:
   push:

@@ -1,352 +1,50 @@
 # packaging-media-preservation
 
-Distribution packaging recipes (RPM specs, Debian rules) for the
-media-preservation tools, published to the
-[`gmipf/media-preservation`](https://copr.fedorainfracloud.org/coprs/gmipf/media-preservation/)
-COPR repository (Fedora / EPEL) and the
-[`home:gmipf:media-preservation`](https://build.opensuse.org/project/show/home:gmipf:media-preservation)
-OBS project (openSUSE, Debian, Ubuntu).
+Packages for optical-disc preservation tools, built straight from upstream:
 
-**Every lane builds straight from upstream.** Neither depends on the other, and
-neither re-hosts anyone's bytes: an RPM spec names its `Source0:`/`Source1:` URLs
-and assembles the tree in `%prep`; the `.dsc` names the very same URLs
-(`DEBTRANSFORM-TAR` + `DEBTRANSFORM-FILES`) and `debian/rules` does the same work.
+- **Fedora and EPEL** (RHEL, CentOS Stream, AlmaLinux, Rocky, Oracle Linux 8–10)
+  in the [`gmipf/media-preservation`][copr] COPR repository
+- **openSUSE, Debian and Ubuntu** in the [`home:gmipf:media-preservation`][obs]
+  OBS project
+- **macOS** in a Homebrew tap in this repository
 
-**This repo does *not* contain upstream tool source code** — only the recipes
-needed to build the tools into distro packages. Upstream source lives at the
-respective project URLs (see below).
+The Linux packages are built for x86_64 and aarch64. This repository holds only
+the recipes; the tools come from their upstream projects, and nothing is
+re-hosted.
 
 ## Tools
 
-| Tool | Update mode | [Fedora][copr] | [EPEL][copr] | [openSUSE][obs] | [Ubuntu][obs] | [Debian][obs] | macOS |
-|---|---|---|---|---|---|---|---|
-| [redumper](https://github.com/superg/redumper) | auto-tracked hourly on new `b<N>` tags (binary repackage) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| [MPF](https://github.com/SabreTools/MPF) | rolling, auto-tracked hourly (binary repackage); meta-package `mpf` pulls in `mpf-check` (validator), `mpf-cli` (headless orchestrator) and `mpf-gui` (Avalonia desktop UI) | ✅ | ✅ | ✅ | ✅ | ✅ | later |
-| [DiscImageCreator](https://github.com/saramibreak/DiscImageCreator) | auto-tracked hourly on new master commits (built from source — upstream binary links against EOL OpenSSL 1.1); bundles DIC + EccEdc + DVDAuth + unscrambler in one package | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ optical only |
-| [Aaru](https://github.com/aaru-dps/Aaru) | auto-tracked hourly on new `v6.0.0-<alpha|beta|rc>.<N>` tags (binary repackage; beta since 2026-07-16); CLI + Avalonia GUI ship as one binary, launch the GUI via `aaru gui` | ✅ | ✅ | ✅ | ✅ | ✅ | — |
-| [Aaru 5.4.x](https://github.com/aaru-dps/Aaru) (`aaru5`) | version-pinned; **watched hourly, bumped by hand on purpose** — the version MPF bundles is read without a major-version constraint, and the day it lists a 6.x the package named `aaru5` must not silently become Aaru 6 (that is a retirement, decided by hand), so the watcher fails loudly instead (binary repackage); the stable 5.4 CLI that MPF drives, installs as `/usr/bin/aaru5` alongside the rolling `aaru` v6 | ✅ | ✅ | ✅ | ✅ | ✅ | — |
-| [Redumper-GUI](https://github.com/Deterous/Redumper-GUI) | release tags, built from source (vendored crates) | ✅ | ✅ | ✅ | 26.04 only | 13 only | — |
-| [dreamdump](https://codeberg.org/MoriGM/dreamdump) | follows the release MPF bundles, auto-tracked hourly from MPF's `publish-nix.sh` (binary repackage); dumps the high-density area of Sega Dreamcast GD-ROMs and is one of the four programs MPF starts itself; needs **no capability** | ✅ | ✅ | ✅ | ✅ | ✅ | — |
-| `redumper-mpf` / `redumper-rgui` | fixed-name pins with a moving version: the redumper build that MPF (`redumper-mpf`) and Redumper-GUI (`redumper-rgui`) bundle. `redumper-mpf` is **auto-tracked hourly** from MPF's `publish-nix.sh` and upgrades in place; `redumper-rgui` moves with the Redumper-GUI release. Install one only if you use that frontend — the rolling `redumper` is what you want otherwise. They coexist, each installing as `/usr/bin/<name>` | ✅ | ✅ | ✅ | ✅ | ✅ | — |
+| Tool | What it is | Fedora / EPEL | openSUSE | Ubuntu | Debian | macOS |
+|---|---|:-:|:-:|:-:|:-:|:-:|
+| [redumper](https://github.com/superg/redumper) | disc dumper | ✅ | ✅ | ✅ | ✅ | ✅ |
+| [DiscImageCreator](https://github.com/saramibreak/DiscImageCreator) | disc and floppy dumper | ✅ | ✅ | ✅ | ✅ | ✅ ¹ |
+| [Aaru](https://github.com/aaru-dps/Aaru) | dumper and image toolkit (v6 beta, with GUI) | ✅ | ✅ | ✅ | ✅ | — |
+| [Aaru 5.4](https://github.com/aaru-dps/Aaru) (`aaru5`) | the stable Aaru CLI that MPF drives | ✅ | ✅ | ✅ | ✅ | — |
+| [MPF](https://github.com/SabreTools/MPF) | dumping frontend: GUI, CLI and log checker | ✅ | ✅ | ✅ | ✅ | — |
+| [Redumper-GUI](https://github.com/Deterous/Redumper-GUI) | graphical frontend for redumper | ✅ | ✅ | 26.04 | 13 | — |
+| [dreamdump](https://codeberg.org/MoriGM/dreamdump) | Dreamcast GD-ROM dumper | ✅ | ✅ | ✅ | ✅ | — |
+| `redumper-mpf`, `redumper-rgui` | the redumper builds MPF and Redumper-GUI bundle | ✅ | ✅ | ✅ | ✅ | — |
+
+¹ optical drives only; no tool reaches a floppy drive on macOS.
+
+A watcher checks every upstream hourly, and new releases are packaged for all
+lanes automatically (`aaru5` is bumped by hand on purpose). What each package
+tracks and how it is built: [docs/how-it-works.md](docs/how-it-works.md).
 
 [copr]: https://copr.fedorainfracloud.org/coprs/gmipf/media-preservation/
 [obs]: https://build.opensuse.org/project/show/home:gmipf:media-preservation
 
-**Fedora** / **EPEL** link to the COPR project; **openSUSE**, **Ubuntu** and
-**Debian** all link to the one OBS project (Leap 16.0, Tumbleweed,
-Ubuntu 22.04/24.04/26.04, Debian 12+13). Everything is built for **x86_64 and
-aarch64 / arm64**. One wrinkle: Tumbleweed's ARM builds come from a second
-repository, **`openSUSE_Tumbleweed_ARM`** — Factory's x86_64 and ARM ports are
-separate OBS projects, and one repository cannot serve both. For the versions
-currently shipping and full install instructions, see those pages.
-
-> **aarch64 is built and published, but not hardware-tested.** The drive-access
-> results below were measured on x86_64 only. Nothing in the packaging is
-> architecture-specific — the capability, udev and permissions mechanisms are the
-> same files on both — but no one has run a dump from an ARM machine, so this is
-> deliberately not claimed as verified. Reports welcome.
-
-Redumper-GUI needs rustc ≥ 1.92 (eframe/egui). Debian 13 clears the floor through
-`trixie-backports` (rustc 1.94.1, which OBS builds against — the package's
-`Build-Depends: rustc (>= 1.92)` pulls it), and Ubuntu 26.04 ships 1.93. Left out:
-Ubuntu 22.04/24.04 (≤ 1.91) and Debian 12 (1.63, and its backports carry no rustc).
-
-## Drive access
-
-**Verified on every lane** (2026-07-14, real hardware passed through to a clean
-VM per distribution: a Plextor PX-760A USB optical drive and a NEC USB floppy).
-A plain desktop user in **no** drive group — not `cdrom`, not `floppy`, not
-`disk`, not `plugdev` — dumped both, with `sudo` never invoked. Two independent
-mechanisms carry that, and each is delivered differently per distribution:
-
-| | what it grants | Fedora / EPEL | openSUSE | Ubuntu / Debian |
-|---|---|---|---|---|
-| `uaccess` ACL on the device node | opening and reading the drive | udev rule | udev rule | udev rule |
-| `cap_sys_rawio` on the binary | vendor SCSI commands (Plextor `0xD8` …) | `%caps` in the spec | permissions framework (`permctl`) | `setcap` in the `postinst` |
-
-The ACL is granted by systemd-logind to whoever holds the **active local seat** —
-for optical drives (`/dev/sr*`) via systemd's own rule, and for USB or legacy
-floppy drives via a udev rule these packages ship. It appears the moment the
-package is installed; the drive does not need to be re-plugged.
-
-The capability sits on the **dumping tools** — `redumper`, `redumper-rgui`,
-`redumper-mpf`, `aaru`, `aaru5` and DiscImageCreator — and deliberately **not** on
-any GUI (`mpf-gui`, `redumper-gui`) or on the MPF frontends, which orchestrate
-those tools rather than talk to a drive. A process holding file capabilities is
-non-dumpable, and the desktop portal service then refuses to authorise it: giving
-a GUI `cap_sys_rawio` breaks every file dialog it opens.
-
-`dreamdump` gets none because it needs none: everything it sends (INQUIRY,
-SET CD SPEED, READ CD) is on the kernel's unprivileged SG_IO list, measured as a
-plain user on 2026-10-12 ([proof](proofs/dreamdump-optical-access-MEASURED-x86_64.md)).
-Its build fails the day a new SCSI command appears in its source.
-
-Only headless / SSH / cron sessions, which have no seat, need more. For optical
-drives, add yourself to the `cdrom` group. A headless floppy dump needs root: the
-floppy node stays `root:disk`, and the `disk` group would expose every block
-device on the system, so it is not a safe substitute.
-
-### The proof ledger — and how to keep it honest
-
-None of the above is a claim you have to take on trust, and none of it is allowed
-to rot quietly. `scripts/proof-ledger.tsv` carries one line per (tool, lane,
-mechanism), each with a fingerprint of exactly the recipe fragments that deliver
-it — the udev rule, the `%post`/`postinst` body, the `%caps()` directive, the
-openSUSE permissions profile. `scripts/proof-status.sh` recomputes that
-fingerprint from the live tree and shouts when it moved: touch the scriptlet and
-the proof is declared stale. It is keyed on the **mechanism**, never the version,
-so a `redumper` b731→b732 bump does not cry wolf.
-
-**Install the hook once per clone** — otherwise the ledger is a script somebody
-has to remember to run, which is the failure mode it exists to remove:
-
-```sh
-git config core.hooksPath .githooks
-```
-
-It blocks a commit on drift, on a missing mechanism line (coverage), and on a
-proof whose artifact is missing or does not show its own failure. It deliberately
-does **not** block on the open backlog: you must be able to commit a new mechanism
-together with the ledger line that admits it is unproven.
-
-Three evidence states, and nothing else: `not-yet` (open), `log:<path>` (measured
-red **and** green, artifact saved), and `blocked:<version>:<path>` — red proven,
-green blocked by an upstream bug at exactly that version. A blockade passes
-through without holding the gate shut, and fails loudly the moment the tool's
-version moves, which is the point: marking such a line `proven` instead would sit
-green forever and nobody would ever measure it again.
-
-**The artifact is read, not just resolved.** A proof log must contain a RED half,
-a GREEN half and a `VERDICT:` line; a blockade must contain a RED half and is not
-asked for a GREEN. A run that could not have failed is not evidence — so the
-ledger asks each artifact for its failure, rather than trusting that whoever wrote
-it remembered to produce one.
-
-Two things that look like permission errors and are not:
-
-- **The desktop may have auto-mounted the medium** (GNOME does, KDE does not) —
-  the dumper then cannot take its exclusive lock. Release it without root:
-  `udisksctl unmount -b /dev/sr1` (or the floppy's node). Aaru reports this as
-  `Could not open device, error EncodingUnknown`, which names everything except
-  the cause.
-- **Aaru asks a GDPR consent question on its very first run.** Until it is
-  answered once, `aaru media dump` stops there. Run `aaru configure` in a
-  terminal, then dump.
-
-## Layout
-
-```
-.
-├── .packit.yaml                            # Packit-as-a-Service config (drives Fedora COPR builds)
-├── .github/workflows/
-│   ├── watch-redumper-releases.yml         # hourly watcher for redumper's b<N> tags
-│   ├── watch-mpf-rolling.yml               # hourly watcher for MPF's rolling tag
-│   ├── watch-dic-releases.yml              # hourly watcher for DiscImageCreator master commits
-│   ├── watch-aaru-releases.yml             # hourly watcher for Aaru's v6.0.0 pre-release tags
-│   ├── watch-redumper-gui.yml              # hourly watcher for Redumper-GUI releases and its redumper pin
-│   ├── watch-consumer-pins.yml             # follows the builds MPF bundles (redumper-mpf, aaru5, dreamdump)
-│   ├── watch-distro-lifecycle.yml          # reports distro releases that OBS does not build for yet
-│   ├── obs-trigger.yml                     # asks OBS to re-read the recipes (after every bump, and daily)
-│   ├── copr-reconcile.yml                  # re-pushes a COPR trigger that got lost (every six hours)
-│   ├── obs-health.yml                      # red when an OBS build fails or OBS falls behind main (every six hours)
-│   ├── homebrew.yml                        # builds and tests every formula on Apple Silicon and Intel
-│   └── check-repo.yml                      # repository checks (shellcheck, proof ledger, Rust floor, ...)
-├── Formula/                                # Homebrew tap for macOS (redumper, discimagecreator)
-├── LICENSE                                 # MIT (recipes only; tools keep their own licenses)
-├── README.md
-└── fedora/
-    ├── redumper/
-    │   ├── redumper.spec                   # repackage of upstream prebuilt linux-x64 ZIP
-    │   ├── redumper.1                      # handwritten manpage
-    │   └── .upstream-tag                   # last seen upstream tag (written by watcher)
-    ├── mpf/
-    │   ├── mpf.spec                        # multi-subpackage: mpf + mpf-check + mpf-cli + mpf-gui
-    │   ├── mpf-gui.desktop                 # menu entry for `mpf-gui`
-    │   ├── mpf-check.1 / mpf-cli.1 / mpf-gui.1  # handwritten manpages
-    │   ├── mpf-{32,64,128,256,512}.png     # hicolor icons (from upstream Icon.ico)
-    │   └── .rolling-sha                    # last seen upstream rolling SHA (written by watcher)
-    ├── discimagecreator/
-    │   ├── discimagecreator.spec           # source-build of DIC + EccEdc + DVDAuth + unscrambler
-    │   ├── discimagecreator.1              # handwritten manpage
-    │   └── .upstream-tag                   # last seen upstream tag (written by watcher)
-    └── aaru/
-        ├── aaru.spec                       # repackage of upstream .NET self-contained binary
-        ├── aaru.desktop                    # menu entry for `aaru gui`
-        ├── aaru.1                          # handwritten manpage
-        └── .upstream-tag                   # last seen upstream tag (written by watcher)
-```
-
-The Debian-format recipes live in `ubuntu/` — see [`ubuntu/README.md`](ubuntu/README.md).
-One recipe serves Debian AND Ubuntu; the directory name predates the Debian targets:
-
-```
-ubuntu/<tool>/debian/         # debian/control, debian/rules, debian/changelog
-```
-
-`opensuse/<tool>/` is the OBS lane, and it delivers openSUSE, Debian **and**
-Ubuntu:
-
-```
-opensuse/<tool>/
-├── <tool>.spec               # reuses the Fedora spec's %if 0%{?suse_version} branches
-├── <tool>.dsc                # debtransform template   ┐
-├── debian.tar.gz             # debian/ minus changelog ├─ generated: scripts/obs/gen-deb.sh
-└── _service                  # tells OBS what to fetch ┘
-```
-
-The `.deb` side reuses `ubuntu/<tool>/debian/` unchanged — there is no second
-recipe. OBS assembles the Debian source package at build time from the `.dsc`,
-and fetches every input itself, so git stays the single source of truth for both
-halves. The three generated files are checked against the recipe by
-`scripts/status.sh`: drift between them does not fail a build, it corrupts one
-silently.
-
-**No `.orig` tarball is assembled anywhere, and nothing is re-hosted.** A Debian
-source package takes one orig tarball and the build root has no network, which
-looks like it forces someone to pre-assemble and host a merged archive. It does
-not: `DEBTRANSFORM-TAR` names the first upstream archive and `DEBTRANSFORM-FILES`
-the rest — the `.dsc`'s answer to an RPM spec's `Source1:`/`Source2:` — and
-`debian/rules` unpacks them in the build root exactly as `%prep` does (aaru's
-source tarball, mpf's CLI and GUI zips, dic's three sibling projects). OBS has
-already downloaded those files for the RPM, so the `.rpm` and the `.deb` are built
-from the same upstream bytes, fetched once.
-
-`scripts/obs/test-deb.sh <image> <tool>` replays that chain locally before a push
-— including `dpkg-buildpackage` **without** `-b`, which is what OBS runs. A gate
-milder than the build farm is not a gate.
-
-Each distro folder uses that distro's native tooling conventions — no custom
-abstraction layer on top.
-
-## Automation
-
-Builds are driven by [Packit](https://packit.dev/). A push to `main` builds
-nothing: every package has its own trigger branch `build-<tool>`, and the
-watcher that bumps a spec on `main` then pushes that branch, so Packit fetches
-the sources, builds the SRPM and ships exactly that one package to COPR project
-`gmipf/media-preservation`. A rebuild by hand goes through
-`scripts/build-tool.sh <tool>`, which also makes sure the same version-release
-is never published twice. No manual `copr-cli build` needed.
-
-If a trigger gets lost on the way (a failed push, an outage on either side),
-`copr-reconcile` notices: every six hours it compares each spec on `main` with
-COPR and re-pushes the trigger of any version COPR never received. For OBS,
-`obs-trigger` asks for every recipe to be re-read once a day, and
-`obs-health` turns red when an OBS build fails or OBS still publishes a
-version `main` moved past more than a day ago.
-
-"Hourly" is the schedule, not a promise: GitHub starts scheduled workflows
-late when it is busy, and here they have run about 6 hours apart, at most
-11 (October 2026). A new upstream release usually arrives the same day.
-`scripts/schedule-health.py`, which `scripts/status.sh` runs, names a workflow
-whose schedule stopped firing altogether: red once its last scheduled run is
-older than its planned interval plus a day.
-
-The same per-tool watchers drive the OBS lane: on an upstream bump they advance
-`ubuntu/<tool>/debian/changelog` and regenerate `opensuse/<tool>/{<tool>.dsc,
-debian.tar.gz,_service}` in the same commit, then ask OBS to re-run its source
-services. Nothing is uploaded — OBS fetches the recipe and the upstream archives
-itself.
-
-Each package is built for `fedora-all` and `epel-all` on **x86_64 and aarch64**.
-Every spec is `ExclusiveArch: x86_64 aarch64`. The repackaged tools bundle *both*
-upstream arch archives as separate `Source:` lines and pick the matching one in
-`%prep` / `%install` via `%ifarch` — packit builds ONE SRPM that COPR then builds
-on every arch chroot, so an arch-conditional `Source:` would bake a single arch's
-binary into the SRPM and the aarch64 build would ship the x86 one. Both URLs share
-the same version macro, so a watcher bump carries them in lockstep. The two
-source-built tools (DiscImageCreator, Redumper-GUI) simply compile per arch.
-`epel-all` auto-tracks every active EPEL major
-(8/9/10 today, 11+ automatically), and the EPEL builds run on the CentOS
-Stream N + EPEL buildroot, so one `.elN` package covers RHEL, CentOS Stream,
-AlmaLinux, Rocky and Oracle Linux N.
-
-openSUSE is **not** built on COPR: COPR only offers an EOL Leap 15.6 and a
-currently-broken Tumbleweed and has no Leap 16.0 chroot, so openSUSE will be
-published natively on the [openSUSE Build Service](https://build.opensuse.org/)
-(OBS) instead. The specs keep their `%if 0%{?suse_version}` portability for that
-future port.
-
-`discimagecreator` (the only source build) carries small spec patches so it
-compiles everywhere: for the EL8/EL9 EPEL builds it drops upstream meson's
-`fs.copyfile` and renames a doc file with an `&` in its name for the older
-toolchain (on EL8 it links the vendor-maintained system openssl 1.1.1k). It also
-keeps `%if 0%{?suse_version}` portability, which the openSUSE (OBS) lane builds on —
-BuildRequiring Ninja under its openSUSE name (`ninja` vs `ninja-build`) — and
-the self-contained .NET tools (`aaru`, `mpf`) map their runtime dependency names
-under the same guard
-(`krb5-libs`→`krb5`, `openssl-libs`→`libopenssl3`, `zlib`→`libz1`, `libunwind`
-by soname; `libicu` and `jq` are portable as-is). These openSUSE branches are a
-verified no-op on Fedora/EL.
-
-All four packages have GitHub-hosted watchers that rewrite their spec on
-upstream releases and let Packit handle the rebuild:
-
-- **redumper** publishes new `b<N>` release tags frequently (multiple
-  per day during active bursts; quieter weeks otherwise).
-  `watch-redumper-releases.yml` polls hourly, picks the highest `b<N>`
-  tag from the 20 most recent releases and rewrites the spec's
-  `Version:` line. Older `build_<N>` tags from the pre-convention era
-  are ignored by the filter.
-- **mpf** rolls — upstream force-pushes its `rolling` tag on every
-  release. `watch-mpf-rolling.yml` polls hourly, rewrites the
-  spec's `%global mpfver` + `%global mpfsnap` lines and stores the new
-  upstream SHA when something has changed. All three subpackages
-  (mpf-check, mpf-cli, mpf-gui) ship synchronously since they share one
-  upstream `<VersionPrefix>`.
-- **discimagecreator** is packaged from a pinned master commit rather
-  than the release tag: master carries the accumulated Linux fixes --
-  notably the fd (floppy) SIGSEGV fix (#328) -- that the last release tag
-  (20260101) lacks. `watch-dic-releases.yml` polls master HEAD hourly and,
-  on a new commit, re-pins `%global diccommit` / `%global dicsnap` to that
-  SHA. DIC has no semantic source version -- its AppVersion is a build-time
-  timestamp and the release tags are bare `YYYYMMDD` date labels -- so the
-  package version is simply the commit's UTC timestamp plus short SHA
-  (`<YYYYMMDDHHMMSS>.<short-SHA>`): monotonic, pinned, no release-tag anchor.
-  Built from source: the upstream Linux release binary links against
-  EOL OpenSSL 1.1 (no longer in default Fedora / Ubuntu repos), so we
-  recompile against OpenSSL 3 ourselves until upstream
-  ([saramibreak/DiscImageCreator#321](https://github.com/saramibreak/DiscImageCreator/issues/321))
-  migrates or static-links.
-- **aaru** is on the v6.0.0 pre-release track — beta since 2026-07-16; upstream
-  publishes a new alpha/beta/rc tag every two to six weeks.
-  `watch-aaru-releases.yml` polls hourly, picks the highest tag across the track
-  (alpha < beta < rc, the same order rpm and dpkg give the versions derived from
-  it) and rewrites `%global aaruprerel` on a bump. Moving within the track needs
-  no review: only the tag changes. The workflow loud-fails on stable v6.0.0 or a
-  v7+ major, which reshape the packaging instead of advancing it — `Version`
-  loses its `~pre-release` tilde and the release assets lose their `-<prerel>`
-  infix, so `Source0`/`Source1` stop resolving.
-
-See `.packit.yaml` for the per-tool trigger configuration.
-
 ## Install
 
-### Fedora 43+ and RHEL / CentOS Stream / AlmaLinux / Rocky / Oracle 8–10
+### Fedora, and RHEL / CentOS Stream / AlmaLinux / Rocky / Oracle Linux 8–10
 
 ```sh
+sudo dnf install epel-release    # enterprise Linux only, not on Fedora
 sudo dnf copr enable gmipf/media-preservation
 sudo dnf install redumper discimagecreator aaru aaru5 mpf redumper-gui dreamdump
 ```
 
-On enterprise Linux, enable EPEL first:
-
-```sh
-sudo dnf install epel-release
-```
-
-`aaru` and `mpf-gui` need `libunwind`, and enterprise Linux ships it in EPEL, not
-in BaseOS/AppStream. Without EPEL those two are unresolvable and the `mpf`
-meta-package fails with them (measured on AlmaLinux 9; the `epel-N` buildroot
-carries EPEL, which is why the packages build regardless). The COPR `dnf` plugin
-itself lives in `dnf-plugins-core` and is in the base repos. Fedora needs no
-extra repository.
-
 ### openSUSE Leap 16.0 and Tumbleweed
-
-Published on the [openSUSE Build Service](https://build.opensuse.org/project/show/home:gmipf:media-preservation)
-(OBS) rather than COPR, whose openSUSE support is limited to an EOL Leap 15.6 and
-a currently-broken Tumbleweed, with no Leap 16.0 chroot.
 
 ```sh
 sudo zypper addrepo https://download.opensuse.org/repositories/home:gmipf:media-preservation/16.0/home:gmipf:media-preservation.repo
@@ -354,16 +52,15 @@ sudo zypper refresh
 sudo zypper install redumper discimagecreator aaru aaru5 mpf redumper-gui dreamdump
 ```
 
-For Tumbleweed, swap `16.0` for `openSUSE_Tumbleweed` in the repo URL.
+For Tumbleweed, replace `16.0` with `openSUSE_Tumbleweed` in the repository URL
+(`openSUSE_Tumbleweed_ARM` on aarch64).
 
-### Ubuntu 26.04 (resolute), 24.04 (noble) and 22.04 (jammy)
-
-Same OBS project as openSUSE and Debian — swap the repository name for your
-release (`xUbuntu_26.04`, `xUbuntu_24.04`, `xUbuntu_22.04`):
+### Ubuntu 22.04, 24.04, 26.04 and Debian 12, 13
 
 ```sh
-. /etc/os-release        # VERSION_ID is 26.04, 24.04 or 22.04
-REPO="https://download.opensuse.org/repositories/home:/gmipf:/media-preservation/xUbuntu_${VERSION_ID}"
+. /etc/os-release
+case "$ID" in ubuntu) DIST="xUbuntu_$VERSION_ID" ;; debian) DIST="Debian_$VERSION_ID" ;; esac
+REPO="https://download.opensuse.org/repositories/home:/gmipf:/media-preservation/$DIST"
 
 curl -fsSL "$REPO/Release.key" | sudo gpg --dearmor -o /usr/share/keyrings/media-preservation.gpg
 echo "deb [signed-by=/usr/share/keyrings/media-preservation.gpg] $REPO/ /" \
@@ -373,60 +70,9 @@ sudo apt update
 sudo apt install redumper discimagecreator aaru aaru5 mpf dreamdump
 ```
 
-`redumper-gui` is available on 26.04 only: eframe/egui needs rustc ≥ 1.92, and
-22.04/24.04 top out at 1.91.
-
-### Debian 13 (trixie) and 12 (bookworm)
-
-Built on the same OBS project as everything else. One `debian/` recipe serves
-every Ubuntu and Debian release: an Ubuntu `.deb` does not fit Debian, because the
-ICU runtime carries its soname in the package name (`libicu70` on jammy vs
-`libicu72` on bookworm), so the dependency is resolved from the build root at
-build time rather than from a table of series.
-
-```sh
-. /etc/os-release        # VERSION_ID is 13 on trixie, 12 on bookworm
-REPO="https://download.opensuse.org/repositories/home:/gmipf:/media-preservation/Debian_${VERSION_ID}"
-
-curl -fsSL "$REPO/Release.key" | sudo gpg --dearmor -o /usr/share/keyrings/media-preservation.gpg
-echo "deb [signed-by=/usr/share/keyrings/media-preservation.gpg] $REPO/ /" \
-  | sudo tee /etc/apt/sources.list.d/media-preservation.list
-
-sudo apt update
-sudo apt install redumper discimagecreator aaru aaru5 mpf dreamdump
-```
-
-Redumper-GUI is available on Debian 13 (trixie) but not Debian 12 (bookworm): it
-needs rustc ≥ 1.92, which trixie provides through `trixie-backports` (rustc 1.94.1,
-what OBS builds against); bookworm's 1.63 has no backported rustc. On trixie, add it:
-`sudo apt install redumper-gui`.
-
-`mpf` is a meta-package; it pulls in `mpf-check` (log validator),
-`mpf-cli` (headless dump orchestrator) and `mpf-gui` (Avalonia desktop
-frontend). Install the individual subpackages if you only need part of
-it (`sudo dnf install mpf-check`, etc.). Launch the GUI via
-`mpf-gui` or the `MPF` desktop entry.
-
-`aaru` ships both the CLI and its Avalonia GUI in one binary — launch
-the GUI via `aaru gui` or via the `Aaru` desktop entry. `redumper` and
-`discimagecreator` are CLI-only.
-
-`cap_sys_rawio` is preset on the dumping tools (`redumper`, `redumper-rgui`,
-`redumper-mpf`, `aaru`, `aaru5`, DiscImageCreator; `dreamdump` needs none) so vendor SCSI passthrough
-commands work without sudo — and deliberately **not** on the GUIs or the MPF
-frontends, which drive those tools rather than a drive. Logged in at a local
-desktop seat you also need **no group membership and no root** to read the drives
-themselves. All of this is measured against real hardware on every distribution;
-see [Drive access](#drive-access) above for what is proven, what a headless
-session still needs, and the two non-errors (desktop auto-mount, Aaru's first-run
-consent prompt) that look like permission failures.
+On Ubuntu 26.04 and Debian 13, `redumper-gui` is available too.
 
 ### macOS (Homebrew, Apple Silicon and Intel)
-
-`Formula/` in this repository is a Homebrew tap with the two dumpers that work
-on macOS: redumper (upstream's own macOS build, repackaged) and DiscImageCreator
-(built from source at the same commit as the Linux packages; upstream publishes
-no macOS build, and the one MPF bundles is linked against MacPorts).
 
 ```sh
 brew tap gmipf/media-preservation https://github.com/gmipf/packaging-media-preservation
@@ -437,50 +83,21 @@ The full names are needed because Homebrew loads nothing from a third-party tap
 it has not been told to trust ([Tap Trust](https://docs.brew.sh/Tap-Trust));
 after `brew trust gmipf/media-preservation` the short names work too.
 
-Name a drive by its BSD name as `diskutil list` shows it, for example
-`redumper disc --drive=disk4`. No sudo and no capability is needed, but macOS
-refuses drive access to a program working inside Desktop, Documents or
-Downloads. Measured in October 2026 on macOS 26.5 (Intel), from an
-administrator account, with a Plextor PX-760A and an audio CD: redumper from this
-tap read it including the vendor `D8` read; DiscImageCreator from this tap
-dumped all seven tracks (exit 0) through the same `D8` read, found the drive's
-+30 sample offset and unmounted the disc itself. Its pregap before track 1
-(negative LBAs) was not readable there, so the combined `(Track all).img` stayed
-empty; the per-track files and the full image are complete. Not measured yet: a
-standard account. Right after a drive appears, macOS may hold it for a few
-seconds ("Device Busy"); try again.
+## Drive access
 
-On Intel Macs Homebrew no longer builds bottles (Tier 3 since September 2026),
-so dependencies compile from source. DiscImageCreator builds with its own
-makefile: besides libarchive and openssl@3 (and what they depend on) it needs
-only pkgconf -- not meson, whose Python pulls in openssl@4 (that build failed on
-an Intel Mac in October 2026).
+At a local desktop session on Linux you need **no sudo and no drive group** to
+dump, measured on real hardware on every distribution: the packages ship the
+udev rules and set `cap_sys_rawio` on the dumping tools for vendor commands such
+as Plextor `D8`. A headless or SSH session has no seat and needs the `cdrom`
+group for optical drives. On macOS, name the drive by its BSD name from
+`diskutil list` and work outside Desktop, Documents and Downloads.
 
-Not available on macOS: Aaru (its device layer does not support macOS),
-dreamdump (Linux and Windows only), and floppy dumping (no tool reaches a floppy
-there). MPF may follow.
+Two things look like permission errors and are not: a desktop that auto-mounted
+the disc (`udisksctl unmount -b /dev/sr0` releases it), and Aaru's one-time
+consent question on the first run (`aaru configure`).
 
-The redumper and DiscImageCreator watchers rewrite the formula in the same
-commit as the other lanes (`scripts/brew-sync.py`, which takes every version from
-the Fedora spec and downloads each new source for its checksum), then run
-`homebrew.yml` on the result: install from source, `brew test` and `brew audit`
-on macOS 26 (Apple Silicon) and macOS 15 (Intel). It also runs weekly, and
-`scripts/lint.sh` fails whenever a formula names other sources than its spec.
-
-## Versioning convention
-
-All RPMs in this repo follow one convention:
-
-- **Stable upstream tags**: bare Version + simple Release-N
-  (e.g. `<name>-<upstream-tag>-N`)
-- **Pre-releases / rolling snapshots**: `<base>~<extra>` Version + bare-N Release
-  (e.g. `<name>-<upstream-base>~<pre-release-or-snapshot>-N`)
-- **Iteration counter** (`-1`, `-2`, …) is always the last NEVRA segment
-- **Epoch** stays at 0 (implicit) across the board — no `1:` prefix on any package
-
-The tilde sorts before any other character in RPM version comparison, so
-pre-releases automatically rank below stable bumps without needing any
-clever `0.<N>.alpha.<M>` Release tricks.
+Mechanisms per distribution, the macOS measurement and how the proofs are kept
+honest: [docs/drive-access.md](docs/drive-access.md).
 
 ## Status
 
