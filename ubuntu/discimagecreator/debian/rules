@@ -47,10 +47,6 @@ override_dh_auto_configure:
 	    -e 's|/usr/local/share/DiscImageCreator/|/usr/local/share/discimagecreator/|g' \
 	    -e 's|/usr/share/DiscImageCreator/|/usr/share/discimagecreator/|g' \
 	    DiscImageCreator/get.cpp DiscImageCreator/xml.cpp
-	# GCC 15 no longer pulls <limits.h> in transitively; ps3auth uses UINT_MAX
-	# without an explicit include. No-op on the GCC where it was already reachable.
-	sed -i '1i #include <limits.h>' \
-	    DiscImageCreator/_external/ps3auth/crypto_backend_openssl.c
 	# EccEdc 20240901 predates GCC 14's stricter transitive-header rules; ecm.cpp
 	# uses uint32_t without <cstdint>.
 	sed -i '1i #include <cstdint>' \

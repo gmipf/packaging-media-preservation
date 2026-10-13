@@ -272,9 +272,9 @@ compiles everywhere: for the EL8/EL9 EPEL builds it drops upstream meson's
 `fs.copyfile` and renames a doc file with an `&` in its name for the older
 toolchain (on EL8 it links the vendor-maintained system openssl 1.1.1k). It also
 keeps `%if 0%{?suse_version}` portability, which the openSUSE (OBS) lane builds on —
-BuildRequiring Ninja under its openSUSE name (`ninja` vs `ninja-build`) and a
-`<limits.h>` include for GCC 15 — and the self-contained .NET tools (`aaru`,
-`mpf`) map their runtime dependency names under the same guard
+BuildRequiring Ninja under its openSUSE name (`ninja` vs `ninja-build`) — and
+the self-contained .NET tools (`aaru`, `mpf`) map their runtime dependency names
+under the same guard
 (`krb5-libs`→`krb5`, `openssl-libs`→`libopenssl3`, `zlib`→`libz1`, `libunwind`
 by soname; `libicu` and `jq` are portable as-is). These openSUSE branches are a
 verified no-op on Fedora/EL.

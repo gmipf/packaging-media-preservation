@@ -31,7 +31,7 @@
 
 Name:           discimagecreator
 Version:        %{dicsnap}
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        Low-level disc dumper plus EccEdc / DVDAuth / unscrambler helpers
 License:        Apache-2.0 AND GPL-3.0-or-later AND GPL-2.0-or-later
 URL:            https://github.com/saramibreak/DiscImageCreator
@@ -104,14 +104,6 @@ sed -i \
     -e 's|/usr/share/DiscImageCreator/|/usr/share/discimagecreator/|g' \
     DiscImageCreator/get.cpp \
     DiscImageCreator/xml.cpp
-
-# GCC 15 (openSUSE Tumbleweed and, in time, Fedora) no longer pulls
-# <limits.h> in transitively, so _external/ps3auth/crypto_backend_openssl.c
-# uses UINT_MAX without an explicit include and fails to compile. Prepend
-# the header (a no-op everywhere it was already reachable). mv/sed fail
-# loudly under set -e if upstream ever drops the file.
-sed -i '1i #include <limits.h>' \
-    DiscImageCreator/_external/ps3auth/crypto_backend_openssl.c
 
 # Upstream meson.build stages the Release_ANSI data files into the build
 # dir "for easier testing" via fs.copyfile(), which needs meson >= 0.64.
@@ -283,6 +275,17 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
 %{_udevrulesdir}/70-discimagecreator-floppy.rules
 
 %changelog
+* Wed Oct 14 2026 gmipf <gmipf64@gmail.com> - 20260913144738.9269234a-2
+- Stop prepending <limits.h> to _external/ps3auth/crypto_backend_openssl.c.
+  OpenSSL's own headers include it (openssl/types.h and openssl/err.h, on
+  EL8's OpenSSL 1.1.1 openssl/ossl_typ.h), and the file as upstream ships it
+  compiled on every lane on 2026-10-14: Fedora 43, 44, 45 and rawhide, EL8,
+  EL9 and EL10, openSUSE Tumbleweed (GCC 16, x86_64 and aarch64) and Leap
+  16.0, Debian 12 and 13, Ubuntu 22.04, 24.04 and 26.04, macOS arm64 and
+  Intel. The reason it carried (GCC 15 dropped a transitive include) does
+  not hold: no failing build was ever recorded, and GCC 15 and 16 compile
+  the file unpatched.
+
 * Tue Sep 22 2026 gmipf <gmipf64@gmail.com> - 20260913144738.9269234a-1
 - Automated master-snapshot sync to upstream DiscImageCreator commit
   9269234a (committed 20260913144738 UTC); Release reset to 1.

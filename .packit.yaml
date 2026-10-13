@@ -306,7 +306,7 @@ jobs:
   # (EOL 2026-04-30) plus a currently-broken Tumbleweed, and has no Leap 16.0
   # chroot -- 3rd-party-distro support there lags badly. openSUSE will be done
   # natively on OBS (build.opensuse.org) instead; the specs keep their
-  # `%if 0%{?suse_version}` portability (ninja name, <limits.h>, .NET dep-name
+  # `%if 0%{?suse_version}` portability (ninja name, .NET dep-name
   # mapping -- a verified no-op on Fedora/EL) for that OBS reuse. Ubuntu/Debian
   # go via a Launchpad PPA (next up). See TODO #51 / #49.
   - job: copr_build

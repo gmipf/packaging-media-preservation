@@ -46,10 +46,6 @@ class Discimagecreator < Formula
       s.gsub! "/usr/local/share/DiscImageCreator/", data
       s.gsub! "/usr/share/DiscImageCreator/", data
     end
-    # The same missing include the Fedora spec adds.
-    ps3 = "DiscImageCreator/_external/ps3auth/crypto_backend_openssl.c"
-    File.write(ps3, "#include <limits.h>\n#{File.read(ps3)}")
-
     # DIC's own makefile, not meson.build: both list the same sources
     # (compared 2026-10-13; a file the makefile lacks fails the link here),
     # and the makefile's Darwin branch finds libarchive, zlib and openssl

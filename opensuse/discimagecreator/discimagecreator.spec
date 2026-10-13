@@ -116,13 +116,6 @@ sed -i \
     DiscImageCreator/get.cpp \
     DiscImageCreator/xml.cpp
 
-# GCC 15 (openSUSE Tumbleweed) no longer pulls <limits.h> in transitively,
-# so _external/ps3auth/crypto_backend_openssl.c uses UINT_MAX without an
-# explicit include and fails to compile. Prepend the header (a no-op
-# everywhere it was already reachable).
-sed -i '1i #include <limits.h>' \
-    DiscImageCreator/_external/ps3auth/crypto_backend_openssl.c
-
 # Upstream meson.build stages the Release_ANSI data files into the build
 # dir "for easier testing" via fs.copyfile(), which needs meson >= 0.64.
 # Older meson (e.g. EPEL 0.63.x) aborts configure there. They are pure
@@ -296,6 +289,14 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
 %{_datadir}/permissions/permissions.d/discimagecreator
 
 %changelog
+* Wed Oct 14 2026 gmipf <gmipf64@gmail.com> - 20260913144738.9269234a-0
+- Stop prepending <limits.h> to _external/ps3auth/crypto_backend_openssl.c.
+  OpenSSL's own headers include it (openssl/types.h and openssl/err.h), and
+  the file as upstream ships it compiled on every lane on 2026-10-14,
+  Tumbleweed (GCC 16, x86_64 and aarch64) and Leap 16.0 (GCC 15) included.
+  The reason it carried (GCC 15 dropped a transitive include) does not hold:
+  no failing build was ever recorded.
+
 * Tue Sep 22 2026 gmipf <gmipf64@gmail.com> - 20260913144738.9269234a-0
 - Automated master-snapshot sync to upstream DiscImageCreator commit 9269234a (committed 20260913144738 UTC).
 
