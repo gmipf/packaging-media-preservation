@@ -440,17 +440,21 @@ after `brew trust gmipf/media-preservation` the short names work too.
 Name a drive by its BSD name as `diskutil list` shows it, for example
 `redumper disc --drive=disk4`. No sudo and no capability is needed, but macOS
 refuses drive access to a program working inside Desktop, Documents or
-Downloads. Measured in October 2026 on macOS 26.5 (Intel): redumper from this
-tap read an audio CD in a Plextor PX-760A, including the vendor `D8` read, from an
-administrator account. Not measured yet: a standard account, and
-DiscImageCreator from this tap (in July a hand-built one read optical drives
-only). Right after a drive appears, macOS may hold it for a few seconds
-("Device Busy"); try again.
+Downloads. Measured in October 2026 on macOS 26.5 (Intel), from an
+administrator account, with a Plextor PX-760A and an audio CD: redumper from this
+tap read it including the vendor `D8` read; DiscImageCreator from this tap
+dumped all seven tracks (exit 0) through the same `D8` read, found the drive's
++30 sample offset and unmounted the disc itself. Its pregap before track 1
+(negative LBAs) was not readable there, so the combined `(Track all).img` stayed
+empty; the per-track files and the full image are complete. Not measured yet: a
+standard account. Right after a drive appears, macOS may hold it for a few
+seconds ("Device Busy"); try again.
 
 On Intel Macs Homebrew no longer builds bottles (Tier 3 since September 2026),
-so dependencies compile from source, and in October 2026 `brew upgrade` failed
-there on `openssl@4`, which blocked installing DiscImageCreator. Apple Silicon is
-unaffected.
+so dependencies compile from source. DiscImageCreator builds with its own
+makefile: besides libarchive and openssl@3 (and what they depend on) it needs
+only pkgconf -- not meson, whose Python pulls in openssl@4 (that build failed on
+an Intel Mac in October 2026).
 
 Not available on macOS: Aaru (its device layer does not support macOS),
 dreamdump (Linux and Windows only), and floppy dumping (no tool reaches a floppy
