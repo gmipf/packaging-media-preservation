@@ -173,6 +173,18 @@ if have dpkg-parsechangelog && have rpmspec; then
     if out=$(bash scripts/obs/gen-deb.sh --check 2>&1); then ok "Debian lane: generated files match their recipes"
     else bad "Debian lane:"; printf '%s\n' "$out" >&2; fi
 fi
+# debian/rules travels in debian.tar.gz WITH its mode -- the reason it travels as
+# a tarball at all (gen-deb.sh's header): a 0644 rules is a malformed source
+# package that builds only because older dpkg-source chmods it. Two of nine had
+# lost the bit in a rename (4634b0c, 2026-07-17) and nothing said so for three
+# months. Read from the index: that is the mode the blob and every clone get.
+mapfile -t rules < <(git ls-files -s 'ubuntu/*/debian/rules')
+recipes=$(git ls-files 'ubuntu/*/debian/control' | wc -l)
+notx=$(printf '%s\n' "${rules[@]}" | awk '$1 != "100755" {print $4}')
+if [ "${#rules[@]}" -eq 0 ]; then bad "debian/rules: none found -- the layout moved"
+elif [ "${#rules[@]}" -ne "$recipes" ]; then bad "debian/rules: ${#rules[@]} found for $recipes recipes"
+elif [ -n "$notx" ]; then bad "debian/rules not executable in git (chmod +x, then regenerate the blob):"; printf '%s\n' "$notx" >&2
+else ok "debian/rules executable (${#rules[@]} recipes)"; fi
 
 if [ -n "$skipped" ]; then
     echo "lint: NOT RUN here (not installed):$skipped -- CI runs them" >&2
