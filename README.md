@@ -18,12 +18,12 @@ re-hosted.
 |---|---|:-:|:-:|:-:|:-:|:-:|
 | [redumper](https://github.com/superg/redumper) | disc dumper | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [DiscImageCreator](https://github.com/saramibreak/DiscImageCreator) | disc and floppy dumper | ✅ | ✅ | ✅ | ✅ | ✅ ¹ |
-| [Aaru](https://github.com/aaru-dps/Aaru) | dumper and image toolkit (v6 beta, with GUI) | ✅ | ✅ | ✅ | ✅ | — |
+| [Aaru](https://github.com/aaru-dps/Aaru) | dumper and image toolkit (v6 beta) | ✅ | ✅ | ✅ | ✅ | — |
 | [Aaru 5.4](https://github.com/aaru-dps/Aaru) (`aaru5`) | the stable Aaru CLI that MPF drives | ✅ | ✅ | ✅ | ✅ | — |
-| [MPF](https://github.com/SabreTools/MPF) | dumping frontend: GUI, CLI and log checker | ✅ | ✅ | ✅ | ✅ | — |
+| [MPF](https://github.com/SabreTools/MPF) | dumping frontend (GUI and CLI) | ✅ | ✅ | ✅ | ✅ | — |
 | [Redumper-GUI](https://github.com/Deterous/Redumper-GUI) | graphical frontend for redumper | ✅ | ✅ | 26.04 | 13 | — |
 | [dreamdump](https://codeberg.org/MoriGM/dreamdump) | Dreamcast GD-ROM dumper | ✅ | ✅ | ✅ | ✅ | — |
-| `redumper-mpf`, `redumper-rgui` | the redumper builds MPF and Redumper-GUI bundle | ✅ | ✅ | ✅ | ✅ | — |
+| `redumper-mpf`, `redumper-rgui` | redumper builds pinned for MPF and Redumper-GUI | ✅ | ✅ | ✅ | ✅ | — |
 
 ¹ optical drives only; no tool reaches a floppy drive on macOS.
 
@@ -47,22 +47,27 @@ sudo dnf install redumper discimagecreator aaru aaru5 mpf redumper-gui dreamdump
 ### openSUSE Leap 16.0 and Tumbleweed
 
 ```sh
-sudo zypper addrepo https://download.opensuse.org/repositories/home:gmipf:media-preservation/16.0/home:gmipf:media-preservation.repo
+REPO=https://download.opensuse.org/repositories/home:gmipf:media-preservation
+sudo zypper addrepo "$REPO/16.0/home:gmipf:media-preservation.repo"
 sudo zypper refresh
 sudo zypper install redumper discimagecreator aaru aaru5 mpf redumper-gui dreamdump
 ```
 
-For Tumbleweed, replace `16.0` with `openSUSE_Tumbleweed` in the repository URL
+For Tumbleweed, replace `16.0` with `openSUSE_Tumbleweed`
 (`openSUSE_Tumbleweed_ARM` on aarch64).
 
 ### Ubuntu 22.04, 24.04, 26.04 and Debian 12, 13
 
 ```sh
 . /etc/os-release
-case "$ID" in ubuntu) DIST="xUbuntu_$VERSION_ID" ;; debian) DIST="Debian_$VERSION_ID" ;; esac
+case "$ID" in
+  ubuntu) DIST="xUbuntu_$VERSION_ID" ;;
+  debian) DIST="Debian_$VERSION_ID" ;;
+esac
 REPO="https://download.opensuse.org/repositories/home:/gmipf:/media-preservation/$DIST"
 
-curl -fsSL "$REPO/Release.key" | sudo gpg --dearmor -o /usr/share/keyrings/media-preservation.gpg
+curl -fsSL "$REPO/Release.key" \
+  | sudo gpg --dearmor -o /usr/share/keyrings/media-preservation.gpg
 echo "deb [signed-by=/usr/share/keyrings/media-preservation.gpg] $REPO/ /" \
   | sudo tee /etc/apt/sources.list.d/media-preservation.list
 
