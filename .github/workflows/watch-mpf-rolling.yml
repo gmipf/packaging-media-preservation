@@ -48,6 +48,25 @@ jobs:
 
           echo "Upstream: version=$UPSTREAM_VERSION sha=$UPSTREAM_SHA ts=$UPSTREAM_TS"
 
+          # A known-bad upstream build is not packaged (2026-10-13). MPF 377de1d0
+          # ("Report exit codes from internal program execution") closes the
+          # process and THEN reads its exit code, so every dump ends in
+          # InvalidOperationException: CLI crash, GUI "An exception occurred!"
+          # (measured by Boot 6.1 on Fedora 44, Windows 11 and the Avalonia GUI).
+          # While the candidate has that form, mpf stays at the commit we ship;
+          # once upstream changes the code it resumes by itself. Red while held:
+          # the package is behind upstream on purpose, and a hold nobody sees can
+          # outlive its reason. Matched on the shape (any variable, whitespace
+          # removed), not on one spelling; an unreadable file is not a pass.
+          CTX_URL="https://raw.githubusercontent.com/SabreTools/MPF/${UPSTREAM_SHA_FULL}/MPF.ExecutionContexts/BaseExecutionContext.cs"
+          CTX=$(curl -fsSL "$CTX_URL") || { echo "::error::Could not read $CTX_URL -- not packaging an unchecked MPF build; mpf stays at ${LOCAL_SHA:0:8}."; exit 1; }
+          FLAT=${CTX//[[:space:]]/}
+          CLOSE_THEN_EXIT='\.Close\(\);return[A-Za-z_][A-Za-z0-9_]*\.ExitCode;'
+          if [[ $FLAT =~ $CLOSE_THEN_EXIT ]]; then
+            echo "::error::MPF ${UPSTREAM_SHA} closes the process before reading its exit code (regression from 377de1d0: every dump ends in InvalidOperationException). Not packaged; mpf stays at ${LOCAL_SHA:0:8} and resumes by itself once upstream changes it."
+            exit 1
+          fi
+
           echo "$UPSTREAM_SHA_FULL" > "$MARKER"
 
           # Tilde-style rolling snapshot lives in two %global lines in the
