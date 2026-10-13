@@ -257,6 +257,25 @@ fi
 [ -z "$GONE" ] || echo "  (nur Historie, Datei nicht mehr auf main: ${GONE})"
 fi
 
+hr "Zeitplaene — feuert jeder geplante Workflow noch?"
+# Der Block darueber sieht nur Laeufe, die STATTFANDEN. Ein Zeitplan, der gar
+# nicht mehr feuert, hinterlaesst keinen roten Lauf, sondern keinen. Grenze je
+# Workflow: geplanter Abstand + 24 h (GitHub drosselt: stuendlich lief real alle
+# ~6 h, laengste Luecke 10,6 h, gemessen 2026-10-13). Regeln und warum das hier
+# steht und nicht in CI: Kopf von scripts/schedule-health.py.
+# Wie beim OBS-Block entscheidet die summary-Zeile, ob eine ANTWORT kam.
+SCHED=$(python3 "$REPO/scripts/schedule-health.py" 2>&1)
+while IFS= read -r l; do
+    case $l in
+        ERROR*) printf '  \033[31m%s\033[0m\n' "$l" ;;
+        ok*)    printf '  \033[32m%s\033[0m\n' "$l" ;;
+        *)      printf '  %s\n' "$l" ;;
+    esac
+done <<<"$SCHED"
+if ! grep -q '^summary ' <<<"$SCHED"; then
+    printf '  \033[33mUNKLAR\033[0m schedule-health.py lieferte kein Ergebnis — keine Messung, keine Entwarnung\n'
+fi
+
 # --- silent failure #4: the Debian lane's generated files drift apart ----------
 # Each Debian-delivered tool carries THREE generated files (opensuse/<tool>/):
 # the .dsc, debian.tar.gz and the deb block of _service. They are generated from

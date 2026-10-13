@@ -17,7 +17,7 @@ name: check-repo
 # so this CANNOT run in CI" -- was true only for the authenticated API; OBS
 # serves the same reads under /public without a login. Still a "sync" step at
 # the keyboard: status.sh's other blocks (_service URLs, MPF bundle pins, the
-# full-automation scan, the workflow-run summary).
+# full-automation scan, the workflow-run summary, the schedule ages).
 
 on:
   push:
@@ -46,6 +46,11 @@ jobs:
       # having been configured.
       - name: Proof ledger — drift and coverage
         run: bash scripts/proof-status.sh
+
+      # The check itself runs in status.sh (a dead scheduler would stop a
+      # scheduled check too); its decisions are tested here, offline.
+      - name: schedule-health decision tests
+        run: python3 scripts/test-schedule-health.py
 
       # A generator the Debian lane must carry as a COPY (it cannot fetch by URL)
       # has to stay byte-identical to the Fedora one, or one lane quietly runs an

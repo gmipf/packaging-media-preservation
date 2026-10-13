@@ -234,8 +234,11 @@ COPR and re-pushes the trigger of any version COPR never received. For OBS,
 version `main` moved past more than a day ago.
 
 "Hourly" is the schedule, not a promise: GitHub starts scheduled workflows
-late when it is busy, and here they have run 3 to 10 hours apart (October
-2026). A new upstream release usually arrives the same day.
+late when it is busy, and here they have run about 6 hours apart, at most
+11 (October 2026). A new upstream release usually arrives the same day.
+`scripts/schedule-health.py`, which `scripts/status.sh` runs, names a workflow
+whose schedule stopped firing altogether: red once its last scheduled run is
+older than its planned interval plus a day.
 
 The same per-tool watchers drive the OBS lane: on an upstream bump they advance
 `ubuntu/<tool>/debian/changelog` and regenerate `opensuse/<tool>/{<tool>.dsc,
