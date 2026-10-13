@@ -1,12 +1,21 @@
 #!/bin/bash
 #
 # gen-deb.sh <tool> [<tool> ...]        (no args = every Debian/Ubuntu tool)
+# gen-deb.sh --check [<tool> ...]       write nothing; exit 1 if a committed file
+#                                       is not what the recipe generates
 #
 # Generate the three files OBS needs to build the .debs of <tool>:
 #
 #   opensuse/<tool>/<tool>.dsc      the debtransform template
 #   opensuse/<tool>/debian.tar.gz   the debian/ dir, MINUS the changelog
 #   opensuse/<tool>/_service        the deb block, rewritten between markers
+#
+# --check is what lint.sh (pre-commit hook and CI), status.sh and test-deb.sh
+# ask. The watchers regenerate on every bump, but a HAND edit to
+# ubuntu/<tool>/debian/ has nobody to regenerate for it: OBS then builds the old
+# blob, green, and nothing anywhere turns red. That check used to live only in
+# status.sh and test-deb.sh -- both run by hand -- each with its own copy of the
+# tar line below. One generator now, and everybody asks it.
 #
 #
 # EVERY LANE BUILDS STRAIGHT FROM UPSTREAM. NOBODY RE-HOSTS ANYBODY'S BYTES.
@@ -71,10 +80,10 @@ REPO=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)
 # input, and the RPM spec names the very same file.
 DEB_TOOLS=(redumper redumper-rgui redumper-mpf aaru aaru5 discimagecreator mpf redumper-gui dreamdump)
 
-gen_one() {
+gen_one() {   # gen_one <tool> [<output dir>, default opensuse/<tool>]
     local tool=$1
     local recipe="$REPO/ubuntu/$tool"
-    local obsdir="$REPO/opensuse/$tool"
+    local obsdir=${2:-$REPO/opensuse/$tool}
     local spec="$REPO/fedora/$tool/$tool.spec"
     [ -d "$recipe/debian" ] || { echo "no debian/ recipe: $tool" >&2; return 1; }
     [ -f "$spec" ]          || { echo "no spec to read sources from: $tool" >&2; return 1; }
@@ -98,9 +107,15 @@ gen_one() {
     others=$(tail -n +2 <<<"$sources" | tr '\n' ' ' | sed 's/ *$//')
 
     # ---- debian.tar.gz (deterministic: same recipe -> same bytes, so a stale
-    #      blob is a byte diff and status.sh can see it) ----
+    #      blob is a byte diff and --check can see it) ----
+    # --mode maps every entry onto what git records -- 0755 or 0644 for a file,
+    # 0755 for a directory -- so the bytes cannot depend on a umask or a local
+    # chmod. 2026-10-13: ubuntu/redumper-mpf/debian was 0770 in one clone, its
+    # contents identical, and status.sh called the committed blob stale. Running
+    # this script there would have baked 0770 into the blob, and the next
+    # watcher run on GitHub would have flipped it back.
     tar -C "$recipe" --sort=name --owner=0 --group=0 --numeric-owner \
-        --mtime=@0 --format=gnu --exclude=debian/changelog \
+        --mode='u=rwX,go=rX' --mtime=@0 --format=gnu --exclude=debian/changelog \
         -cf - debian | gzip -n9 > "$obsdir/debian.tar.gz"
 
     # ---- <tool>.dsc ----
@@ -204,6 +219,63 @@ PY
     return 0
 }
 
+CHECK=0
+if [ "${1:-}" = --check ]; then CHECK=1; shift; fi
+
 tools=("$@")
 [ ${#tools[@]} -gt 0 ] || tools=("${DEB_TOOLS[@]}")
-for t in "${tools[@]}"; do gen_one "$t"; done
+
+if [ "$CHECK" = 0 ]; then
+    for t in "${tools[@]}"; do gen_one "$t"; done
+    exit 0
+fi
+
+# ---- --check: generate into a scratch dir, compare bytes ----
+# check_one is called as a plain statement, never behind `||` or `if`: in that
+# position bash switches errexit off inside the function, a generator that fails
+# halfway would carry on, and its half-written output would be compared instead.
+# This way a failing generator stops the run -- red, with its own error -- and
+# cannot read as "nothing stale".
+STALE=0
+scratch=$(mktemp -d)
+trap 'rm -rf "$scratch"' EXIT
+
+check_one() {
+    local tool=$1 f
+    local obsdir="$REPO/opensuse/$tool"
+    if [ ! -f "$obsdir/_service" ]; then
+        echo "STALE: opensuse/$tool/_service is missing -- run scripts/obs/gen-deb.sh $tool"
+        STALE=1; return 0
+    fi
+    mkdir "$scratch/$tool"
+    cp "$obsdir/_service" "$scratch/$tool/_service"
+    gen_one "$tool" "$scratch/$tool" >/dev/null
+    for f in "$tool.dsc" debian.tar.gz _service; do
+        if ! cmp -s "$scratch/$tool/$f" "$obsdir/$f"; then
+            echo "STALE: opensuse/$tool/$f -- run scripts/obs/gen-deb.sh $tool"
+            STALE=1
+        fi
+    done
+}
+
+# With no tool named, the search space is part of the check: DEB_TOOLS, the
+# recipes under ubuntu/ and the .dsc files under opensuse/ must name the same
+# packages. A recipe missing from DEB_TOOLS would otherwise never be compared,
+# and a .dsc whose recipe was deleted would keep shipping.
+if [ $# -eq 0 ]; then
+    listed=$(printf '%s\n' "${DEB_TOOLS[@]}" | sort)
+    recipes=$(for d in "$REPO"/ubuntu/*/debian; do basename "$(dirname "$d")"; done | sort)
+    dscs=$(for d in "$REPO"/opensuse/*/*.dsc; do basename "$(dirname "$d")"; done | sort)
+    if [ "$listed" != "$recipes" ]; then
+        echo "STALE: DEB_TOOLS in gen-deb.sh ($(tr '\n' ' ' <<<"$listed")) != recipes in ubuntu/*/debian ($(tr '\n' ' ' <<<"$recipes"))"
+        STALE=1
+    fi
+    if [ "$dscs" != "$recipes" ]; then
+        echo "STALE: opensuse/*/*.dsc ($(tr '\n' ' ' <<<"$dscs")) != recipes in ubuntu/*/debian ($(tr '\n' ' ' <<<"$recipes"))"
+        STALE=1
+    fi
+fi
+
+for t in "${tools[@]}"; do check_one "$t"; done
+[ "$STALE" = 0 ] && echo "gen-deb --check: ${#tools[@]} package(s), every .dsc, debian.tar.gz and _service matches its recipe"
+exit "$STALE"

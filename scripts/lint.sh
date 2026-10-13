@@ -27,6 +27,8 @@
 #                   declared exception list (NO_CHECK, below), checked both ways
 #   groff           every tracked manpage and template, -ww (groff exits 0 on
 #                   a warning, so any output is a finding)
+#   Debian lane     opensuse/<tool>/{.dsc,debian.tar.gz,_service} are what
+#                   gen-deb.sh generates from ubuntu/<tool>/debian/ right now
 set -uo pipefail
 
 ROOT=$(git rev-parse --show-toplevel) || exit 2
@@ -161,6 +163,15 @@ if have groff; then
     if [ "${#man[@]}" -eq 0 ]; then bad "groff: no manpage found -- the layout moved"
     elif [ -n "$warn" ]; then bad "groff:"; printf '%s' "$warn" >&2
     else ok "groff -ww (${#man[@]} manpages)"; fi
+fi
+
+# --- Debian lane ------------------------------------------------------------
+# The watchers regenerate these files on a bump; a hand edit to a recipe has
+# nobody to do it, and OBS then builds the old blob, green. Until 2026-10-13 only
+# status.sh and test-deb.sh looked, and both are run by hand.
+if have dpkg-parsechangelog && have rpmspec; then
+    if out=$(bash scripts/obs/gen-deb.sh --check 2>&1); then ok "Debian lane: generated files match their recipes"
+    else bad "Debian lane:"; printf '%s\n' "$out" >&2; fi
 fi
 
 if [ -n "$skipped" ]; then

@@ -320,49 +320,21 @@ fi
 #
 # So compare against the recipe, and for the blob regenerate it and compare BYTES
 # (gen-deb.sh is deterministic precisely so this check can exist).
+#
+# Since 2026-10-13 this asks the generator itself (`gen-deb.sh --check`, which
+# regenerates all three files and compares them, .dsc version and source list
+# included). Before, a copy of its tar line stood here -- and a byte comparison is
+# only as good as the agreement between its two sides: this copy saw a 0770
+# directory in one clone as a stale blob. lint.sh asks the same question in the
+# pre-commit hook and in CI, so this block is a second look, not the only one.
 hr "Debian-Lane — generierte Dateien vs. Rezept"
-DEB_DRIFT=0
-for dsc in "$REPO"/opensuse/*/*.dsc; do
-    tool=$(basename "$(dirname "$dsc")")
-    cl="$REPO/ubuntu/$tool/debian/changelog"
-    [ -f "$cl" ] || { echo "  $tool: .dsc ohne Rezept in ubuntu/ -- Waise?"; DEB_DRIFT=1; continue; }
-
-    want=$(dpkg-parsechangelog -l "$cl" -SVersion)
-    have=$(sed -n 's/^Version: //p' "$dsc")
-
-    [ "$want" = "$have" ] || {
-        printf '  \033[31m%-18s .dsc sagt %s, changelog sagt %s\033[0m\n' "$tool" "$have" "$want"
-        DEB_DRIFT=1; }
-
-    # Die Spec ist die Quelle der Wahrheit: download_files laedt GENAU ihre
-    # Source:-URLs. Nennt die .dsc etwas anderes, sucht debtransform eine Datei,
-    # die niemand geladen hat -- oder schlimmer: eine ALTE, die noch herumliegt.
-    spec_src=$(rpmspec -P "$REPO/fedora/$tool/$tool.spec" 2>/dev/null \
-        | sed -n 's/^Source[0-9]*:[[:space:]]*//p' | grep -E '^[a-z]+://' \
-        | sed 's|.*#/||; s|.*/||' | sort | tr '\n' ' ')
-    # Case-insensitiv lesen -- so wie debtransform es tut. Die .dsc MUSS die
-    # Header GROSS schreiben (obs-build grept case-sensitiv nach
-    # ^DEBTRANSFORM-FILES:, sonst kein --include-binaries), aber ein Pruefer, der
-    # nur EINE Schreibweise kennt, meldet beim naechsten Wechsel wieder Rot fuer
-    # nichts. Genau das ist hier passiert.
-    dsc_src=$( { grep -i '^DEBTRANSFORM-TAR:'   "$dsc" | cut -d: -f2-
-                 grep -i '^DEBTRANSFORM-FILES:' "$dsc" | cut -d: -f2- | tr ' ' '\n'; } \
-        | tr -d ' ' | grep -v '^$' | sort | tr '\n' ' ')
-    [ "$spec_src" = "$dsc_src" ] || {
-        printf '  \033[31m%-18s .dsc nennt andere Upstream-Quellen als die Spec\033[0m\n' "$tool"
-        printf '                     Spec: %s\n                     .dsc: %s\n' "$spec_src" "$dsc_src"
-        DEB_DRIFT=1; }
-
-    tmp=$(mktemp); trap 'rm -f "$tmp"' RETURN
-    tar -C "$REPO/ubuntu/$tool" --sort=name --owner=0 --group=0 --numeric-owner \
-        --mtime=@0 --format=gnu --exclude=debian/changelog -cf - debian \
-      | gzip -n9 > "$tmp"
-    cmp -s "$tmp" "$REPO/opensuse/$tool/debian.tar.gz" || {
-        printf '  \033[31m%-18s debian.tar.gz VERALTET -- scripts/obs/gen-deb.sh %s\033[0m\n' "$tool" "$tool"
-        DEB_DRIFT=1; }
-    rm -f "$tmp"
-done
-[ "$DEB_DRIFT" = 0 ] && echo "  alle .dsc / debian.tar.gz / _service passen zum Rezept"
+DEB_OUT=$(bash "$REPO/scripts/obs/gen-deb.sh" --check 2>&1)
+case $? in
+    0) echo "  alle .dsc / debian.tar.gz / _service passen zum Rezept" ;;
+    1) while IFS= read -r l; do printf '  \033[31m%s\033[0m\n' "$l"; done <<<"$DEB_OUT" ;;
+    *) printf '  \033[33mUNKLAR\033[0m gen-deb.sh --check lief nicht durch — keine Messung, keine Entwarnung\n'
+       printf '%s\n' "$DEB_OUT" | tail -3 | sed 's/^/     /' ;;
+esac
 
 # --- silent failure #5: a line continuation followed by a blank line -----------
 # `foo bar \` + an empty line is not a syntax error anywhere in the toolchain: the
