@@ -52,6 +52,10 @@ jobs:
       - name: schedule-health decision tests
         run: python3 scripts/test-schedule-health.py
 
+      # The check itself (formulae against specs) runs in lint.sh, below.
+      - name: brew-sync decision tests
+        run: python3 scripts/test-brew-sync.py
+
       # A generator the Debian lane must carry as a COPY (it cannot fetch by URL)
       # has to stay byte-identical to the Fedora one, or one lane quietly runs an
       # older guard. Only the generator SCRIPTS: the manpage templates (*.1.in)
@@ -93,7 +97,7 @@ jobs:
           dnf -y -q --setopt=install_weak_deps=False --disablerepo=fedora-cisco-openh264
           install git-core tar gzip /usr/bin/dpkg-parsechangelog /usr/bin/shellcheck
           /usr/bin/xmllint /usr/bin/desktop-file-validate /usr/bin/yamllint /usr/bin/packit
-          /usr/bin/rpmlint /usr/bin/groff rpm-build systemd-rpm-macros
+          /usr/bin/rpmlint /usr/bin/groff rpm-build systemd-rpm-macros python3
 
       # Not packaged for Fedora. The release binary, pinned by version AND by
       # checksum -- the hash below was read from a download verified against the

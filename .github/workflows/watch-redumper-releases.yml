@@ -99,6 +99,13 @@ jobs:
           command -v rpmspec >/dev/null || sudo apt-get install -y -qq rpm >/dev/null
           bash scripts/obs/gen-deb.sh redumper
           git add opensuse/redumper/redumper.dsc opensuse/redumper/debian.tar.gz opensuse/redumper/_service
+
+          # macOS lane: the formula names the same build. Downloads the new
+          # source tarball and both macOS zips for their sha256 -- BEFORE the
+          # commit, so a zip upstream has not uploaded yet stops this run with
+          # nothing committed, and the next run tries again.
+          python3 scripts/brew-sync.py --write redumper
+          git add Formula/redumper.rb
           git add "$SPEC" "$MARKER" "$UB/.upstream-tag" "$UB/debian/changelog" \
                   opensuse/redumper/redumper.spec opensuse/redumper/.upstream-tag
           if git diff --cached --quiet; then
@@ -165,3 +172,14 @@ jobs:
     if: always() && needs.watch.outputs.changed == 'true'
     uses: ./.github/workflows/obs-trigger.yml
     secrets: inherit
+
+  # Build and test the bumped formula on real Macs. A push made with the
+  # workflow's own token starts no other workflow, so homebrew.yml would not run
+  # on this commit by itself. Only after a successful watch job: a failed push
+  # to main leaves nothing new to test.
+  brew:
+    needs: watch
+    if: needs.watch.outputs.changed == 'true'
+    uses: ./.github/workflows/homebrew.yml
+    with:
+      ref: main

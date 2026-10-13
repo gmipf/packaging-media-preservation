@@ -23,6 +23,19 @@ on:
     paths:
       - 'Formula/**'
       - '.github/workflows/homebrew.yml'
+  # The redumper and DIC watchers call this after they bumped a formula: their
+  # push, made with the workflow token, starts no workflow by itself.
+  workflow_call:
+    inputs:
+      ref:
+        description: the commit to test (the watcher passes main)
+        type: string
+        required: false
+        default: ''
+  # Weekly, for what changes under an unchanged formula: a new macOS image, a new
+  # Homebrew, a moved upstream download.
+  schedule:
+    - cron: '29 4 * * 0'
   workflow_dispatch:
 
 permissions:
@@ -43,6 +56,9 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
+          # Empty unless called by a watcher: then the commit it just pushed,
+          # not the one that started the watcher.
+          ref: ${{ inputs.ref }}
 
       # Tap Trust: Homebrew loads nothing from a third-party tap it has not been
       # told to trust. This is our own tap, so trust all of it.

@@ -97,6 +97,12 @@ jobs:
           command -v rpmspec >/dev/null || sudo apt-get install -y -qq rpm >/dev/null
           bash scripts/obs/gen-deb.sh discimagecreator
           git add opensuse/discimagecreator/discimagecreator.dsc opensuse/discimagecreator/debian.tar.gz opensuse/discimagecreator/_service
+
+          # macOS lane: the formula builds the same commit. Downloads the new
+          # source tarball for its sha256 before the commit (see the redumper
+          # watcher).
+          python3 scripts/brew-sync.py --write discimagecreator
+          git add Formula/discimagecreator.rb
           git add "$SPEC" "$MARKER" "$UB/.upstream-tag" "$UB/debian/changelog" \
                   opensuse/discimagecreator/discimagecreator.spec \
                   opensuse/discimagecreator/.upstream-tag
@@ -164,3 +170,14 @@ jobs:
     if: always() && needs.watch.outputs.changed == 'true'
     uses: ./.github/workflows/obs-trigger.yml
     secrets: inherit
+
+  # Build and test the bumped formula on real Macs. A push made with the
+  # workflow's own token starts no other workflow, so homebrew.yml would not run
+  # on this commit by itself. Only after a successful watch job: a failed push
+  # to main leaves nothing new to test.
+  brew:
+    needs: watch
+    if: needs.watch.outputs.changed == 'true'
+    uses: ./.github/workflows/homebrew.yml
+    with:
+      ref: main

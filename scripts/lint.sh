@@ -29,6 +29,8 @@
 #                   a warning, so any output is a finding)
 #   Debian lane     opensuse/<tool>/{.dsc,debian.tar.gz,_service} are what
 #                   gen-deb.sh generates from ubuntu/<tool>/debian/ right now
+#   macOS lane      Formula/*.rb name the upstream sources their Fedora spec
+#                   names (brew-sync.py --check)
 set -uo pipefail
 
 ROOT=$(git rev-parse --show-toplevel) || exit 2
@@ -172,6 +174,15 @@ fi
 if have dpkg-parsechangelog && have rpmspec; then
     if out=$(bash scripts/obs/gen-deb.sh --check 2>&1); then ok "Debian lane: generated files match their recipes"
     else bad "Debian lane:"; printf '%s\n' "$out" >&2; fi
+fi
+
+# --- macOS lane ---------------------------------------------------------------
+# Formula/ names the same upstream sources as the Fedora specs. The watchers
+# rewrite both in one commit; a hand edit to a spec would leave the formula
+# behind, and nothing on the Mac side would ever say so.
+if have python3; then
+    if out=$(python3 scripts/brew-sync.py --check 2>&1); then ok "macOS lane: formulae name the sources their specs name"
+    else bad "macOS lane:"; printf '%s\n' "$out" >&2; fi
 fi
 # debian/rules travels in debian.tar.gz WITH its mode -- the reason it travels as
 # a tarball at all (gen-deb.sh's header): a 0644 rules is a malformed source

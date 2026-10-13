@@ -449,10 +449,12 @@ Not available on macOS: Aaru (its device layer does not support macOS),
 dreamdump (Linux and Windows only), and floppy dumping (no tool reaches a floppy
 there). MPF may follow.
 
-`homebrew.yml` installs every formula from source, runs its test and
-`brew audit` on macOS 26 (Apple Silicon) and macOS 15 (Intel). The formulae are
-bumped by hand for now; until the watchers bump them with the other lanes they
-can trail the Linux packages.
+The redumper and DiscImageCreator watchers rewrite the formula in the same
+commit as the other lanes (`scripts/brew-sync.py`, which takes every version from
+the Fedora spec and downloads each new source for its checksum), then run
+`homebrew.yml` on the result: install from source, `brew test` and `brew audit`
+on macOS 26 (Apple Silicon) and macOS 15 (Intel). It also runs weekly, and
+`scripts/lint.sh` fails whenever a formula names other sources than its spec.
 
 ## Versioning convention
 
