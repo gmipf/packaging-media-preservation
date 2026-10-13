@@ -10,11 +10,14 @@ name: check-repo
 # ::warning:: thrown out of watch-redumper-gui.yml on 2026-07-20, one level up: a
 # report with no delivery is a report nobody reads.
 #
-# ⚠️ HONEST LIMIT, so nobody reads this as "the repository is checked in CI":
-# status.sh's other blocks need COPR, OBS and GitHub. The OBS API is not readable
-# anonymously (401 even for a public project), so they CANNOT run here, and this
-# workflow deliberately does not pretend to. What runs here is what is decidable
-# from the checkout alone. The rest stays a "sync" step at the keyboard.
+# What runs here is what is decidable from the checkout alone. The farms have
+# their own scheduled workflows: copr-reconcile.yml (COPR behind main or failed)
+# and obs-health.yml (an OBS target failed, or OBS behind main). The sentence
+# that stood here until 2026-10-13 -- "the OBS API is not readable anonymously,
+# so this CANNOT run in CI" -- was true only for the authenticated API; OBS
+# serves the same reads under /public without a login. Still a "sync" step at
+# the keyboard: status.sh's other blocks (_service URLs, MPF bundle pins, the
+# full-automation scan, the workflow-run summary).
 
 on:
   push:
