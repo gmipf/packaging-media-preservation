@@ -49,8 +49,23 @@ OBS_PROJECT=${OBS_PROJECT:-home:gmipf:media-preservation}
 # Abbruch; oben ist die einzige Stelle, an der eine Definition nicht davon abhaengt,
 # welcher Block sie zuerst benutzt.
 REPO=$(cd "$(dirname "$0")/.." && pwd)
+# gh found the repository from the CWD's git remote -- and called from anywhere
+# else it failed, which this script reported as "gh nicht erreichbar" (2026-10-13,
+# run from the project folder above the clone). Named, not guessed.
+GH_REPO=${GH_REPO:-gmipf/packaging-media-preservation}
+# OBS is read ANONYMOUSLY, never through osc. osc needs the credentials, and where
+# it cannot read them (this sandbox) it prints its login prompt to STDOUT and
+# reads the answer from STDIN: a non-empty non-answer that crashed the XML parser,
+# and inside a `while read` loop it swallowed the remaining package names, so
+# "OBS-Aktualitaet" checked 1 package of 9 and reported one UNKLAR (2026-10-13).
+# Every read below has a /public twin, measured the same day: _result,
+# _result?package=, the binary list, and a package's _service.
+OBS_PUBLIC=${OBS_PUBLIC:-https://api.opensuse.org/public}
 
 hr() { printf '\n\033[1m== %s\033[0m\n' "$1"; }
+# obs_get <path>: the body, or a non-zero exit. -f turns an HTTP error into a
+# failure; </dev/null so nothing can ever read this script's stdin.
+obs_get() { curl -fsS -m 30 "${OBS_PUBLIC}$1" </dev/null 2>/dev/null; }
 
 hr "COPR — ${COPR_PROJECT}"
 copr-cli monitor "$COPR_PROJECT" \
@@ -76,8 +91,9 @@ hr "OBS — ${OBS_PROJECT}"
 # Boden im Rezept schaltet ein Ziel also selbst ab, ohne Paket-Meta und ohne
 # Credential. `build disable` ist damit Kosmetik, nicht artefakt-tragend.
 # ⚠️ Erwartet ist so ein Rot NUR fuer redumper-gui: die TSV beschreibt die Rust-Lane.
-OBS_XML=$(osc api "/build/${OBS_PROJECT}/_result" 2>/dev/null || true)
-if [ -z "$OBS_XML" ]; then
+OBS_XML=$(obs_get "/build/${OBS_PROJECT}/_result" || true)
+# Not "did anything come back" but "did an ANSWER come back": a result list.
+if [[ $OBS_XML != *'<resultlist'* ]]; then
     printf '  \033[33mUNKLAR\033[0m OBS nicht befragbar — keine Messung, keine Entwarnung\n'
 else
     OBS_XML="$OBS_XML" python3 - "$REPO/scripts/rust-targets.tsv" <<'PY'
@@ -104,7 +120,11 @@ try:
 except OSError:
     inv = {}
 
-root = ET.fromstring(os.environ["OBS_XML"])
+try:
+    root = ET.fromstring(os.environ["OBS_XML"])
+except ET.ParseError as e:
+    print(f"  \033[33mUNKLAR\033[0m OBS-Antwort ist kein lesbares XML ({e}) — keine Messung, keine Entwarnung")
+    sys.exit(0)
 repos = {r.get("repository") for r in root.findall("result")}
 
 GOOD = {"succeeded", "disabled", "excluded", "locked"}
@@ -263,7 +283,7 @@ hr "Workflow-Laeufe (letzte 40)"
 #
 # So verify an ANSWER arrived -- a JSON array -- before believing what it implies.
 # An empty array is a real measurement ("no runs"); no array is no measurement.
-if ! RUNS=$(gh run list --limit 40 \
+if ! RUNS=$(gh run list -R "$GH_REPO" --limit 40 \
             --json workflowName,conclusion,createdAt,databaseId 2>/dev/null) \
    || ! jq -e 'type == "array"' >/dev/null 2>&1 <<<"$RUNS"; then
     echo "  gh nicht erreichbar — Workflow-Zustand UNGEPRUEFT (keine Entwarnung)"
@@ -292,7 +312,7 @@ HEALED=$(jq -r '[group_by(.workflowName)[]
                 | length' <<<"$RUNS")
 if [ -n "$RED" ]; then
     printf '\033[31m%s\033[0m\n' "$RED"
-    echo "  -> Grund lesen: gh run view <id> --log-failed"
+    echo "  -> Grund lesen: gh run view -R $GH_REPO <id> --log-failed"
 else
     echo "  keine offenen (letzter Lauf jedes Workflows ist gruen)"
 fi
@@ -431,9 +451,11 @@ for svc in "$REPO"/opensuse/*/_service; do
     # Note the earlier bug fixed here (trailing newline, see printf '%s\n' below)
     # had the SAME symptom -- all eight red -- and a different cause. The comment
     # explaining it made this second cause look like something already handled.
-    if ! remote=$(osc -A https://api.opensuse.org api \
-                  "/source/${OBS_PROJECT}/${tool}/_service" 2>/dev/null </dev/null) \
-       || ! printf '%s' "$remote" | grep -q '<services'; then
+    #
+    # Since 2026-10-13 the read is anonymous (obs_get, see the top), so the
+    # prompt cannot happen any more; the answer test stays.
+    if ! remote=$(obs_get "/source/${OBS_PROJECT}/${tool}/_service") \
+       || [[ $remote != *'<services'* ]]; then
         printf '  \033[33mUNKLAR\033[0m %-18s OBS nicht befragbar (keine Messung, kein Befund)\n' "$tool"
         SVC_UNKNOWN=$((SVC_UNKNOWN + 1))
     # printf '%s\n', not '%s': $(...) strips the trailing newline the file has,
@@ -572,7 +594,7 @@ else
         git -C "$REPO" show "$specblob" > "$tmpspec" 2>/dev/null
 
         gitver=$(rpmspec -q --srpm --queryformat '%{version}\n' "$tmpspec" 2>/dev/null | head -1)
-        binlist=$(osc api "/build/${OBS_PROJECT}/${OBS_REF_REPO}/x86_64/${pkg}" 2>/dev/null || true)
+        binlist=$(obs_get "/build/${OBS_PROJECT}/${OBS_REF_REPO}/x86_64/${pkg}" || true)
         bin=$(printf '%s' "$binlist" | grep -oE "${pkg}-[0-9][^\"]*\.x86_64\.rpm" | head -1)
 
         # Leere Antwort ist KEINE Entwarnung: nicht abfragbar, kein Binary, oder die
@@ -590,8 +612,11 @@ else
             printf '  \033[32mok\033[0m    %-18s %s\n' "$pkg" "$obsver"
         else
             # Baut es gerade? Dann ist die alte Version der normale Zwischenzustand.
-            st=$(osc results "$OBS_PROJECT" "$pkg" 2>/dev/null \
-                 | awk '{print $NF}' | grep -cE 'building|scheduled|blocked|dispatching|signing|finished' || true)
+            # A failed read counts 0 targets building, so the line below says
+            # FEHLER: a false red, never a false "builds right now".
+            st=$(obs_get "/build/${OBS_PROJECT}/_result?package=${pkg}" \
+                 | grep -oE '<status package="[^"]*" code="[a-z]+"' \
+                 | grep -cE 'code="(building|scheduled|blocked|dispatching|signing|finished)"' || true)
             if [ "${st:-0}" -gt 0 ]; then
                 printf '  \033[33m--\033[0m    %-18s main %s, OBS %s — baut gerade (%s Ziele)\n' \
                     "$pkg" "$gitver" "$obsver" "$st"
