@@ -438,12 +438,19 @@ it has not been told to trust ([Tap Trust](https://docs.brew.sh/Tap-Trust));
 after `brew trust gmipf/media-preservation` the short names work too.
 
 Name a drive by its BSD name as `diskutil list` shows it, for example
-`redumper disc --drive=disk4`. Neither tool needs root, a group or a capability
-for an optical drive, but macOS refuses drive access to a program working inside
-Desktop, Documents or Downloads. DiscImageCreator reaches optical drives only on
-macOS. That is from measurements with the same redumper build line and a
-hand-built DiscImageCreator on an Intel Mac (July 2026); drive access with these
-formulae has not been measured yet.
+`redumper disc --drive=disk4`. No sudo and no capability is needed, but macOS
+refuses drive access to a program working inside Desktop, Documents or
+Downloads. Measured in October 2026 on macOS 26.5 (Intel): redumper from this
+tap read an audio CD in a Plextor PX-760A, including the vendor `D8` read, from an
+administrator account. Not measured yet: a standard account, and
+DiscImageCreator from this tap (in July a hand-built one read optical drives
+only). Right after a drive appears, macOS may hold it for a few seconds
+("Device Busy"); try again.
+
+On Intel Macs Homebrew no longer builds bottles (Tier 3 since September 2026),
+so dependencies compile from source, and in October 2026 `brew upgrade` failed
+there on `openssl@4`, which blocked installing DiscImageCreator. Apple Silicon is
+unaffected.
 
 Not available on macOS: Aaru (its device layer does not support macOS),
 dreamdump (Linux and Windows only), and floppy dumping (no tool reaches a floppy
