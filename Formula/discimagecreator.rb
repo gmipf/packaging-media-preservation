@@ -14,8 +14,6 @@ class Discimagecreator < Formula
   sha256 "d2bb8ab1abb021d62d794771e953c6b535c26e585f810fcee909d7714b196901"
   license all_of: ["Apache-2.0", "GPL-3.0-or-later", "GPL-2.0-or-later"]
 
-  depends_on "meson" => :build
-  depends_on "ninja" => :build
   depends_on "pkgconf" => :build
   depends_on "libarchive"
   depends_on :macos
@@ -52,10 +50,20 @@ class Discimagecreator < Formula
     ps3 = "DiscImageCreator/_external/ps3auth/crypto_backend_openssl.c"
     File.write(ps3, "#include <limits.h>\n#{File.read(ps3)}")
 
-    system "meson", "setup", "build", *std_meson_args
-    system "meson", "compile", "-C", "build", "--verbose"
-    system "meson", "install", "-C", "build"
-    libexec.install bin/"DiscImageCreator" => "DiscImageCreator.out"
+    # DIC's own makefile, not meson.build: both list the same sources
+    # (compared 2026-10-13; a file the makefile lacks fails the link here),
+    # and the makefile's Darwin branch finds libarchive, zlib and openssl
+    # through pkg-config. meson runs on Homebrew's Python, which needs
+    # openssl@4, and on Intel Macs Homebrew 7 ships no bottles, so a build
+    # tool would compile a second OpenSSL that DIC never links (on test-macos
+    # that build failed, 2026-10-13). The makefile's GCC-only warning flags
+    # are only warnings under clang.
+    system "make", "-C", "DiscImageCreator", "CC=#{ENV.cc}", "CXX=#{ENV.cxx}"
+    libexec.install "DiscImageCreator/DiscImageCreator" => "DiscImageCreator.out"
+    # What meson.build installs, plus the drive sheet the Fedora spec adds.
+    (share/"DiscImageCreator").install %w[
+      default.dat driveOffset.txt C2ErrorProtect.txt ReadErrorProtect.txt
+    ].map { |f| "Release_ANSI/#{f}" }
     (share/"DiscImageCreator").install "Release_ANSI/DVDRawBruteforce - Drive Sheet - Sheet1.tsv"
 
     resource("eccedc").stage do
@@ -117,8 +125,9 @@ class Discimagecreator < Formula
   test do
     # Without arguments DIC prints its version and usage after two Enter keys.
     assert_match "AppVersion", pipe_output(bin/"discimagecreator", "\n\n")
-    assert_path_exists share/"DiscImageCreator/driveOffset.txt"
-    assert_path_exists share/"DiscImageCreator/default.dat"
+    %w[default.dat driveOffset.txt C2ErrorProtect.txt ReadErrorProtect.txt].each do |data|
+      assert_path_exists share/"DiscImageCreator"/data
+    end
     %w[EccEdc.out DVDAuth.out unscrambler.out].each do |helper|
       assert_predicate libexec/helper, :executable?
     end

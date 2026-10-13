@@ -58,13 +58,14 @@ check("drift: DIC new master commit -> source url and version", len(b.drift(D, d
 check("drift: DIC helper version moved -> only that url", len(b.drift(D, d_rb, d_ecc)), 1)
 
 # --- refusing what it does not understand ----------------------------------------
-stray = d_rb.replace('  depends_on "meson"',
+stray = d_rb.replace('  def install',
                      '  resource "x" do\n    url "https://example.org/x.tar.gz"\n'
-                     '    sha256 "' + "0" * 64 + '"\n  end\n\n  depends_on "meson"', 1)
-check("parse refuses a url that belongs to no slot", outcome(b.drift, D, stray, d_spec), "ValueError")
+                     '    sha256 "' + "0" * 64 + '"\n  end\n\n  def install', 1)
 nosha = r_rb.replace('    sha256 "', '    # sha256 "', 1)
-check("parse refuses a url without a sha256", outcome(b.drift, R, nosha, r_spec), "ValueError")
 withver = r_rb.replace('  license "GPL-3.0-only"', '  version "761"\n  license "GPL-3.0-only"')
+assert stray != d_rb and nosha != r_rb and withver != r_rb, "fixtures did not apply"
+check("parse refuses a url that belongs to no slot", outcome(b.drift, D, stray, d_spec), "ValueError")
+check("parse refuses a url without a sha256", outcome(b.drift, R, nosha, r_spec), "ValueError")
 check("parse refuses a version line where the url gives it", outcome(b.drift, R, withver, r_spec), "ValueError")
 twice = r_spec + f"\nVersion:        {V}\n"
 check("spec field present twice is an error", outcome(b.drift, R, r_rb, twice), "ValueError")
