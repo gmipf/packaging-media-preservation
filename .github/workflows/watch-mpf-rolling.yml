@@ -33,6 +33,18 @@ jobs:
             exit 0
           fi
 
+          # Held by hand: while fedora/mpf/.hold exists, no new MPF build is
+          # packaged, whatever it contains. A check on one known defect lets go
+          # as soon as that one spot changes, and on 2026-10-13 MPF master had
+          # more than one thing broken at once; so the user decided to hold mpf
+          # until MPF master is done ("fest bis Freigabe"). Releasing = deleting
+          # the file. Red while held, so a forgotten hold cannot go quiet.
+          # full-automation-exception: mpf/hold — while fedora/mpf/.hold exists no MPF build is packaged; releasing it is the user's call once MPF master is done (user, 2026-10-13: "fest bis Freigabe", after MPF 377de1d0 broke every dump while more repairs were in progress)
+          if [ -s fedora/mpf/.hold ]; then
+            echo "::error::mpf is held at ${LOCAL_SHA:0:8} on purpose and was NOT moved to ${UPSTREAM_SHA_FULL:0:8}: $(head -1 fedora/mpf/.hold) Released by a human: delete fedora/mpf/.hold once MPF master is done."
+            exit 1
+          fi
+
           UPSTREAM_SHA=${UPSTREAM_SHA_FULL:0:8}
           UPSTREAM_TS=$(gh api repos/SabreTools/MPF/releases/tags/rolling --jq '.published_at' | tr -d -- '-:TZ' | head -c 14)
 
@@ -58,6 +70,8 @@ jobs:
           # the package is behind upstream on purpose, and a hold nobody sees can
           # outlive its reason. Matched on the shape (any variable, whitespace
           # removed), not on one spelling; an unreadable file is not a pass.
+          # Behind the hand hold above this stays as a second layer: a release
+          # while this form is still in the candidate still does not ship it.
           CTX_URL="https://raw.githubusercontent.com/SabreTools/MPF/${UPSTREAM_SHA_FULL}/MPF.ExecutionContexts/BaseExecutionContext.cs"
           CTX=$(curl -fsSL "$CTX_URL") || { echo "::error::Could not read $CTX_URL -- not packaging an unchecked MPF build; mpf stays at ${LOCAL_SHA:0:8}."; exit 1; }
           FLAT=${CTX//[[:space:]]/}
