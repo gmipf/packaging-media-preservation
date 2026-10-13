@@ -319,13 +319,6 @@ aaru_p=aaru5
 dic_p=DiscImageCreator.out
 red_p=redumper-mpf
 dd_p=dreamdump
-# BEGIN MPF-DREAMDUMP-PATH-WORKAROUND -- remove once watch-mpf-rolling reports the fix.
-# MPF's CLI resolves DreamdumpPath but stores the result in AaruPath
-# (MPF.CLI/Features/BaseFeature.cs, since 9909f44e), and its File.Exists check
-# does not search PATH: a bare name fails with "does not exist". Absolute until
-# MPF ships the fix (measured 2026-10-13: the absolute path runs).
-dd_p=/usr/bin/dreamdump
-# END MPF-DREAMDUMP-PATH-WORKAROUND
 # Without a HOME there is no sane home-relative output directory; leave the
 # key alone rather than rewriting it to a root-owned "/ISO".
 out_p=""
@@ -371,9 +364,6 @@ elif command -v jq >/dev/null 2>&1; then
     resolves "\$cd_" || fd=1
     resolves "\$cr"  || fr=1
     resolves "\$cdd" || fdd=1
-    # BEGIN MPF-DREAMDUMP-PATH-WORKAROUND: the bare name was our own seed until 2026-10-13
-    [ "\$cdd" = dreamdump ] && fdd=1
-    # END MPF-DREAMDUMP-PATH-WORKAROUND
     [ -n "\$out_p" ] && { is_abs "\$co" || fo=1; }
     if [ \$((fa + fd + fr + fdd + fo)) -gt 0 ]; then
         tmp=\$(mktemp -p "\$config_dir" .config.json.XXXXXX 2>/dev/null)
@@ -482,6 +472,11 @@ install -m 0644 %{SOURCE6} %{buildroot}%{_mandir}/man1/mpf-gui.1
 
 %changelog
 * Tue Oct 13 2026 gmipf <gmipf64@gmail.com> - 3.11.0~20261013160548.c97cda44-0
+- DreamdumpPath is seeded as the bare name `dreamdump` again: MPF fixed its
+  CLI (SabreTools/MPF#1043, in c97cda44), which stored the resolved Dreamdump
+  path in AaruPath. The /usr/bin/dreamdump seed and the migration of the old
+  bare seed are gone; configs that already hold /usr/bin/dreamdump keep it,
+  which stays valid.
 - Automated rolling-snapshot sync to upstream MPF commit c97cda44 (published 20261013160548 UTC).
 
 * Tue Oct 13 2026 gmipf <gmipf64@gmail.com> - 3.11.0~20261012235911.1064071b-0

@@ -24,13 +24,6 @@ aaru_p=aaru5
 dic_p=DiscImageCreator.out
 red_p=redumper-mpf
 dd_p=dreamdump
-# BEGIN MPF-DREAMDUMP-PATH-WORKAROUND -- remove once watch-mpf-rolling reports the fix.
-# MPF's CLI resolves DreamdumpPath but stores the result in AaruPath
-# (MPF.CLI/Features/BaseFeature.cs, since 9909f44e), and its File.Exists check
-# does not search PATH: a bare name fails with "does not exist". Absolute until
-# MPF ships the fix (measured 2026-10-13: the absolute path runs).
-dd_p=/usr/bin/dreamdump
-# END MPF-DREAMDUMP-PATH-WORKAROUND
 # Without a HOME there is no sane home-relative output directory; leave the key
 # alone rather than rewriting it to a root-owned "/ISO".
 out_p=""
@@ -75,9 +68,6 @@ elif command -v jq >/dev/null 2>&1; then
     resolves "$cd_" || fd=1
     resolves "$cr"  || fr=1
     resolves "$cdd" || fdd=1
-    # BEGIN MPF-DREAMDUMP-PATH-WORKAROUND: the bare name was our own seed until 2026-10-13
-    [ "$cdd" = dreamdump ] && fdd=1
-    # END MPF-DREAMDUMP-PATH-WORKAROUND
     [ -n "$out_p" ] && { is_abs "$co" || fo=1; }
     if [ $((fa + fd + fr + fdd + fo)) -gt 0 ]; then
         tmp=$(mktemp -p "$config_dir" .config.json.XXXXXX 2>/dev/null)

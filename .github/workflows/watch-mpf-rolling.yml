@@ -186,43 +186,48 @@ jobs:
         run: |
           echo "::warning::A COPR trigger branch could not be pushed after retries (see the step above). The version is on main and OBS was asked to refresh; copr-reconcile.yml re-pushes the trigger within six hours."
 
-      # MPF-DREAMDUMP-PATH-WORKAROUND guard (2026-10-13). The three mpf wrappers
-      # seed DreamdumpPath as /usr/bin/dreamdump instead of the bare name, because
-      # MPF's CLI stores the resolved Dreamdump path in AaruPath
-      # (MPF.CLI/Features/BaseFeature.cs) and then cannot find a bare name
-      # (measured in test-fedora). A workaround for someone else's bug expires
-      # when THEY fix it, and the user's rule is: once the fix is in, it goes.
-      # So this asserts the BROKEN form is still there, in exactly the MPF commit
-      # we ship, on every run -- and turns red when it is gone, or when the file
-      # cannot be read or no longer has a Dreamdump branch. It does not remove
-      # the workaround itself: a rewrite of that code can look like a fix, so a
-      # session reads the change first, removes both marked blocks, and checks
-      # `mpf-cli -u dreamdump` with the bare name.
-      # full-automation-exception: mpf/dreamdump-path-workaround — removing the workaround for MPF's CLI bug is done by a session after reading upstream's change, because a check on upstream's spelling can mistake a rewrite for a fix; this step only detects that it is due (user, 2026-10-13: "nachdem der fix drin ist, entfernst du den umweg wieder")
-      - name: Is the DreamdumpPath workaround still needed?
+      # MPF-DREAMDUMP-PATH-WORKAROUND guard (2026-10-13; both directions since the
+      # workaround came out the same evening). MPF's CLI stored the resolved
+      # Dreamdump path in AaruPath (MPF.CLI/Features/BaseFeature.cs, since
+      # 9909f44e), so a bare DreamdumpPath failed with "does not exist" (measured
+      # in test-fedora); the wrappers seeded /usr/bin/dreamdump until MPF shipped
+      # the fix (SabreTools/MPF#1043, in c97cda44). A workaround for someone
+      # else's bug expires when THEY fix it -- and comes back if they break it
+      # again. So on every run, in exactly the MPF commit we ship:
+      # - workaround in the wrappers: red once the broken form is gone (due out);
+      # - no workaround: red once the broken form is back (a bare name fails
+      #   again; e219926 is the template to restore it).
+      # Red as well when the file cannot be read or has no Dreamdump branch: a
+      # check that cannot see is not a pass. It never edits the wrappers itself:
+      # a rewrite of that code can look like a fix or like a regression, so a
+      # session reads the change first, then checks mpf-cli -u dreamdump.
+      # full-automation-exception: mpf/dreamdump-path-workaround — adding or removing the DreamdumpPath workaround for MPF's CLI bug is done by a session after reading upstream's change, because a check on upstream's spelling can mistake a rewrite for a fix or a regression; this step only detects that it is due (user, 2026-10-13: "nachdem der fix drin ist, entfernst du den umweg wieder"; removed that evening: "dreamdump ist doch gefixt, entferne den umweg wieder")
+      - name: Does MPF's Dreamdump path handling match our wrappers?
         run: |
           set -euo pipefail
           files=(fedora/mpf/mpf.spec opensuse/mpf/mpf.spec ubuntu/mpf/debian/mpf-wrapper.in)
           marked=$(grep -l 'MPF-DREAMDUMP-PATH-WORKAROUND' "${files[@]}" || true)
-          if [ -z "$marked" ]; then
-            echo "No DreamdumpPath workaround in the wrappers -- nothing to check."
-            exit 0
-          fi
+          if [ -n "$marked" ]; then have=with; else have=without; fi
           sha=$(cat fedora/mpf/.rolling-sha)
           url="https://raw.githubusercontent.com/SabreTools/MPF/${sha}/MPF.CLI/Features/BaseFeature.cs"
-          src=$(curl -fsSL "$url") || { echo "::error::Could not read $url -- whether the DreamdumpPath workaround is still needed was NOT checked."; exit 1; }
+          src=$(curl -fsSL "$url") || { echo "::error::Could not read $url -- whether MPF's CLI matches our DreamdumpPath seed was NOT checked."; exit 1; }
           state=$(awk '/case InternalProgram\.Dreamdump:/ {f=1; seen=1; next}
                        f && /case InternalProgram\.|default:/ {f=0}
                        f && /Dumping\.AaruPath[[:space:]]*=/ {bad=1}
                        END {print (!seen ? "no-branch" : (bad ? "broken" : "fixed"))}' <<<"$src")
-          case $state in
-            broken)
+          case "$state/$have" in
+            broken/with)
               echo "MPF ${sha:0:8} still stores Dreamdump's resolved path in AaruPath -- the workaround stays." ;;
-            fixed)
+            fixed/without)
+              echo "MPF ${sha:0:8} no longer stores Dreamdump's resolved path in AaruPath -- the bare seed needs no workaround." ;;
+            fixed/with)
               echo "::error::MPF ${sha:0:8} no longer stores Dreamdump's resolved path in AaruPath. The DreamdumpPath workaround is obsolete: remove both MPF-DREAMDUMP-PATH-WORKAROUND blocks in ${marked//$'\n'/ }, then check mpf-cli -u dreamdump with the bare name."
               exit 1 ;;
+            broken/without)
+              echo "::error::MPF ${sha:0:8} stores Dreamdump's resolved path in AaruPath again, so mpf-cli cannot find the bare DreamdumpPath our wrappers seed (\"does not exist\"). Read the change, then restore the DreamdumpPath workaround in all three wrappers (e219926 is the template: absolute seed plus migration of the bare one)."
+              exit 1 ;;
             *)
-              echo "::error::MPF ${sha:0:8} has no 'case InternalProgram.Dreamdump:' in MPF.CLI/Features/BaseFeature.cs any more, so this check cannot judge whether the DreamdumpPath workaround is still needed. Read the change."
+              echo "::error::MPF ${sha:0:8} has no 'case InternalProgram.Dreamdump:' in MPF.CLI/Features/BaseFeature.cs any more, so this check cannot judge whether our DreamdumpPath seed still works. Read the change."
               exit 1 ;;
           esac
 
