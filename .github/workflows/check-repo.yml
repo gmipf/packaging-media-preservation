@@ -75,8 +75,17 @@ jobs:
     runs-on: ubuntu-latest
     container: registry.fedoraproject.org/fedora:latest
     steps:
+      # Hard dependencies only, and no Cisco repository. With weak dependencies
+      # this pulled 680 packages (podman, qemu, skopeo... recommended by packit),
+      # and on 2026-10-13 the run died because Cisco's CDN did not serve
+      # openh264 -- a codec none of these linters uses. Every extra package is
+      # one more mirror that can fail the lint before it starts.
       - name: Install the linters
-        run: dnf -y -q install git-core tar gzip /usr/bin/dpkg-parsechangelog /usr/bin/shellcheck /usr/bin/xmllint /usr/bin/desktop-file-validate /usr/bin/yamllint /usr/bin/packit /usr/bin/rpmlint /usr/bin/groff rpm-build systemd-rpm-macros
+        run: >-
+          dnf -y -q --setopt=install_weak_deps=False --disablerepo=fedora-cisco-openh264
+          install git-core tar gzip /usr/bin/dpkg-parsechangelog /usr/bin/shellcheck
+          /usr/bin/xmllint /usr/bin/desktop-file-validate /usr/bin/yamllint /usr/bin/packit
+          /usr/bin/rpmlint /usr/bin/groff rpm-build systemd-rpm-macros
 
       # Not packaged for Fedora. The release binary, pinned by version AND by
       # checksum -- the hash below was read from a download verified against the
