@@ -73,96 +73,31 @@ copr-cli monitor "$COPR_PROJECT" \
   | awk -F'\t' '{printf "  %-16s %-22s %s\n", $1, $2, $3}' \
   | sort
 
-hr "OBS — ${OBS_PROJECT}"
-# Hier stand `osc results | sed -n '1,12p'` -- ein ROHER AUSZUG, und beides daran
-# war still. Er faellte kein Urteil (ein rotes Ziel scrollte einfach vorbei), und
-# er schnitt nach 12 Zeilen ab, obwohl das Projekt 14 Repo/Arch-Kombinationen hat.
-# ⭐ Ein Bericht, der nie rot werden KANN, ist kein Meldekanal -- dieselbe Stille
-# wie das `::warning::`, das wir am 2026-07-20 aus dem Watcher geworfen haben.
+hr "OBS — ${OBS_PROJECT}: Ziele und Aktualitaet"
+# Seit 2026-10-13 dieselbe Pruefung, die obs-health.yml alle 6 h in CI faehrt:
+# jedes Ziel (failed/unresolvable/broken = FEHLER, ausser redumper-gui unter dem
+# Rust-Boden laut rust-targets.tsv) und je Paket die veroeffentlichte Version
+# gegen origin/main. Vorher standen hier zwei eigene Bloecke, und NUR hier: ein
+# OBS-Fehlschlag wurde also nur rot, wenn jemand dieses Skript startete. Ihre
+# Lehren (Rust-Boden als erwartetes Rot, warum origin/main und nie der
+# Arbeitsbaum, warum „hinterher" am Stand von vor GRACE misst) stehen jetzt im
+# Kopf von scripts/obs-health.py; die gemessene Retention bei `unresolvable` in
+# proofs/obs-publish-retention-MEASURED-x86_64.md.
 #
-# Was ein Rot BEDEUTET, steht nicht im Kopf, sondern in rust-targets.tsv: faellt
-# ein Ziel unter den Rust-Boden, ist sein Ausfall der GEWOLLTE Zustand (D2/c,
-# 2026-07-19). Ein dauerhaft rotes Feld, das niemand erwartet, erzieht genauso zum
-# Wegsehen wie eine Pruefung, die nie rot wird -- darum wird die Erwartung GELESEN.
-#
-# 📐 GEMESSEN 2026-07-22 (Wegwerf-Projekt home:gmipf:msrv-probe, zwei Arme, eine
-# Variable): ein Paket, dessen neue Version `unresolvable` wird, BEHAELT sein
-# zuletzt veroeffentlichtes Binary -- exakt wie eines, das `disabled` wird. Der
-# Boden im Rezept schaltet ein Ziel also selbst ab, ohne Paket-Meta und ohne
-# Credential. `build disable` ist damit Kosmetik, nicht artefakt-tragend.
-# ⚠️ Erwartet ist so ein Rot NUR fuer redumper-gui: die TSV beschreibt die Rust-Lane.
-OBS_XML=$(obs_get "/build/${OBS_PROJECT}/_result" || true)
-# Not "did anything come back" but "did an ANSWER come back": a result list.
-if [[ $OBS_XML != *'<resultlist'* ]]; then
-    printf '  \033[33mUNKLAR\033[0m OBS nicht befragbar — keine Messung, keine Entwarnung\n'
-else
-    OBS_XML="$OBS_XML" python3 - "$REPO/scripts/rust-targets.tsv" <<'PY'
-import os, sys, xml.etree.ElementTree as ET
-
-tsv = sys.argv[1]
-
-# TSV-Zielname -> OBS-Repository-Name. Genau EINER weicht ab, und die Karte wird
-# gegen die Repos geprueft, die OBS wirklich meldet: ein verrotteter Alias wuerde
-# ein erwartetes Rot lautlos zu einem unerwarteten machen (oder umgekehrt), und
-# eine Karte, die niemand prueft, ist eine Vermutung.
-ALIAS = {"openSUSE_Leap_16.0": "16.0"}
-RUST_PKG = "redumper-gui"
-
-inv = {}
-try:
-    with open(tsv, encoding="utf-8") as fh:
-        for line in fh:
-            if line.startswith("#") or not line.strip():
-                continue
-            f = line.rstrip("\n").split("\t")
-            if len(f) >= 4 and f[0] == "obs":
-                inv[ALIAS.get(f[1], f[1])] = f[3]
-except OSError:
-    inv = {}
-
-try:
-    root = ET.fromstring(os.environ["OBS_XML"])
-except ET.ParseError as e:
-    print(f"  \033[33mUNKLAR\033[0m OBS-Antwort ist kein lesbares XML ({e}) — keine Messung, keine Entwarnung")
-    sys.exit(0)
-repos = {r.get("repository") for r in root.findall("result")}
-
-GOOD = {"succeeded", "disabled", "excluded", "locked"}
-BUSY = {"building", "scheduled", "blocked", "dispatching", "signing", "finished",
-        "unknown", "outdated", "unpublished"}
-
-counts, unexpected, expected = {}, [], []
-for r in root.findall("result"):
-    repo, arch = r.get("repository"), r.get("arch")
-    for s in r.findall("status"):
-        pkg, code = s.get("package"), s.get("code")
-        counts[code] = counts.get(code, 0) + 1
-        if code in GOOD or code in BUSY:
-            continue
-        if pkg == RUST_PKG and inv.get(repo) == "out":
-            expected.append((pkg, repo, arch, code))
-        else:
-            unexpected.append((pkg, repo, arch, code))
-
-print("  " + " · ".join(f"{v}× {k}" for k, v in sorted(counts.items())))
-
-if not inv:
-    print("  \033[33mUNKLAR\033[0m rust-targets.tsv nicht lesbar — jedes Rot gilt als unerwartet")
-else:
-    stale = sorted(set(inv) - repos)
-    if stale:
-        print("  \033[33mUNKLAR\033[0m TSV nennt Ziele, die OBS nicht kennt: " + ", ".join(stale))
-        print("           Alias-Karte oder Inventar verrottet — Erwartung nicht verlaesslich")
-
-for pkg, repo, arch, code in expected:
-    print(f"  \033[33mERWARTET\033[0m {pkg} {repo}/{arch}: {code} (TSV: out, unter dem Rust-Boden)")
-
-for pkg, repo, arch, code in unexpected:
-    print(f"  \033[31mFEHLER\033[0m  {pkg} {repo}/{arch}: {code}")
-
-if not unexpected:
-    print("  kein unerwartetes Rot")
-PY
+# Ob eine ANTWORT kam, entscheidet die summary-Zeile, nicht der Exit-Code:
+# Python endet auch bei einem Absturz mit 1, genau wie bei einem Befund.
+OBSH=$(python3 "$REPO/scripts/obs-health.py" 2>&1)
+while IFS= read -r l; do
+    case $l in
+        ERROR*) printf '  \033[31m%s\033[0m\n' "$l" ;;
+        ok*)    printf '  \033[32m%s\033[0m\n' "$l" ;;
+        *)      printf '  %s\n' "$l" ;;
+    esac
+done <<<"$OBSH"
+if ! grep -q '^summary ' <<<"$OBSH"; then
+    printf '  \033[33mUNKLAR\033[0m obs-health.py lieferte kein Ergebnis — keine Messung, keine Entwarnung\n'
+elif grep -q '^ERROR' <<<"$OBSH"; then
+    echo "  -> Neu anstossen: gh workflow run obs-trigger.yml -R $GH_REPO (alle Pakete)"
 fi
 
 # --- silent failure #3: MPF's bundled backends drift away from ours ------------
@@ -504,149 +439,6 @@ fi
 # yourself") would slip past. A is mechanical and cannot. If you add a watcher,
 # A is the one that guarantees you get caught; keep B's vocabulary in mind when
 # writing a new guard.
-# --- stiller Fehlschlag #7b: OBS baut, aber eine ALTE Revision -----------------
-# 🔴 GEFUNDEN 2026-07-24, und der Weg dahin ist der eigentliche Befund. OBS
-# antwortete einem Trigger-Lauf 8x `503`; der Lauf wurde rot, das war sichtbar.
-# UNSICHTBAR war der Zustand danach: der Trigger kommt NICHT von selbst wieder
-# (jeder Aufrufer hat `if: needs.watch.outputs.changed == 'true'`, die Watcher
-# laufen stuendlich, der Trigger nur bei einem Bump), also baute OBS weiter die
-# vorige Revision -- mpf 20260724132502 waehrend git auf 20260724150633 stand.
-# Alle Builds gruen, `status.sh` gruen.
-#
-# ⭐ Und der Grund, warum nichts es sah, ist unbequem: der Block direkt darueber
-# meldet „OBS-Stand == git" und meint damit die `_service`-DATEI. Die ist seit
-# #42 Teil 1 KONSTANT -- sie traegt nur noch URLs auf `main`, kein Rezeptinhalt.
-# Sie kann sich also gar nicht mehr unterscheiden, egal welche Version im Spec
-# steht. Der Check ist nicht falsch, er beantwortet weiter korrekt SEINE Frage
-# („wurde ein `_service` nicht committet"). Nur stellte niemand die andere:
-# **baut OBS eigentlich das, was in git steht?**
-# ⭐⭐ Ein Umbau kann eine Pruefung entwerten, ohne sie anzufassen -- und der
-# Umbau war meiner. Nach einer strukturellen Aenderung nicht nur fragen „laeuft
-# der Check noch durch", sondern „kann er ueberhaupt noch rot werden?"
-#
-# Gefragt wird deshalb nach dem ARTEFAKT: die VERSION im veroeffentlichten RPM
-# gegen die Version, die die Spec in git ergibt. Das Release-Feld bleibt aussen
-# vor -- OBS vergibt sein eigenes (`-lp160.74.1`), das ist kein Drift.
-hr "OBS-Aktualitaet — baut OBS die Revision, die in git steht?"
-OBS_REF_REPO=${OBS_REF_REPO:-16.0}
-# WELCHES „git" ist hier gemeint? OBS zieht das Rezept SELBST: jedes _service
-# holt Spec und Beiwerk per raw.githubusercontent von `main`. Der Vergleichspunkt
-# ist damit `origin/main` -- dieser Arbeitsbaum kommt im Mechanismus ueberhaupt
-# nicht vor. Ihn zu befragen beantwortet eine Frage, die niemand gestellt hat.
-#
-# Gemessen 2026-07-25, beim ERSTEN echten Feuern dieses Blocks: der Clone stand
-# 3 Commits hinter origin/main, und der Block meldete
-#     FEHLER mpf  git 3.8.3~...a9425fab, OBS veroeffentlicht 3.8.3~...f671c661
-# samt „Trigger ging verloren" -- fuer ein Paket, das exakt in sync war. OBS war
-# NEUER als das, was hier „git" hiess; die Meldung konnte das nicht mal ausdruecken.
-#
-# 🔴 Und die harmlose Richtung ist nicht die gefaehrliche: stehen Clone UND OBS
-# auf derselben ALTEN Revision, sind sie sich einig -> `ok`. Dann verdeckt dieser
-# Block genau den verlorenen Trigger, fuer den er gebaut wurde. Falsch rot nervt,
-# falsch gruen wird nie nachgemessen.
-OBS_REF_GIT=${OBS_REF_GIT:-origin/main}
-
-# Drei Zaehler, nicht zwei. Die erste Fassung zaehlte nur FEHLER und UNKLAR --
-# und meldete danach „jedes Paket veroeffentlicht die Revision aus git",
-# waehrend eine Zeile darueber „mpf ... baut gerade" stand. ⭐ Eine
-# Zusammenfassung, die mehr behauptet als ihre eigenen Zeilen, ist genau der
-# stille Fehlschlag, den dieser Block finden soll: wer nur das Fazit liest,
-# bekommt Entwarnung fuer einen Zustand, der noch offen ist.
-STALE=0; STALE_UNKNOWN=0; STALE_BUILDING=0
-
-OBS_REF_OK=1
-git -C "$REPO" fetch -q origin main 2>/dev/null || OBS_REF_OK=0
-git -C "$REPO" rev-parse --verify -q "${OBS_REF_GIT}^{commit}" >/dev/null || OBS_REF_OK=0
-
-if [ "$OBS_REF_OK" = 0 ]; then
-    # KEIN stiller Rueckfall auf den Arbeitsbaum -- das waere exakt der Fehler,
-    # den dieser Block seit heute vermeidet. Dritter Zustand statt Entwarnung.
-    # Und das Fazit steht bewusst IM else-Zweig: stuende es draussen, waeren hier
-    # alle drei Zaehler 0 und es druckte „jedes Paket ... aktuell" -- eine
-    # Entwarnung, die aus einer NICHT durchgefuehrten Messung entsteht.
-    printf '  \033[33mnicht messbar\033[0m %s nicht abrufbar (offline? kein Remote?)\n' "$OBS_REF_GIT"
-    echo "     Ohne die kanonische Revision bliebe nur der Arbeitsbaum, und der kann"
-    echo "     falsches GRUEN erzeugen. Lieber keine Aussage als eine unbelegte."
-else
-    behind=$(git -C "$REPO" rev-list --count "HEAD..${OBS_REF_GIT}" 2>/dev/null || echo 0)
-    if [ "${behind:-0}" -gt 0 ]; then
-        printf '  (dein Clone ist %s Commit(s) hinter %s — verglichen wird %s, nicht dein Arbeitsbaum)\n' \
-            "$behind" "$OBS_REF_GIT" "$OBS_REF_GIT"
-    fi
-
-    # Die Paketliste kommt EBENFALLS aus origin/main: ein Paket, das dort schon
-    # existiert und in diesem Clone noch nicht, fiele sonst lautlos aus der
-    # Pruefung -- und eines, das hier noch herumliegt und dort geloescht ist,
-    # wuerde erfunden. Der Suchraum gehoert zur Messung, nicht zum Zufall.
-    svcs=$(git -C "$REPO" ls-tree -r --name-only "$OBS_REF_GIT" opensuse/ | grep '/_service$' || true)
-    if [ -z "$svcs" ]; then
-        printf '  \033[31mFEHLER\033[0m kein opensuse/*/_service in %s — leerer Suchraum ist keine Entwarnung\n' \
-            "$OBS_REF_GIT"
-        STALE_UNKNOWN=$((STALE_UNKNOWN + 1))
-    fi
-
-    tmpspec=$(mktemp)
-    while read -r svc; do
-        [ -n "$svc" ] || continue
-        pkg=$(basename "$(dirname "$svc")")
-        specblob="${OBS_REF_GIT}:opensuse/$pkg/$pkg.spec"
-        git -C "$REPO" cat-file -e "$specblob" 2>/dev/null || continue
-        git -C "$REPO" show "$specblob" > "$tmpspec" 2>/dev/null
-
-        gitver=$(rpmspec -q --srpm --queryformat '%{version}\n' "$tmpspec" 2>/dev/null | head -1)
-        binlist=$(obs_get "/build/${OBS_PROJECT}/${OBS_REF_REPO}/x86_64/${pkg}" || true)
-        bin=$(printf '%s' "$binlist" | grep -oE "${pkg}-[0-9][^\"]*\.x86_64\.rpm" | head -1)
-
-        # Leere Antwort ist KEINE Entwarnung: nicht abfragbar, kein Binary, oder die
-        # Spec parst nicht -- drei Zustaende, und keiner davon heisst "aktuell".
-        if [ -z "$gitver" ] || [ -z "$bin" ]; then
-            printf '  \033[33mUNKLAR\033[0m %-18s nicht vergleichbar (main=%s obs=%s) — keine Messung, keine Entwarnung\n' \
-                "$pkg" "${gitver:-–}" "${bin:-–}"
-            STALE_UNKNOWN=$((STALE_UNKNOWN + 1)); continue
-        fi
-
-        # <name>-<version>-<release>.x86_64.rpm  ->  <version>
-        rest=${bin#"$pkg"-}; rest=${rest%.x86_64.rpm}; obsver=${rest%-*}
-
-        if [ "$gitver" = "$obsver" ]; then
-            printf '  \033[32mok\033[0m    %-18s %s\n' "$pkg" "$obsver"
-        else
-            # Baut es gerade? Dann ist die alte Version der normale Zwischenzustand.
-            # A failed read counts 0 targets building, so the line below says
-            # FEHLER: a false red, never a false "builds right now".
-            st=$(obs_get "/build/${OBS_PROJECT}/_result?package=${pkg}" \
-                 | grep -oE '<status package="[^"]*" code="[a-z]+"' \
-                 | grep -cE 'code="(building|scheduled|blocked|dispatching|signing|finished)"' || true)
-            if [ "${st:-0}" -gt 0 ]; then
-                printf '  \033[33m--\033[0m    %-18s main %s, OBS %s — baut gerade (%s Ziele)\n' \
-                    "$pkg" "$gitver" "$obsver" "$st"
-                STALE_BUILDING=$((STALE_BUILDING + 1))
-            else
-                # Bewusst OHNE Richtungsaussage („alt"/„neu"): unsere Versionen
-                # tragen `~`, das sortiert in RPM VOR allem, `sort -V` dreht es um.
-                # Wer hier ohne rpm-Semantik „ALTE Revision" schreibt, baut denselben
-                # Fehler wie oben nochmal -- nur leiser.
-                printf '  \033[31mFEHLER\033[0m %-18s main %s, OBS veroeffentlicht %s\n' "$pkg" "$gitver" "$obsver"
-                STALE=$((STALE + 1))
-            fi
-        fi
-    done <<<"$svcs"
-    rm -f "$tmpspec"
-
-    if [ "$STALE" -gt 0 ]; then
-        echo "  -> ${STALE} Paket(e) veroeffentlichen etwas anderes als ${OBS_REF_GIT}, ohne dass irgendwo etwas rot ist."
-        echo "     Wahrscheinlichste Ursache: ein Trigger ging verloren (OBS-Ausfall)."
-        echo "     Nachholen: osc service remoterun ${OBS_PROJECT} <paket>"
-    elif [ "$STALE_UNKNOWN" -gt 0 ]; then
-        printf '  \033[33m--\033[0m    %s Paket(e) nicht vergleichbar — kein Befund, aber auch keine Entwarnung\n' \
-            "$STALE_UNKNOWN"
-    elif [ "$STALE_BUILDING" -gt 0 ]; then
-        echo "  ${STALE_BUILDING} Paket(e) bauen die neue Revision gerade — nochmal messen, wenn sie durch sind"
-    else
-        echo "  jedes Paket veroeffentlicht die Revision aus ${OBS_REF_GIT}"
-    fi
-fi
-
 hr "Auto-Tracking — kein Paket darf menschenueberwacht sein"
 TRACK_BAD=0
 for d in "$REPO"/fedora/*/; do

@@ -1,0 +1,51 @@
+name: obs-health
+
+# Turns red when an OBS build fails, or when OBS still publishes a version that
+# main moved past more than 26 h ago (that is: the daily refresh in
+# obs-trigger.yml did not bring it either). Until 2026-10-13 nothing did: the
+# trigger only asks OBS to refresh, and status.sh reads the results only when
+# somebody runs it. COPR has copr-reconcile.yml for the same job.
+#
+# Read-only and anonymous (OBS's /public API, no credential). The rules are in
+# scripts/obs-health.py; scripts/status.sh prints the same report locally.
+on:
+  schedule:
+    # Every 6 h, three hours off copr-reconcile. GitHub throttles schedules, so
+    # this is the plan, not the clock (README, "Automation").
+    - cron: '11 3,9,15,21 * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/obs-health.py'
+      - 'scripts/test-obs-health.py'
+      - 'scripts/rust-targets.tsv'
+      - '.github/workflows/obs-health.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: obs-health
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    container: registry.fedoraproject.org/fedora:latest
+    steps:
+      - name: Install git and rpm tooling
+        run: dnf -y -q install git-core rpm-build python3-rpm
+
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Trust the checkout
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Decision tests
+        run: python3 scripts/test-obs-health.py
+
+      - name: OBS builds and publishes what main says
+        run: python3 scripts/obs-health.py

@@ -148,6 +148,7 @@ Two things that look like permission errors and are not:
 │   ├── watch-distro-lifecycle.yml          # reports distro releases that OBS does not build for yet
 │   ├── obs-trigger.yml                     # asks OBS to re-read the recipes (after every bump, and daily)
 │   ├── copr-reconcile.yml                  # re-pushes a COPR trigger that got lost (every six hours)
+│   ├── obs-health.yml                      # red when an OBS build fails or OBS falls behind main (every six hours)
 │   └── check-repo.yml                      # repository checks (shellcheck, proof ledger, Rust floor, ...)
 ├── LICENSE                                 # MIT (recipes only; tools keep their own licenses)
 ├── README.md
@@ -228,7 +229,9 @@ is never published twice. No manual `copr-cli build` needed.
 If a trigger gets lost on the way (a failed push, an outage on either side),
 `copr-reconcile` notices: every six hours it compares each spec on `main` with
 COPR and re-pushes the trigger of any version COPR never received. For OBS,
-`obs-trigger` asks for every recipe to be re-read once a day.
+`obs-trigger` asks for every recipe to be re-read once a day, and
+`obs-health` turns red when an OBS build fails or OBS still publishes a
+version `main` moved past more than a day ago.
 
 "Hourly" is the schedule, not a promise: GitHub starts scheduled workflows
 late when it is busy, and here they have run 3 to 10 hours apart (October
