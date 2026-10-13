@@ -1,0 +1,82 @@
+name: homebrew
+
+# The macOS lane. Formula/ on main is a Homebrew tap:
+#   brew tap gmipf/media-preservation https://github.com/gmipf/packaging-media-preservation
+#   brew install gmipf/media-preservation/<formula>
+# Every formula is installed from source and tested on real macOS, once on Apple
+# Silicon and once on Intel, the two architectures the formulae download for.
+# This proves build and start, not drive access; that is measured by hand in the
+# test-macos VM (x86_64, USB drive passed through).
+#
+# macos-15-intel is GitHub's x86_64 image until August 2027 (changelog
+# 2025-09-19); after that the Intel half needs another label or goes.
+
+on:
+  push:
+    # wip/homebrew: a work branch for formula changes that need several rounds
+    # on real Macs, so the rounds do not land on main one by one.
+    branches: [main, 'wip/homebrew']
+    paths:
+      - 'Formula/**'
+      - '.github/workflows/homebrew.yml'
+  pull_request:
+    paths:
+      - 'Formula/**'
+      - '.github/workflows/homebrew.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  formulae:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-latest, macos-15-intel]
+    runs-on: ${{ matrix.runner }}
+    env:
+      HOMEBREW_NO_AUTO_UPDATE: 1
+      HOMEBREW_NO_INSTALL_CLEANUP: 1
+      HOMEBREW_NO_ENV_HINTS: 1
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      # Tap Trust: Homebrew loads nothing from a third-party tap it has not been
+      # told to trust. This is our own tap, so trust all of it.
+      - name: Tap this checkout
+        run: |
+          brew --version
+          uname -m
+          brew tap gmipf/media-preservation "$GITHUB_WORKSPACE"
+          brew trust gmipf/media-preservation
+
+      # Only the formulae: the tap is the whole packaging repository, and
+      # `brew style <tap>` would run rubocop, shellcheck and shfmt over every
+      # spec and script in it with Homebrew's rules (5501 findings, 2026-10-13).
+      - name: brew style
+        run: |
+          set -euo pipefail
+          names=()
+          for f in Formula/*.rb; do names+=("gmipf/media-preservation/$(basename "$f" .rb)"); done
+          [ "${#names[@]}" -gt 0 ] || { echo "::error::no formula found -- the layout moved"; exit 1; }
+          brew style "${names[@]}"
+
+      - name: Install from source, test, audit
+        run: |
+          set -euo pipefail
+          n=0
+          for f in Formula/*.rb; do
+            name="gmipf/media-preservation/$(basename "$f" .rb)"
+            echo "::group::$name"
+            brew install --build-from-source --verbose "$name"
+            brew test --verbose "$name"
+            brew linkage --test "$name"
+            brew audit --strict --online "$name"
+            echo "::endgroup::"
+            n=$((n + 1))
+          done
+          [ "$n" -gt 0 ] || { echo "::error::no formula found -- the layout moved"; exit 1; }
+          echo "$n formulae installed, tested and audited on $(uname -m)"

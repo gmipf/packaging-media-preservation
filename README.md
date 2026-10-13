@@ -18,16 +18,16 @@ respective project URLs (see below).
 
 ## Tools
 
-| Tool | Update mode | [Fedora][copr] | [EPEL][copr] | [openSUSE][obs] | [Ubuntu][obs] | [Debian][obs] |
-|---|---|---|---|---|---|---|
-| [redumper](https://github.com/superg/redumper) | auto-tracked hourly on new `b<N>` tags (binary repackage) | ✅ | ✅ | ✅ | ✅ | ✅ |
-| [MPF](https://github.com/SabreTools/MPF) | rolling, auto-tracked hourly (binary repackage); meta-package `mpf` pulls in `mpf-check` (validator), `mpf-cli` (headless orchestrator) and `mpf-gui` (Avalonia desktop UI) | ✅ | ✅ | ✅ | ✅ | ✅ |
-| [DiscImageCreator](https://github.com/saramibreak/DiscImageCreator) | auto-tracked hourly on new master commits (built from source — upstream binary links against EOL OpenSSL 1.1); bundles DIC + EccEdc + DVDAuth + unscrambler in one package | ✅ | ✅ | ✅ | ✅ | ✅ |
-| [Aaru](https://github.com/aaru-dps/Aaru) | auto-tracked hourly on new `v6.0.0-<alpha|beta|rc>.<N>` tags (binary repackage; beta since 2026-07-16); CLI + Avalonia GUI ship as one binary, launch the GUI via `aaru gui` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| [Aaru 5.4.x](https://github.com/aaru-dps/Aaru) (`aaru5`) | version-pinned; **watched hourly, bumped by hand on purpose** — the version MPF bundles is read without a major-version constraint, and the day it lists a 6.x the package named `aaru5` must not silently become Aaru 6 (that is a retirement, decided by hand), so the watcher fails loudly instead (binary repackage); the stable 5.4 CLI that MPF drives, installs as `/usr/bin/aaru5` alongside the rolling `aaru` v6 | ✅ | ✅ | ✅ | ✅ | ✅ |
-| [Redumper-GUI](https://github.com/Deterous/Redumper-GUI) | release tags, built from source (vendored crates) | ✅ | ✅ | ✅ | 26.04 only | 13 only |
-| [dreamdump](https://codeberg.org/MoriGM/dreamdump) | follows the release MPF bundles, auto-tracked hourly from MPF's `publish-nix.sh` (binary repackage); dumps the high-density area of Sega Dreamcast GD-ROMs and is one of the four programs MPF starts itself; needs **no capability** | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `redumper-mpf` / `redumper-rgui` | fixed-name pins with a moving version: the redumper build that MPF (`redumper-mpf`) and Redumper-GUI (`redumper-rgui`) bundle. `redumper-mpf` is **auto-tracked hourly** from MPF's `publish-nix.sh` and upgrades in place; `redumper-rgui` moves with the Redumper-GUI release. Install one only if you use that frontend — the rolling `redumper` is what you want otherwise. They coexist, each installing as `/usr/bin/<name>` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Tool | Update mode | [Fedora][copr] | [EPEL][copr] | [openSUSE][obs] | [Ubuntu][obs] | [Debian][obs] | macOS |
+|---|---|---|---|---|---|---|---|
+| [redumper](https://github.com/superg/redumper) | auto-tracked hourly on new `b<N>` tags (binary repackage) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| [MPF](https://github.com/SabreTools/MPF) | rolling, auto-tracked hourly (binary repackage); meta-package `mpf` pulls in `mpf-check` (validator), `mpf-cli` (headless orchestrator) and `mpf-gui` (Avalonia desktop UI) | ✅ | ✅ | ✅ | ✅ | ✅ | later |
+| [DiscImageCreator](https://github.com/saramibreak/DiscImageCreator) | auto-tracked hourly on new master commits (built from source — upstream binary links against EOL OpenSSL 1.1); bundles DIC + EccEdc + DVDAuth + unscrambler in one package | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ optical only |
+| [Aaru](https://github.com/aaru-dps/Aaru) | auto-tracked hourly on new `v6.0.0-<alpha|beta|rc>.<N>` tags (binary repackage; beta since 2026-07-16); CLI + Avalonia GUI ship as one binary, launch the GUI via `aaru gui` | ✅ | ✅ | ✅ | ✅ | ✅ | — |
+| [Aaru 5.4.x](https://github.com/aaru-dps/Aaru) (`aaru5`) | version-pinned; **watched hourly, bumped by hand on purpose** — the version MPF bundles is read without a major-version constraint, and the day it lists a 6.x the package named `aaru5` must not silently become Aaru 6 (that is a retirement, decided by hand), so the watcher fails loudly instead (binary repackage); the stable 5.4 CLI that MPF drives, installs as `/usr/bin/aaru5` alongside the rolling `aaru` v6 | ✅ | ✅ | ✅ | ✅ | ✅ | — |
+| [Redumper-GUI](https://github.com/Deterous/Redumper-GUI) | release tags, built from source (vendored crates) | ✅ | ✅ | ✅ | 26.04 only | 13 only | — |
+| [dreamdump](https://codeberg.org/MoriGM/dreamdump) | follows the release MPF bundles, auto-tracked hourly from MPF's `publish-nix.sh` (binary repackage); dumps the high-density area of Sega Dreamcast GD-ROMs and is one of the four programs MPF starts itself; needs **no capability** | ✅ | ✅ | ✅ | ✅ | ✅ | — |
+| `redumper-mpf` / `redumper-rgui` | fixed-name pins with a moving version: the redumper build that MPF (`redumper-mpf`) and Redumper-GUI (`redumper-rgui`) bundle. `redumper-mpf` is **auto-tracked hourly** from MPF's `publish-nix.sh` and upgrades in place; `redumper-rgui` moves with the Redumper-GUI release. Install one only if you use that frontend — the rolling `redumper` is what you want otherwise. They coexist, each installing as `/usr/bin/<name>` | ✅ | ✅ | ✅ | ✅ | ✅ | — |
 
 [copr]: https://copr.fedorainfracloud.org/coprs/gmipf/media-preservation/
 [obs]: https://build.opensuse.org/project/show/home:gmipf:media-preservation
@@ -149,7 +149,9 @@ Two things that look like permission errors and are not:
 │   ├── obs-trigger.yml                     # asks OBS to re-read the recipes (after every bump, and daily)
 │   ├── copr-reconcile.yml                  # re-pushes a COPR trigger that got lost (every six hours)
 │   ├── obs-health.yml                      # red when an OBS build fails or OBS falls behind main (every six hours)
+│   ├── homebrew.yml                        # builds and tests every formula on Apple Silicon and Intel
 │   └── check-repo.yml                      # repository checks (shellcheck, proof ledger, Rust floor, ...)
+├── Formula/                                # Homebrew tap for macOS (redumper, discimagecreator)
 ├── LICENSE                                 # MIT (recipes only; tools keep their own licenses)
 ├── README.md
 └── fedora/
@@ -418,6 +420,39 @@ themselves. All of this is measured against real hardware on every distribution;
 see [Drive access](#drive-access) above for what is proven, what a headless
 session still needs, and the two non-errors (desktop auto-mount, Aaru's first-run
 consent prompt) that look like permission failures.
+
+### macOS (Homebrew, Apple Silicon and Intel)
+
+`Formula/` in this repository is a Homebrew tap with the two dumpers that work
+on macOS: redumper (upstream's own macOS build, repackaged) and DiscImageCreator
+(built from source at the same commit as the Linux packages; upstream publishes
+no macOS build, and the one MPF bundles is linked against MacPorts).
+
+```sh
+brew tap gmipf/media-preservation https://github.com/gmipf/packaging-media-preservation
+brew install gmipf/media-preservation/redumper gmipf/media-preservation/discimagecreator
+```
+
+The full names are needed because Homebrew loads nothing from a third-party tap
+it has not been told to trust ([Tap Trust](https://docs.brew.sh/Tap-Trust));
+after `brew trust gmipf/media-preservation` the short names work too.
+
+Name a drive by its BSD name as `diskutil list` shows it, for example
+`redumper disc --drive=disk4`. Neither tool needs root, a group or a capability
+for an optical drive, but macOS refuses drive access to a program working inside
+Desktop, Documents or Downloads. DiscImageCreator reaches optical drives only on
+macOS. That is from measurements with the same redumper build line and a
+hand-built DiscImageCreator on an Intel Mac (July 2026); drive access with these
+formulae has not been measured yet.
+
+Not available on macOS: Aaru (its device layer does not support macOS),
+dreamdump (Linux and Windows only), and floppy dumping (no tool reaches a floppy
+there). MPF may follow.
+
+`homebrew.yml` installs every formula from source, runs its test and
+`brew audit` on macOS 26 (Apple Silicon) and macOS 15 (Intel). The formulae are
+bumped by hand for now; until the watchers bump them with the other lanes they
+can trail the Linux packages.
 
 ## Versioning convention
 

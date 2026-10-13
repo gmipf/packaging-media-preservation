@@ -1,0 +1,126 @@
+# DiscImageCreator for macOS, built from source at the same upstream commit as
+# fedora/discimagecreator/discimagecreator.spec (upstream publishes no macOS
+# build, and the one MPF bundles is linked against MacPorts). Optical drives only:
+# on macOS DIC opens drives through SCSITaskAuthoringDevice, which a floppy is not.
+#
+# DIC finds its helpers (EccEdc, DVDAuth, unscrambler) next to its own executable
+# path, and on macOS that path is the one it was started by, symlink or not. So
+# everything lives in libexec and bin/ holds scripts that exec the real files.
+class Discimagecreator < Formula
+  desc "Low-level disc dumper plus EccEdc / DVDAuth / unscrambler helpers"
+  homepage "https://github.com/saramibreak/DiscImageCreator"
+  url "https://github.com/saramibreak/DiscImageCreator/archive/9269234aab5042d4cfe2e62374a8fa1ab31e98df.tar.gz"
+  version "20260913144738.9269234a"
+  sha256 "d2bb8ab1abb021d62d794771e953c6b535c26e585f810fcee909d7714b196901"
+  license all_of: ["Apache-2.0", "GPL-3.0-or-later", "GPL-2.0-or-later"]
+
+  depends_on "meson" => :build
+  depends_on "ninja" => :build
+  depends_on "pkgconf" => :build
+  depends_on "libarchive"
+  depends_on :macos
+  depends_on "openssl@3"
+
+  uses_from_macos "zlib"
+
+  resource "eccedc" do
+    url "https://github.com/saramibreak/EccEdc/archive/refs/tags/20240901.tar.gz"
+    sha256 "1d2b9fc46c430570d604c43ad093053112a358c4d83ef9168bd352bc54783400"
+  end
+
+  resource "dvdauth" do
+    url "https://github.com/saramibreak/DVDAuth/archive/refs/tags/v1.4.tar.gz"
+    sha256 "e86ac8d02ecafef1b05931b46b3bb4bb6f880138a9f5afab043fe4744e1a2f82"
+  end
+
+  resource "unscrambler" do
+    url "https://github.com/saramibreak/unscrambler/archive/refs/tags/0.5.5.tar.gz"
+    sha256 "5d0e9a18317a5b52e9b5e7babfcef00a775b8548fbbbb1451d75c5e05e037678"
+  end
+
+  def install
+    # DIC reads driveOffset.txt, default.dat and friends from two fixed paths,
+    # neither of which is Homebrew's on Apple Silicon. Point both at this keg
+    # (inreplace fails the build if upstream moves them). The lookup buffer is
+    # 128 bytes; the opt path plus the longest file name stays well below.
+    data = "#{opt_share}/DiscImageCreator/"
+    inreplace %w[DiscImageCreator/get.cpp DiscImageCreator/xml.cpp] do |s|
+      s.gsub! "/usr/local/share/DiscImageCreator/", data
+      s.gsub! "/usr/share/DiscImageCreator/", data
+    end
+    # The same missing include the Fedora spec adds.
+    ps3 = "DiscImageCreator/_external/ps3auth/crypto_backend_openssl.c"
+    File.write(ps3, "#include <limits.h>\n#{File.read(ps3)}")
+
+    system "meson", "setup", "build", *std_meson_args
+    system "meson", "compile", "-C", "build", "--verbose"
+    system "meson", "install", "-C", "build"
+    libexec.install bin/"DiscImageCreator" => "DiscImageCreator.out"
+    (share/"DiscImageCreator").install "Release_ANSI/DVDRawBruteforce - Drive Sheet - Sheet1.tsv"
+
+    resource("eccedc").stage do
+      ecm = "EccEdc/_external/ecm.cpp"
+      File.write(ecm, "#include <cstdint>\n#{File.read(ecm)}")
+      system "make", "-C", "EccEdc", "CC=#{ENV.cc}", "CXX=#{ENV.cxx}"
+      libexec.install "EccEdc/EccEdc.out"
+    end
+    resource("dvdauth").stage do
+      # libdvdcpxm/src carries its own stdint.h (fixed-width typedefs plus
+      # byte-swap macros), included as "stdint.h". The makefile puts that
+      # directory on the -I path, so libc++'s <cstdint> finds it too instead of
+      # the real <stdint.h> and stops ("tried including <stdint.h> but didn't
+      # find libc++'s", CI 2026-10-13, both architectures). -iquote keeps it
+      # for "..." includes only.
+      # The makefile also adds the SDK's Frameworks directory as an -I path,
+      # because DVDAuth spells framework headers as paths
+      # (<IOKit.framework/Headers/...>). Spell them the way DIC's own copy of
+      # this header does (<IOKit/...>), which clang resolves by itself.
+      inreplace "DVDAuth/_linux/defineForLinux.h" do |s|
+        s.gsub! "CoreFoundation.framework/Headers/CFPluginCOM.h", "CoreFoundation/CFPlugInCOM.h"
+        s.gsub! "CoreFoundation.framework/Headers/", "CoreFoundation/"
+        s.gsub! "IOKit.framework/Headers/", "IOKit/"
+        s.gsub! "Kernel.framework/Headers/IOKit/", "IOKit/"
+      end
+      inreplace "DVDAuth/libdvdcpxm/src/dvd_command.h", "Kernel.framework/Headers/IOKit/", "IOKit/"
+      system "make", "-C", "DVDAuth", "CC=#{ENV.cc}", "CXX=#{ENV.cxx}",
+             "INCFLAGS=-I. -iquote libdvdcpxm/src -I_linux",
+             "LIBS=-framework CoreFoundation -framework IOKit"
+      libexec.install "DVDAuth/DVDAuth.out"
+    end
+    resource("unscrambler").stage do
+      system "make", "CC=#{ENV.cc}", "CXX=#{ENV.cxx}"
+      libexec.install "unscrambler.out"
+    end
+
+    {
+      "discimagecreator" => "DiscImageCreator.out",
+      "dic"              => "DiscImageCreator.out",
+      "eccedc"           => "EccEdc.out",
+      "dvdauth"          => "DVDAuth.out",
+      "unscrambler"      => "unscrambler.out",
+    }.each do |name, target|
+      (bin/name).write <<~SH
+        #!/bin/bash
+        exec "#{opt_libexec}/#{target}" "$@"
+      SH
+      (bin/name).chmod 0755
+    end
+  end
+
+  def caveats
+    <<~EOS
+      macOS: optical drives only, no floppy. Name the drive by its BSD name,
+      as `diskutil list` shows it (for example disk4).
+    EOS
+  end
+
+  test do
+    # Without arguments DIC prints its version and usage after two Enter keys.
+    assert_match "AppVersion", pipe_output(bin/"discimagecreator", "\n\n")
+    assert_path_exists share/"DiscImageCreator/driveOffset.txt"
+    assert_path_exists share/"DiscImageCreator/default.dat"
+    %w[EccEdc.out DVDAuth.out unscrambler.out].each do |helper|
+      assert_predicate libexec/helper, :executable?
+    end
+  end
+end
