@@ -30,6 +30,7 @@ re-hosted.
 A watcher checks every upstream hourly, and new releases are packaged for all
 lanes automatically (`aaru5` is bumped by hand on purpose). What each package
 tracks and how it is built: [docs/how-it-works.md](docs/how-it-works.md).
+Which package reached which distribution when: [CHANGELOG.md](CHANGELOG.md).
 
 [copr]: https://copr.fedorainfracloud.org/coprs/gmipf/media-preservation/
 [obs]: https://build.opensuse.org/project/show/home:gmipf:media-preservation

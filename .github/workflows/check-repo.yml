@@ -56,6 +56,10 @@ jobs:
       - name: brew-sync decision tests
         run: python3 scripts/test-brew-sync.py
 
+      # The check itself (CHANGELOG.md against the recipes) runs in lint.sh, below.
+      - name: changelog-check decision tests
+        run: python3 scripts/test-changelog-check.py
+
       # A generator the Debian lane must carry as a COPY (it cannot fetch by URL)
       # has to stay byte-identical to the Fedora one, or one lane quietly runs an
       # older guard. Only the generator SCRIPTS: the manpage templates (*.1.in)

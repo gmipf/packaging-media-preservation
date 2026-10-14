@@ -202,6 +202,7 @@ floppy there). MPF may follow.
 ├── scripts/                # build trigger, generators, linters, health checks and their tests
 ├── proofs/                 # drive-access measurements the proof ledger points to
 ├── docs/                   # this page and drive-access.md
+├── CHANGELOG.md            # packages, distributions and architectures added or dropped, by date
 └── LICENSE                 # MIT (recipes only; tools keep their own licenses)
 ```
 

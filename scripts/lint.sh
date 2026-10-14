@@ -31,6 +31,8 @@
 #                   gen-deb.sh generates from ubuntu/<tool>/debian/ right now
 #   macOS lane      Formula/*.rb name the upstream sources their Fedora spec
 #                   names (brew-sync.py --check)
+#   CHANGELOG.md    every recipe has a line that added it, and nothing the log
+#                   still ships has lost its recipe (changelog-check.py)
 set -uo pipefail
 
 ROOT=$(git rev-parse --show-toplevel) || exit 2
@@ -183,6 +185,14 @@ fi
 if have python3; then
     if out=$(python3 scripts/brew-sync.py --check 2>&1); then ok "macOS lane: formulae name the sources their specs name"
     else bad "macOS lane:"; printf '%s\n' "$out" >&2; fi
+fi
+
+# --- CHANGELOG.md -------------------------------------------------------------
+# The log says which package reached which distribution when. No watcher adds or
+# drops a package; a person does, and the log is the step a person forgets.
+if have python3; then
+    if out=$(python3 scripts/changelog-check.py 2>&1); then ok "$out"
+    else bad "CHANGELOG.md:"; printf '%s\n' "$out" >&2; fi
 fi
 # debian/rules travels in debian.tar.gz WITH its mode -- the reason it travels as
 # a tarball at all (gen-deb.sh's header): a 0644 rules is a malformed source
