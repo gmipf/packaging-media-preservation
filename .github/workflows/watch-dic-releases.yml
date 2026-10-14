@@ -9,6 +9,12 @@ name: watch-dic-releases
 # is reproducible despite tracking a moving branch. The version is just the
 # commit's UTC timestamp plus short SHA (<YYYYMMDDHHMMSS>.<short-SHA>) -- DIC
 # has no semantic source version, so no release-tag anchor is used.
+#
+# Its three helper tools (EccEdc, DVDAuth, unscrambler) are pinned to their own
+# master commits the same way, since 2026-10-14 (EccEdc's last release lacked two
+# fixes master had). A helper commit does not change the version, which names
+# DIC's commit only: it becomes a new build of the same version (Fedora Release,
+# Debian revision and the Formula's revision count up).
 
 on:
   schedule:
@@ -26,7 +32,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Sync discimagecreator spec with upstream master commit
+      - name: Sync discimagecreator and its helpers with their upstream master commits
         id: sync
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -38,11 +44,41 @@ jobs:
           UPSTREAM_SHA_FULL=$(gh api repos/saramibreak/DiscImageCreator/branches/master --jq '.commit.sha')
           LOCAL_SHA=$(cat "$MARKER" 2>/dev/null || echo none)
 
-          if [ "$UPSTREAM_SHA_FULL" = "$LOCAL_SHA" ]; then
-            echo "Master SHA unchanged ($LOCAL_SHA) — no rebuild needed"
+          # The helpers' pins live in three recipes; scripts/dic-helpers.sh reads
+          # and writes all of them. A pin that cannot be read stops the run here:
+          # an empty answer must not read as "nothing moved".
+          PINS=$(bash scripts/dic-helpers.sh get)
+          [ "$(grep -c . <<<"$PINS")" = 3 ] || { echo "::error::expected 3 helper pins, got: $PINS"; exit 1; }
+          HELPER_SET=()
+          HELPER_NOTE=""
+          while read -r repo pinned; do
+            tip=$(gh api "repos/saramibreak/$repo/branches/master" --jq '.commit.sha')
+            [[ $tip =~ ^[0-9a-f]{40}$ ]] || { echo "::error::could not read $repo master (got '$tip')"; exit 1; }
+            if [ "$tip" != "$pinned" ]; then
+              HELPER_SET+=("$repo=$tip")
+              HELPER_NOTE="$HELPER_NOTE $repo ${tip:0:8}"
+            fi
+          done <<<"$PINS"
+
+          if [ "$UPSTREAM_SHA_FULL" = "$LOCAL_SHA" ] && [ -z "$HELPER_NOTE" ]; then
+            echo "Master SHA unchanged ($LOCAL_SHA), helpers unchanged — no rebuild needed"
             exit 0
           fi
+          HELPER_MSG=""
+          if [ -n "$HELPER_NOTE" ]; then
+            bash scripts/dic-helpers.sh set "${HELPER_SET[@]}"
+            HELPER_MSG=" Helpers synced to their master commits:${HELPER_NOTE}."
+          fi
+          UB=ubuntu/discimagecreator
 
+          if [ "$UPSTREAM_SHA_FULL" = "$LOCAL_SHA" ]; then
+            # Only a helper moved: the same DIC version, built again. Every lane
+            # needs its own counter to move, or nobody upgrades.
+            SNAP=$(sed -n -E 's/^%global[[:space:]]+dicsnap[[:space:]]+([^[:space:]]+).*$/\1/p' "$SPEC")
+            bash scripts/dic-helpers.sh release \
+              "Automated sync of DiscImageCreator's helper tools to their master commits:${HELPER_NOTE}."
+            SUBJECT="chore: discimagecreator helpers${HELPER_NOTE} @ ${SNAP}"
+          else
           UPSTREAM_SHA=${UPSTREAM_SHA_FULL:0:8}
           # Compact UTC commit timestamp (YYYYMMDDHHMMSS) of that commit.
           UPSTREAM_DATE=$(gh api repos/saramibreak/DiscImageCreator/branches/master --jq '.commit.commit.committer.date')
@@ -69,6 +105,7 @@ jobs:
               "$(LC_ALL=C date -u +'%a %b %d %Y')" "$UPSTREAM_TS" "$UPSTREAM_SHA"
             printf -- '- Automated master-snapshot sync to upstream DiscImageCreator commit\n'
             printf '  %s (committed %s UTC); Release reset to 1.\n' "$UPSTREAM_SHA" "$UPSTREAM_TS"
+            [ -z "$HELPER_NOTE" ] || printf '  Helpers synced to their master commits:%s.\n' "$HELPER_NOTE"
             printf '\n'
           } > "$CL_ENTRY"
           sed -i "/^%changelog/r $CL_ENTRY" "$SPEC"
@@ -76,18 +113,19 @@ jobs:
 
           # --- Debian/Ubuntu recipe: advance it in lockstep. It is built on OBS,
           # from the same upstream Source: URLs the spec names. ---
-          UB=ubuntu/discimagecreator
           echo "$UPSTREAM_SHA_FULL" > "$UB/.upstream-tag"
           bash scripts/deb/bump-changelog.sh "$UB" "${UPSTREAM_TS}.${UPSTREAM_SHA}" \
-            "Automated master-snapshot sync to upstream DiscImageCreator commit ${UPSTREAM_SHA} (committed ${UPSTREAM_TS} UTC)."
+            "Automated master-snapshot sync to upstream DiscImageCreator commit ${UPSTREAM_SHA} (committed ${UPSTREAM_TS} UTC).${HELPER_MSG}"
 
           # --- openSUSE/OBS lane: advance the recipe in lockstep as well, so all
           # three lanes describe the same upstream commit in one git commit. This
           # OBS pulls the recipe from main itself, so nothing is uploaded here; the
           # `obs` job below just asks it to re-run its source services. ---
           bash scripts/opensuse-bump.sh discimagecreator "${UPSTREAM_TS}.${UPSTREAM_SHA}" "$UPSTREAM_SHA_FULL" \
-            "Automated master-snapshot sync to upstream DiscImageCreator commit ${UPSTREAM_SHA} (committed ${UPSTREAM_TS} UTC)." \
+            "Automated master-snapshot sync to upstream DiscImageCreator commit ${UPSTREAM_SHA} (committed ${UPSTREAM_TS} UTC).${HELPER_MSG}" \
             dicsnap="${UPSTREAM_TS}.${UPSTREAM_SHA}" diccommit="$UPSTREAM_SHA_FULL"
+          SUBJECT="chore: discimagecreator master ${UPSTREAM_SHA} @ ${UPSTREAM_TS}${HELPER_NOTE:+ (helpers:${HELPER_NOTE})}"
+          fi
 
           # The .dsc carries the version AND the upstream archive names
           # (redumper-b732-... becomes -b733-...). Regenerate it here or OBS
@@ -103,7 +141,7 @@ jobs:
           # watcher).
           python3 scripts/brew-sync.py --write discimagecreator
           git add Formula/discimagecreator.rb
-          git add "$SPEC" "$MARKER" "$UB/.upstream-tag" "$UB/debian/changelog" \
+          git add "$SPEC" "$MARKER" "$UB/.upstream-tag" "$UB/debian/changelog" "$UB/debian/rules" \
                   opensuse/discimagecreator/discimagecreator.spec \
                   opensuse/discimagecreator/.upstream-tag
           if git diff --cached --quiet; then
@@ -116,7 +154,7 @@ jobs:
 
           git config user.name "rolling-watcher"
           git config user.email "actions@github.com"
-          git commit -m "chore: discimagecreator master ${UPSTREAM_SHA} @ ${UPSTREAM_TS}"
+          git commit -m "$SUBJECT"
           # Trigger branch = main's tree + a short, branch-specific landing
           # README (purely cosmetic: a distinct view per branch when browsing
           # GitHub). That one-file diff means build-dic is no longer a

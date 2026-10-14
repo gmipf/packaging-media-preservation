@@ -14,7 +14,8 @@ Back to the [README](../README.md). Drive permissions have their own page:
   via `mpf-gui` or the `MPF` desktop entry.
 - **DiscImageCreator** is built from source (upstream's Linux binary links
   against EOL OpenSSL 1.1) at a pinned master commit, auto-tracked hourly. One
-  package bundles DIC + EccEdc + DVDAuth + unscrambler.
+  package bundles DIC + EccEdc + DVDAuth + unscrambler; the three helpers are
+  pinned to their master commits too and tracked by the same watcher.
 - **Aaru** (`aaru`) is repackaged and auto-tracked hourly on new
   `v6.0.0-<alpha|beta|rc>.<N>` tags (beta since 2026-07-16). CLI and Avalonia
   GUI ship as one binary; launch the GUI via `aaru gui` or the `Aaru` desktop
@@ -122,6 +123,13 @@ rewrites the spec on a new release and lets Packit handle the rebuild:
   timestamp and the release tags are bare `YYYYMMDD` date labels -- so the
   package version is simply the commit's UTC timestamp plus short SHA
   (`<YYYYMMDDHHMMSS>.<short-SHA>`): monotonic, pinned, no release-tag anchor.
+  EccEdc, DVDAuth and unscrambler follow their own master commits the same
+  way (since 2026-10-14; EccEdc's last release, 20240901, lacked two fixes
+  master has). Their pins stand in both specs and `debian/rules`;
+  `scripts/dic-helpers.sh` reads and writes all of them and `lint.sh` checks
+  that they agree. A helper commit leaves the version alone and becomes a new
+  build of it: Fedora `Release`, the Debian revision and the formula's
+  `revision` count up.
   Built from source: the upstream Linux release binary links against
   EOL OpenSSL 1.1 (no longer in default Fedora / Ubuntu repos), so we
   recompile against OpenSSL 3 ourselves until upstream
@@ -217,7 +225,7 @@ The workflows in `.github/workflows/`:
 |---|---|
 | `watch-redumper-releases.yml` | hourly watcher for redumper's `b<N>` tags |
 | `watch-mpf-rolling.yml` | hourly watcher for MPF's rolling tag |
-| `watch-dic-releases.yml` | hourly watcher for DiscImageCreator master commits |
+| `watch-dic-releases.yml` | hourly watcher for DiscImageCreator master commits and its three helpers |
 | `watch-aaru-releases.yml` | hourly watcher for Aaru's v6.0.0 pre-release tags |
 | `watch-redumper-gui.yml` | hourly watcher for Redumper-GUI releases and its redumper pin |
 | `watch-consumer-pins.yml` | follows the builds MPF bundles (`redumper-mpf`, `aaru5`, `dreamdump`) |

@@ -10,12 +10,14 @@
 # repackaged prebuilt binaries) — the binaries are stripped normally and a
 # -dbgsym package is produced.
 
-# Helper-tool versions — the extracted <name>-<ver>/ dirs the makefiles live in.
-# The same three constants live in the spec; the archives themselves are named by
-# the spec's Source1:/Source2:/Source3: and reach us through the .dsc.
-ECCEDCVER    := 20240901
-DVDAUTHVER   := 1.4
-UNSCRAMBLVER := 0.5.5
+# Helper-tool commits — the extracted <name>-<commit>/ dirs the makefiles live
+# in. The helpers track master like DIC itself; the same three pins live in both
+# specs (scripts/dic-helpers.sh sets them and lint.sh checks they agree), and the
+# archives themselves are named by the spec's Source1:/Source2:/Source3: and
+# reach us through the .dsc.
+ECCEDCCOMMIT    := 427dd5713718f5a4d2f500da0ce457ce1bebd8a2
+DVDAUTHCOMMIT   := 708cf70429877d44619260feafa437d65b2994a1
+UNSCRAMBLCOMMIT := ffbf48a271e734c8fd34128d76d4c0b6c51f541f
 
 DESTDIR := debian/discimagecreator
 
@@ -32,9 +34,9 @@ DESTDIR := debian/discimagecreator
 #
 # Nothing is downloaded here and nothing may be: the build root has no network.
 execute_before_dh_auto_configure:
-	tar -xzf EccEdc-$(ECCEDCVER).tar.gz
-	tar -xzf DVDAuth-$(DVDAUTHVER).tar.gz
-	tar -xzf unscrambler-$(UNSCRAMBLVER).tar.gz
+	tar -xzf EccEdc-$(ECCEDCCOMMIT).tar.gz
+	tar -xzf DVDAuth-$(DVDAUTHCOMMIT).tar.gz
+	tar -xzf unscrambler-$(UNSCRAMBLCOMMIT).tar.gz
 
 # Port fedora's %prep source fix-ups. These edit files outside debian/, so they
 # run at BINARY-build time (dpkg-source has already captured the pristine tree
@@ -47,10 +49,6 @@ override_dh_auto_configure:
 	    -e 's|/usr/local/share/DiscImageCreator/|/usr/local/share/discimagecreator/|g' \
 	    -e 's|/usr/share/DiscImageCreator/|/usr/share/discimagecreator/|g' \
 	    DiscImageCreator/get.cpp DiscImageCreator/xml.cpp
-	# EccEdc 20240901 predates GCC 14's stricter transitive-header rules; ecm.cpp
-	# uses uint32_t without <cstdint>.
-	sed -i '1i #include <cstdint>' \
-	    EccEdc-$(ECCEDCVER)/EccEdc/_external/ecm.cpp
 	# FIXED UPSTREAM in #331 (merged 2026-07-20, 0a61a018): pointer-sized typedefs
 	# are gated on `__SIZEOF_POINTER__ == 8` now, not on __x86_64__, so the sed that
 	# widened the gate to arm64 is gone. It existed because asking which ISA this is,
@@ -76,9 +74,9 @@ override_dh_auto_configure:
 	# override_dh_auto_build).
 	sed -i -e '0,/^CFLAGS\s*:=/{/^CFLAGS\s*:=/s/$$/ -fPIE/}' \
 	       -e '0,/^CXXFLAGS\s*:=/{/^CXXFLAGS\s*:=/s/$$/ -fPIE/}' \
-	    EccEdc-$(ECCEDCVER)/EccEdc/makefile \
-	    DVDAuth-$(DVDAUTHVER)/DVDAuth/makefile \
-	    unscrambler-$(UNSCRAMBLVER)/makefile
+	    EccEdc-$(ECCEDCCOMMIT)/EccEdc/makefile \
+	    DVDAuth-$(DVDAUTHCOMMIT)/DVDAuth/makefile \
+	    unscrambler-$(UNSCRAMBLCOMMIT)/makefile
 	dh_auto_configure
 
 # meson builds only the main DiscImageCreator; the helpers build via their own
@@ -86,9 +84,9 @@ override_dh_auto_configure:
 # which may be unset); LDFLAGS=-pie pairs with the -fPIE injection above.
 override_dh_auto_build:
 	dh_auto_build
-	$(MAKE) -C EccEdc-$(ECCEDCVER)/EccEdc    CXX=g++ LDFLAGS=-pie
-	$(MAKE) -C DVDAuth-$(DVDAUTHVER)/DVDAuth CXX=g++ LDFLAGS=-pie
-	$(MAKE) -C unscrambler-$(UNSCRAMBLVER)   CXX=g++ LDFLAGS=-pie
+	$(MAKE) -C EccEdc-$(ECCEDCCOMMIT)/EccEdc    CXX=g++ LDFLAGS=-pie
+	$(MAKE) -C DVDAuth-$(DVDAUTHCOMMIT)/DVDAuth CXX=g++ LDFLAGS=-pie
+	$(MAKE) -C unscrambler-$(UNSCRAMBLCOMMIT)   CXX=g++ LDFLAGS=-pie
 
 # No meson tests we want to run.
 override_dh_auto_test:
@@ -103,11 +101,11 @@ execute_after_dh_auto_install:
 	# readlink(/proc/self/exe) to find ./EccEdc.out etc. next to itself.
 	mv $(DESTDIR)/usr/bin/DiscImageCreator \
 	   $(DESTDIR)/usr/lib/discimagecreator/DiscImageCreator.out
-	install -m0755 EccEdc-$(ECCEDCVER)/EccEdc/EccEdc.out \
+	install -m0755 EccEdc-$(ECCEDCCOMMIT)/EccEdc/EccEdc.out \
 	   $(DESTDIR)/usr/lib/discimagecreator/EccEdc.out
-	install -m0755 DVDAuth-$(DVDAUTHVER)/DVDAuth/DVDAuth.out \
+	install -m0755 DVDAuth-$(DVDAUTHCOMMIT)/DVDAuth/DVDAuth.out \
 	   $(DESTDIR)/usr/lib/discimagecreator/DVDAuth.out
-	install -m0755 unscrambler-$(UNSCRAMBLVER)/unscrambler.out \
+	install -m0755 unscrambler-$(UNSCRAMBLCOMMIT)/unscrambler.out \
 	   $(DESTDIR)/usr/lib/discimagecreator/unscrambler.out
 	# data dir CamelCase -> lowercase, plus the extra Release_ANSI runtime files
 	# the binary reads (default.dat / driveOffset.txt are meson-installed).

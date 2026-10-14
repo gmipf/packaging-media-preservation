@@ -8,9 +8,13 @@
 # full SHA used for the source archive.
 %global dicsnap      20260913144738.9269234a
 %global diccommit    9269234aab5042d4cfe2e62374a8fa1ab31e98df
-%global eccedcver    20240901
-%global dvdauthver   1.4
-%global unscramblver 0.5.5
+# The three helpers track master as well (their release tags lagged behind:
+# EccEdc 20240901 lacked two fixes master has). The watcher re-pins them; the
+# same pins stand in the other spec and in debian/rules, and
+# scripts/dic-helpers.sh keeps all three places equal (lint.sh checks).
+%global eccedccommit    427dd5713718f5a4d2f500da0ce457ce1bebd8a2
+%global dvdauthcommit   708cf70429877d44619260feafa437d65b2994a1
+%global unscramblcommit ffbf48a271e734c8fd34128d76d4c0b6c51f541f
 
 %global dicdir       %{_libexecdir}/%{name}
 
@@ -35,9 +39,9 @@ URL:            https://github.com/saramibreak/DiscImageCreator
 # use the `#/rename` convention rpm understands but download_files may not)
 # and committed as package sources. The offline build is DIC's hermetic gate.
 Source0:        %{url}/archive/%{diccommit}.tar.gz#/DiscImageCreator-%{diccommit}.tar.gz
-Source1:        https://github.com/saramibreak/EccEdc/archive/refs/tags/%{eccedcver}.tar.gz#/EccEdc-%{eccedcver}.tar.gz
-Source2:        https://github.com/saramibreak/DVDAuth/archive/refs/tags/v%{dvdauthver}.tar.gz#/DVDAuth-%{dvdauthver}.tar.gz
-Source3:        https://github.com/saramibreak/unscrambler/archive/refs/tags/%{unscramblver}.tar.gz#/unscrambler-%{unscramblver}.tar.gz
+Source1:        https://github.com/saramibreak/EccEdc/archive/%{eccedccommit}.tar.gz#/EccEdc-%{eccedccommit}.tar.gz
+Source2:        https://github.com/saramibreak/DVDAuth/archive/%{dvdauthcommit}.tar.gz#/DVDAuth-%{dvdauthcommit}.tar.gz
+Source3:        https://github.com/saramibreak/unscrambler/archive/%{unscramblcommit}.tar.gz#/unscrambler-%{unscramblcommit}.tar.gz
 # The recipe files below carry a URL for the same reason the upstream sources do:
 # download_files fetches whatever a Source: names, and that is what keeps them OUT
 # of _service. _service lives in OBS and only an `osc commit` can change it, so
@@ -129,11 +133,6 @@ sed -i '/fs\.copyfile(/d' meson.build
 # filename to a shell-safe name so older rpm doc-copy helpers don't choke.
 mv 'Release_ANSI/Doc/Firmware&Tool.md' 'Release_ANSI/Doc/Firmware_and_Tool.md'
 
-# EccEdc upstream 20240901 predates GCC 14's stricter transitive header
-# rules — _external/ecm.cpp uses uint32_t without including <cstdint>.
-sed -i '1i #include <cstdint>' \
-    EccEdc-%{eccedcver}/EccEdc/_external/ecm.cpp
-
 # FIXED UPSTREAM in #331 (merged 2026-07-20, 0a61a018): the pointer-sized
 # typedefs are gated on `__SIZEOF_POINTER__ == 8` now, not on __x86_64__, so the
 # sed that used to widen the gate to aarch64 is gone. It existed because asking
@@ -156,9 +155,9 @@ fi
 # at make-invocation time in %%build.
 sed -i -e '0,/^CFLAGS\s*:=/{/^CFLAGS\s*:=/s/$/ -fPIE/}' \
        -e '0,/^CXXFLAGS\s*:=/{/^CXXFLAGS\s*:=/s/$/ -fPIE/}' \
-    EccEdc-%{eccedcver}/EccEdc/makefile \
-    DVDAuth-%{dvdauthver}/DVDAuth/makefile \
-    unscrambler-%{unscramblver}/makefile
+    EccEdc-%{eccedccommit}/EccEdc/makefile \
+    DVDAuth-%{dvdauthcommit}/DVDAuth/makefile \
+    unscrambler-%{unscramblcommit}/makefile
 
 %build
 # Main DiscImageCreator via meson against system openssl/zlib/libarchive
@@ -168,9 +167,9 @@ sed -i -e '0,/^CFLAGS\s*:=/{/^CFLAGS\s*:=/s/$/ -fPIE/}' \
 # Three helper tools via their bundled makefiles. CXX=g++ forces the
 # compiler; LDFLAGS=-pie pairs with the -fPIE injection in %%prep so the
 # default PIE-hardened linker accepts the final binary.
-make -C EccEdc-%{eccedcver}/EccEdc       CXX=g++ LDFLAGS=-pie %{?_smp_mflags}
-make -C DVDAuth-%{dvdauthver}/DVDAuth    CXX=g++ LDFLAGS=-pie %{?_smp_mflags}
-make -C unscrambler-%{unscramblver}      CXX=g++ LDFLAGS=-pie %{?_smp_mflags}
+make -C EccEdc-%{eccedccommit}/EccEdc       CXX=g++ LDFLAGS=-pie %{?_smp_mflags}
+make -C DVDAuth-%{dvdauthcommit}/DVDAuth    CXX=g++ LDFLAGS=-pie %{?_smp_mflags}
+make -C unscrambler-%{unscramblcommit}      CXX=g++ LDFLAGS=-pie %{?_smp_mflags}
 
 %install
 # meson installs binary to %%{_bindir}/DiscImageCreator and data files
@@ -187,9 +186,9 @@ mv %{buildroot}%{_bindir}/DiscImageCreator %{buildroot}%{dicdir}/DiscImageCreato
 # upstream filenames intact. DIC's GetCmd() uses readlink(/proc/self/exe)
 # to find its own directory and then looks for ./EccEdc.out, ./DVDAuth.out,
 # ./unscrambler.out — those exact filenames are mandatory here.
-install -m 0755 EccEdc-%{eccedcver}/EccEdc/EccEdc.out         %{buildroot}%{dicdir}/EccEdc.out
-install -m 0755 DVDAuth-%{dvdauthver}/DVDAuth/DVDAuth.out     %{buildroot}%{dicdir}/DVDAuth.out
-install -m 0755 unscrambler-%{unscramblver}/unscrambler.out   %{buildroot}%{dicdir}/unscrambler.out
+install -m 0755 EccEdc-%{eccedccommit}/EccEdc/EccEdc.out         %{buildroot}%{dicdir}/EccEdc.out
+install -m 0755 DVDAuth-%{dvdauthcommit}/DVDAuth/DVDAuth.out     %{buildroot}%{dicdir}/DVDAuth.out
+install -m 0755 unscrambler-%{unscramblcommit}/unscrambler.out   %{buildroot}%{dicdir}/unscrambler.out
 
 # Move meson-installed data dir from CamelCase to lowercase (matches the
 # patched probe paths in get.cpp / xml.cpp).
@@ -289,6 +288,14 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
 %{_datadir}/permissions/permissions.d/discimagecreator
 
 %changelog
+* Wed Oct 14 2026 gmipf <gmipf64@gmail.com> - 20260913144738.9269234a-0
+- Build EccEdc, DVDAuth and unscrambler from their master commits, like DIC
+  itself, instead of their release tags; watch-dic-releases follows all four.
+  EccEdc master carries two fixes its last release (20240901) lacks: a NULL
+  check in handleCheckOrFix (bcdf432) and the missing <cstdint> include in
+  _external/ecm.cpp (427dd57, upstream #6), so the prepend of that include is
+  gone. DVDAuth and unscrambler master are identical to v1.4 and 0.5.5.
+
 * Wed Oct 14 2026 gmipf <gmipf64@gmail.com> - 20260913144738.9269234a-0
 - Stop prepending <limits.h> to _external/ps3auth/crypto_backend_openssl.c.
   OpenSSL's own headers include it (openssl/types.h and openssl/err.h), and

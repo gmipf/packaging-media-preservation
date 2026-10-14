@@ -47,7 +47,7 @@ f = b.spec_fields(d_spec, D["fields"])
 r_next = r_spec.replace(f"Version:        {V}\n", f"Version:        {int(V) + 1}\n")
 d_next = (d_spec.replace(f["SNAP"], "20991231235959.deadbeef")
           .replace(f["COMMIT"], "deadbeef" + "0" * 32))
-d_ecc = d_spec.replace(f"%global eccedcver    {f['ECC']}", "%global eccedcver    20991231")
+d_ecc = d_spec.replace(f["ECC"], "e" * 40)
 assert r_next != r_spec and d_next != d_spec and d_ecc != d_spec, "fixtures did not apply"
 
 # --- drift ----------------------------------------------------------------------
@@ -55,7 +55,7 @@ check("drift: redumper as committed", b.drift(R, r_rb, r_spec), [])
 check("drift: discimagecreator as committed", b.drift(D, d_rb, d_spec), [])
 check("drift: redumper spec one build ahead -> all three urls", len(b.drift(R, r_rb, r_next)), 3)
 check("drift: DIC new master commit -> source url and version", len(b.drift(D, d_rb, d_next)), 2)
-check("drift: DIC helper version moved -> only that url", len(b.drift(D, d_rb, d_ecc)), 1)
+check("drift: DIC helper commit moved -> only that url", len(b.drift(D, d_rb, d_ecc)), 1)
 
 # --- refusing what it does not understand ----------------------------------------
 stray = d_rb.replace('  def install',
@@ -87,6 +87,32 @@ calls.clear()
 new = b.rewrite(D, d_rb, d_ecc, fetch=fake)
 check("rewrite: DIC helper bump downloads only that url", [u.split("/")[4] for u in calls], ["EccEdc"])
 check("rewrite: DIC other checksums untouched", sum(1 for x in new.split("\n") if ("ab" * 32) in x), 1)
+
+# --- revision: a source moved under the same version ----------------------------------
+def revision(text):
+    revs = [int(m.group(2)) for m in map(b.REVISION_LINE.match, text.split("\n")) if m]
+    return revs[0] if len(revs) == 1 else (0 if not revs else revs)
+
+
+r0 = revision(d_rb)
+check("revision: helper commit moved, same version -> counted up", revision(new), r0 + 1)
+plain = "\n".join(x for x in d_rb.split("\n") if not b.REVISION_LINE.match(x))
+first = b.rewrite(D, plain, d_ecc, fetch=fake)
+check("revision: the first one is 1", revision(first), 1)
+lic = [i for i, x in enumerate(first.split("\n")) if b.LICENSE_LINE.match(x)][0]
+check("revision: ... and stands right after license", first.split("\n")[lic + 1], "  revision 1")
+check("revision: new DIC version -> dropped", revision(b.rewrite(D, d_rb, d_next, fetch=fake)), 0)
+check("revision: nothing moved -> formula untouched", b.rewrite(D, d_rb, d_spec, fetch=fake) == d_rb, True)
+twice_rev = d_rb.replace("  license ", "  revision 7\n  license ", 1)
+if r0 == 0:
+    twice_rev = twice_rev.replace("  license ", "  revision 8\n  license ", 1)
+check("revision: two revision lines are an error", outcome(b.rewrite, D, twice_rev, d_ecc, fetch=fake), "ValueError")
+nolic = "\n".join(x for x in plain.split("\n") if not b.LICENSE_LINE.match(x))
+check("revision: no license line, no place for it -> error", outcome(b.rewrite, D, nolic, d_ecc, fetch=fake),
+      "ValueError")
+check("revision: redumper (the url is the version) never gets one",
+      revision(b.rewrite(R, r_rb, r_next, fetch=fake)), 0)
+calls.clear()
 calls.clear()
 check("rewrite: nothing to do downloads nothing", (b.rewrite(R, r_rb, r_spec, fetch=fake) == r_rb, calls),
       (True, []))

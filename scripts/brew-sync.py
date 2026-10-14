@@ -7,7 +7,10 @@ Usage:
                                                   than its spec
   scripts/brew-sync.py --write <formula> ...     rewrite urls and version from
                                                   the spec, download every
-                                                  changed source for its sha256
+                                                  changed source for its sha256,
+                                                  and count `revision` up when a
+                                                  source changed under the same
+                                                  version
 
 The spec is the one source of truth: the watchers bump it (and the openSUSE and
 Debian recipes) on every upstream change. A formula is a second copy of the same
@@ -21,6 +24,14 @@ version, and the first sha256 line after it and before the next url. Every slot 
 url line and every url line must belong to a slot, so a url this script does not
 know about is an error, not a line it quietly leaves alone. --write downloads a
 source only when its url changed; an unchanged url keeps its checksum.
+
+A formula with a version line can change a source without changing its version:
+DiscImageCreator's helpers (EccEdc, DVDAuth, unscrambler) track their own master
+commits, and the version names DIC's commit only. Homebrew upgrades a keg only
+when version or `revision` grows, so --write counts `revision` up when it
+rewrote a url under the same version and drops the line when the version moves.
+--check cannot judge the revision (it depends on what came before), only the
+urls and the version.
 """
 import hashlib
 import os
@@ -49,26 +60,30 @@ FORMULAE = {
         "fields": {
             "SNAP": r"^%global\s+dicsnap\s+(\S+)\s*$",
             "COMMIT": r"^%global\s+diccommit\s+([0-9a-f]{40})\s*$",
-            "ECC": r"^%global\s+eccedcver\s+(\S+)\s*$",
-            "DVD": r"^%global\s+dvdauthver\s+(\S+)\s*$",
-            "UNSC": r"^%global\s+unscramblver\s+(\S+)\s*$",
+            "ECC": r"^%global\s+eccedccommit\s+([0-9a-f]{40})\s*$",
+            "DVD": r"^%global\s+dvdauthcommit\s+([0-9a-f]{40})\s*$",
+            "UNSC": r"^%global\s+unscramblcommit\s+([0-9a-f]{40})\s*$",
         },
         "version": "{SNAP}",
         "slots": [
             (r"https://github\.com/saramibreak/DiscImageCreator/archive/[0-9a-f]{40}\.tar\.gz",
              GH + "/saramibreak/DiscImageCreator/archive/{COMMIT}.tar.gz"),
-            (r"https://github\.com/saramibreak/EccEdc/archive/refs/tags/[^\"/]+\.tar\.gz",
-             GH + "/saramibreak/EccEdc/archive/refs/tags/{ECC}.tar.gz"),
-            (r"https://github\.com/saramibreak/DVDAuth/archive/refs/tags/v[^\"/]+\.tar\.gz",
-             GH + "/saramibreak/DVDAuth/archive/refs/tags/v{DVD}.tar.gz"),
-            (r"https://github\.com/saramibreak/unscrambler/archive/refs/tags/[^\"/]+\.tar\.gz",
-             GH + "/saramibreak/unscrambler/archive/refs/tags/{UNSC}.tar.gz"),
+            # The helpers' slots know a tag archive as well as a commit archive:
+            # until 2026-10-14 they were built from release tags.
+            (r"https://github\.com/saramibreak/EccEdc/archive/(?:refs/tags/)?[^\"/]+\.tar\.gz",
+             GH + "/saramibreak/EccEdc/archive/{ECC}.tar.gz"),
+            (r"https://github\.com/saramibreak/DVDAuth/archive/(?:refs/tags/)?[^\"/]+\.tar\.gz",
+             GH + "/saramibreak/DVDAuth/archive/{DVD}.tar.gz"),
+            (r"https://github\.com/saramibreak/unscrambler/archive/(?:refs/tags/)?[^\"/]+\.tar\.gz",
+             GH + "/saramibreak/unscrambler/archive/{UNSC}.tar.gz"),
         ],
     },
 }
 URL_LINE = re.compile(r'^(\s*)url "([^"]+)"\s*$')
 SHA_LINE = re.compile(r'^(\s*)sha256 "([0-9a-f]{64})"\s*$')
 VERSION_LINE = re.compile(r'^(\s*)version "([^"]+)"\s*$')
+REVISION_LINE = re.compile(r'^(\s*)revision (\d+)\s*$')
+LICENSE_LINE = re.compile(r'^(\s*)license ')
 
 
 def spec_fields(text, fields):
@@ -149,22 +164,46 @@ def rewrite(cfg, formula_text, spec_text, fetch=sha256_of):
     """-> new formula text in step with the spec; fetch(url) -> sha256 for changed urls."""
     want_urls, want_version = expected(cfg, spec_text)
     lines, slots, vi = parse(cfg, formula_text)
+    url_moved = False
     for k, (ui, si) in slots.items():
         m = URL_LINE.match(lines[ui])
         if m.group(2) == want_urls[k]:
             continue
+        url_moved = True
         digest = fetch(want_urls[k])
         if not re.fullmatch(r"[0-9a-f]{64}", digest):
             raise ValueError(f"{want_urls[k]}: no sha256 ({digest!r})")
         lines[ui] = f'{m.group(1)}url "{want_urls[k]}"'
         lines[si] = f'{SHA_LINE.match(lines[si]).group(1)}sha256 "{digest}"'
     if vi is not None:
+        version_moved = VERSION_LINE.match(lines[vi]).group(2) != want_version
         lines[vi] = f'{VERSION_LINE.match(lines[vi]).group(1)}version "{want_version}"'
+        lines = revise(lines, version_moved, url_moved)
     new = "\n".join(lines)
     left = drift(cfg, new, spec_text)
     if left:
         raise AssertionError(f"rewrite left drift behind: {left}")
     return new
+
+
+def revise(lines, version_moved, url_moved):
+    """-> lines with `revision` dropped (new version) or counted up (new source, same version)."""
+    revs = [i for i, line in enumerate(lines) if REVISION_LINE.match(line)]
+    if len(revs) > 1:
+        raise ValueError(f"{len(revs)} revision lines, expected at most 1")
+    if version_moved:
+        return [line for i, line in enumerate(lines) if i not in revs]
+    if not url_moved:
+        return lines
+    if revs:
+        m = REVISION_LINE.match(lines[revs[0]])
+        lines[revs[0]] = f"{m.group(1)}revision {int(m.group(2)) + 1}"
+        return lines
+    lic = [i for i, line in enumerate(lines) if LICENSE_LINE.match(line)]
+    if len(lic) != 1:
+        raise ValueError(f"{len(lic)} license lines: no place for a first revision line (Homebrew puts it after license)")
+    indent = LICENSE_LINE.match(lines[lic[0]]).group(1)
+    return lines[:lic[0] + 1] + [f"{indent}revision 1"] + lines[lic[0] + 1:]
 
 
 def main(argv):

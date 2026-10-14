@@ -1,3 +1,9 @@
+discimagecreator (20260913144738.9269234a-2) UNRELEASED; urgency=medium
+
+  * Build EccEdc, DVDAuth and unscrambler from their master commits, like DIC itself, instead of their release tags; watch-dic-releases follows all four. EccEdc master adds a NULL check in handleCheckOrFix (bcdf432) and the <cstdint> include in _external/ecm.cpp (427dd57, upstream #6), so our prepend of that include is gone. DVDAuth and unscrambler master are identical to v1.4 and 0.5.5.
+
+ -- gmipf <gmipf64@gmail.com>  Wed, 14 Oct 2026 15:03:00 +0000
+
 discimagecreator (20260913144738.9269234a-1) UNRELEASED; urgency=medium
 
   * Automated master-snapshot sync to upstream DiscImageCreator commit 9269234a (committed 20260913144738 UTC).

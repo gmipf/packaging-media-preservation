@@ -33,6 +33,8 @@
 #                   names (brew-sync.py --check)
 #   CHANGELOG.md    every recipe has a line that added it, and nothing the log
 #                   still ships has lost its recipe (changelog-check.py)
+#   DIC helpers     EccEdc, DVDAuth and unscrambler pinned to the same commits in
+#                   both specs and debian/rules (dic-helpers.sh check)
 set -uo pipefail
 
 ROOT=$(git rev-parse --show-toplevel) || exit 2
@@ -186,6 +188,13 @@ if have python3; then
     if out=$(python3 scripts/brew-sync.py --check 2>&1); then ok "macOS lane: formulae name the sources their specs name"
     else bad "macOS lane:"; printf '%s\n' "$out" >&2; fi
 fi
+
+# --- DIC helpers --------------------------------------------------------------
+# Each helper's commit is written in three recipes. One that differs builds a
+# lane from another commit -- or, in debian/rules, unpacks a directory the .dsc
+# never delivered, and OBS goes red only after the push.
+if out=$(bash scripts/dic-helpers.sh check 2>&1); then ok "$out"
+else bad "DIC helpers:"; printf '%s\n' "$out" >&2; fi
 
 # --- CHANGELOG.md -------------------------------------------------------------
 # The log says which package reached which distribution when. No watcher adds or

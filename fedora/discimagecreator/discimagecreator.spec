@@ -14,9 +14,13 @@
 # used for the source archive.
 %global dicsnap      20260913144738.9269234a
 %global diccommit    9269234aab5042d4cfe2e62374a8fa1ab31e98df
-%global eccedcver    20240901
-%global dvdauthver   1.4
-%global unscramblver 0.5.5
+# The three helpers track master as well (their release tags lagged behind:
+# EccEdc 20240901 lacked two fixes master has). The watcher re-pins them; the
+# same pins stand in the other spec and in debian/rules, and
+# scripts/dic-helpers.sh keeps all three places equal (lint.sh checks).
+%global eccedccommit    427dd5713718f5a4d2f500da0ce457ce1bebd8a2
+%global dvdauthcommit   708cf70429877d44619260feafa437d65b2994a1
+%global unscramblcommit ffbf48a271e734c8fd34128d76d4c0b6c51f541f
 
 %global dicdir       %{_libexecdir}/%{name}
 
@@ -31,14 +35,14 @@
 
 Name:           discimagecreator
 Version:        %{dicsnap}
-Release:        2%{?dist}
+Release:        3%{?dist}
 Summary:        Low-level disc dumper plus EccEdc / DVDAuth / unscrambler helpers
 License:        Apache-2.0 AND GPL-3.0-or-later AND GPL-2.0-or-later
 URL:            https://github.com/saramibreak/DiscImageCreator
 Source0:        %{url}/archive/%{diccommit}.tar.gz#/DiscImageCreator-%{diccommit}.tar.gz
-Source1:        https://github.com/saramibreak/EccEdc/archive/refs/tags/%{eccedcver}.tar.gz#/EccEdc-%{eccedcver}.tar.gz
-Source2:        https://github.com/saramibreak/DVDAuth/archive/refs/tags/v%{dvdauthver}.tar.gz#/DVDAuth-%{dvdauthver}.tar.gz
-Source3:        https://github.com/saramibreak/unscrambler/archive/refs/tags/%{unscramblver}.tar.gz#/unscrambler-%{unscramblver}.tar.gz
+Source1:        https://github.com/saramibreak/EccEdc/archive/%{eccedccommit}.tar.gz#/EccEdc-%{eccedccommit}.tar.gz
+Source2:        https://github.com/saramibreak/DVDAuth/archive/%{dvdauthcommit}.tar.gz#/DVDAuth-%{dvdauthcommit}.tar.gz
+Source3:        https://github.com/saramibreak/unscrambler/archive/%{unscramblcommit}.tar.gz#/unscrambler-%{unscramblcommit}.tar.gz
 Source4:        discimagecreator.1
 # udev rule tagging USB and legacy floppy block devices with "uaccess", so
 # systemd-logind puts an ACL on the node for whoever is logged in at the local
@@ -123,12 +127,6 @@ sed -i '/fs\.copyfile(/d' meson.build
 # filename. mv fails loudly under set -e if upstream ever renames it.
 mv 'Release_ANSI/Doc/Firmware&Tool.md' 'Release_ANSI/Doc/Firmware_and_Tool.md'
 
-# EccEdc upstream 20240901 predates GCC 14's stricter transitive header
-# rules — _external/ecm.cpp uses uint32_t without including <cstdint>.
-# Prepend the include so Fedora 43+ (GCC 14) builds.
-sed -i '1i #include <cstdint>' \
-    EccEdc-%{eccedcver}/EccEdc/_external/ecm.cpp
-
 # FIXED UPSTREAM in #331 (merged 2026-07-20, 0a61a018), so the rewrite that used
 # to live here is gone. Upstream had gated its pointer-sized typedefs (INT_PTR /
 # UINT_PTR / LONG_PTR / ULONG_PTR) on __x86_64__ with the #else branch defining
@@ -158,9 +156,9 @@ fi
 # at make-invocation time in %%build.
 sed -i -e '0,/^CFLAGS\s*:=/{/^CFLAGS\s*:=/s/$/ -fPIE/}' \
        -e '0,/^CXXFLAGS\s*:=/{/^CXXFLAGS\s*:=/s/$/ -fPIE/}' \
-    EccEdc-%{eccedcver}/EccEdc/makefile \
-    DVDAuth-%{dvdauthver}/DVDAuth/makefile \
-    unscrambler-%{unscramblver}/makefile
+    EccEdc-%{eccedccommit}/EccEdc/makefile \
+    DVDAuth-%{dvdauthcommit}/DVDAuth/makefile \
+    unscrambler-%{unscramblcommit}/makefile
 
 %build
 # Main DiscImageCreator via meson against system openssl/zlib/libarchive
@@ -171,9 +169,9 @@ sed -i -e '0,/^CFLAGS\s*:=/{/^CFLAGS\s*:=/s/$/ -fPIE/}' \
 # compiler (the makefiles default to $(CXX) which may not be set in COPR
 # clean chroots). LDFLAGS=-pie pairs with the -fPIE injection in %%prep
 # so Fedora's default PIE-hardened linker accepts the final binary.
-make -C EccEdc-%{eccedcver}/EccEdc       CXX=g++ LDFLAGS=-pie %{?_smp_mflags}
-make -C DVDAuth-%{dvdauthver}/DVDAuth    CXX=g++ LDFLAGS=-pie %{?_smp_mflags}
-make -C unscrambler-%{unscramblver}      CXX=g++ LDFLAGS=-pie %{?_smp_mflags}
+make -C EccEdc-%{eccedccommit}/EccEdc       CXX=g++ LDFLAGS=-pie %{?_smp_mflags}
+make -C DVDAuth-%{dvdauthcommit}/DVDAuth    CXX=g++ LDFLAGS=-pie %{?_smp_mflags}
+make -C unscrambler-%{unscramblcommit}      CXX=g++ LDFLAGS=-pie %{?_smp_mflags}
 
 %install
 # meson installs binary to %%{_bindir}/DiscImageCreator and data files
@@ -190,9 +188,9 @@ mv %{buildroot}%{_bindir}/DiscImageCreator %{buildroot}%{dicdir}/DiscImageCreato
 # upstream filenames intact. DIC's GetCmd() uses readlink(/proc/self/exe)
 # to find its own directory and then looks for ./EccEdc.out, ./DVDAuth.out,
 # ./unscrambler.out — those exact filenames are mandatory here.
-install -m 0755 EccEdc-%{eccedcver}/EccEdc/EccEdc.out         %{buildroot}%{dicdir}/EccEdc.out
-install -m 0755 DVDAuth-%{dvdauthver}/DVDAuth/DVDAuth.out     %{buildroot}%{dicdir}/DVDAuth.out
-install -m 0755 unscrambler-%{unscramblver}/unscrambler.out   %{buildroot}%{dicdir}/unscrambler.out
+install -m 0755 EccEdc-%{eccedccommit}/EccEdc/EccEdc.out         %{buildroot}%{dicdir}/EccEdc.out
+install -m 0755 DVDAuth-%{dvdauthcommit}/DVDAuth/DVDAuth.out     %{buildroot}%{dicdir}/DVDAuth.out
+install -m 0755 unscrambler-%{unscramblcommit}/unscrambler.out   %{buildroot}%{dicdir}/unscrambler.out
 
 # Move meson-installed data dir from CamelCase to lowercase (matches the
 # patched probe paths in get.cpp / xml.cpp).
@@ -275,6 +273,14 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
 %{_udevrulesdir}/70-discimagecreator-floppy.rules
 
 %changelog
+* Wed Oct 14 2026 gmipf <gmipf64@gmail.com> - 20260913144738.9269234a-3
+- Build EccEdc, DVDAuth and unscrambler from their master commits, like DIC
+  itself, instead of their release tags; watch-dic-releases follows all four.
+  EccEdc master carries two fixes its last release (20240901) lacks: a NULL
+  check in handleCheckOrFix (bcdf432) and the missing <cstdint> include in
+  _external/ecm.cpp (427dd57, upstream #6), so the prepend of that include is
+  gone. DVDAuth and unscrambler master are identical to v1.4 and 0.5.5.
+
 * Wed Oct 14 2026 gmipf <gmipf64@gmail.com> - 20260913144738.9269234a-2
 - Stop prepending <limits.h> to _external/ps3auth/crypto_backend_openssl.c.
   OpenSSL's own headers include it (openssl/types.h and openssl/err.h, on
