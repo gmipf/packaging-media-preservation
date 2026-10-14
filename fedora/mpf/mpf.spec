@@ -1,5 +1,5 @@
 %global mpfver         3.11.0
-%global mpfsnap        20261013160548.c97cda44
+%global mpfsnap        20261014132400.9692264f
 %global rolltag        rolling
 
 %global debug_package      %{nil}
@@ -17,7 +17,7 @@ Version:        %{mpfver}~%{mpfsnap}
 # lives in the changelog. (Stuck at 5 here from pre-fix manual bumps of
 # the 71dafe3d snapshot — already shipped as -5, so left as-is to avoid
 # a downgrade; the next snapshot resets it.)
-Release:        2%{?dist}
+Release:        1%{?dist}
 Summary:        Media Preservation Frontend suite (mpf-check, mpf-cli, mpf-gui)
 
 License:        MIT
@@ -481,6 +481,10 @@ install -m 0644 %{SOURCE6} %{buildroot}%{_mandir}/man1/mpf-gui.1
 %{_datadir}/icons/hicolor/*/apps/mpf.png
 
 %changelog
+* Wed Oct 14 2026 gmipf <gmipf64@gmail.com> - 3.11.0~20261014132400.9692264f-1
+- Automated rolling-snapshot sync to upstream MPF commit 9692264f
+  (rolling tag, published 20261014132400 UTC); Release reset to 1.
+
 * Tue Oct 13 2026 gmipf <gmipf64@gmail.com> - 3.11.0~20261013160548.c97cda44-2
 - DreamdumpPath is seeded as the bare name `dreamdump` again: MPF fixed its
   CLI (SabreTools/MPF#1043, in c97cda44), which stored the resolved Dreamdump

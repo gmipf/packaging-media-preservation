@@ -1,5 +1,5 @@
 %global mpfver         3.11.0
-%global mpfsnap        20261013160548.c97cda44
+%global mpfsnap        20261014132400.9692264f
 %global rolltag        rolling
 
 %global debug_package      %{nil}
@@ -471,6 +471,9 @@ install -m 0644 %{SOURCE6} %{buildroot}%{_mandir}/man1/mpf-gui.1
 %{_datadir}/icons/hicolor/*/apps/mpf.png
 
 %changelog
+* Wed Oct 14 2026 gmipf <gmipf64@gmail.com> - 3.11.0~20261014132400.9692264f-0
+- Automated rolling-snapshot sync to upstream MPF commit 9692264f (published 20261014132400 UTC).
+
 * Tue Oct 13 2026 gmipf <gmipf64@gmail.com> - 3.11.0~20261013160548.c97cda44-0
 - DreamdumpPath is seeded as the bare name `dreamdump` again: MPF fixed its
   CLI (SabreTools/MPF#1043, in c97cda44), which stored the resolved Dreamdump
