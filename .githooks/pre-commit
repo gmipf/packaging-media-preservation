@@ -36,6 +36,18 @@
 set -uo pipefail
 
 root=$(git rev-parse --show-toplevel) || exit 0
+
+# In a linked worktree git runs this hook with GIT_DIR exported (the worktree's
+# own gitdir) and no GIT_WORK_TREE. A helper that asks git for the top level
+# from its own directory (gen-deb.sh: `git -C scripts/obs rev-parse
+# --show-toplevel`) then gets that directory back, finds no recipes and reports
+# every one of them stale (measured 2026-10-14). Naming the work tree gives
+# those helpers the right answer again; outside a worktree GIT_DIR is unset and
+# nothing changes.
+if [ -n "${GIT_DIR:-}" ] && [ -z "${GIT_WORK_TREE:-}" ]; then
+    export GIT_WORK_TREE="$root"
+fi
+
 ledger="$root/scripts/proof-ledger.tsv"
 checker="$root/scripts/proof-status.sh"
 [ -e "$ledger" ] || [ -e "$checker" ] || exit 0
