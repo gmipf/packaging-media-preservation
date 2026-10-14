@@ -1,0 +1,41 @@
+Optical-disc preservation tools for openSUSE Leap 16.0 and Tumbleweed, for Ubuntu 26.04, 24.04 and 22.04, and for Debian 13 and Debian 12, on x86_64 and aarch64: redumper, DiscImageCreator (DIC + EccEdc + DVDAuth + unscrambler), Aaru (v6 plus the version-pinned stable aaru5), MPF (mpf-check + mpf-cli + mpf-gui), Redumper-GUI, and dreamdump (Sega Dreamcast GD-ROMs; one of the four programs MPF starts itself, at the release MPF bundles).
+
+Two of the packages are version pins, not alternatives: redumper-mpf is the build MPF bundles, redumper-rgui the one Redumper-GUI bundles. Install them only if you use that frontend; the rolling redumper is the one you want otherwise. They have fixed names and a moving version and upgrade in place.
+
+Drive access
+
+Verified on real hardware (2026-07-14: a Plextor PX-760A USB optical drive and a NEC USB floppy, passed through to a clean VM per distribution). A plain desktop user in no drive group — not cdrom, not floppy, not disk, not plugdev — dumped both media, and sudo was never invoked.
+
+Two independent mechanisms carry that:
+
+- cap_sys_rawio on the dumping tools makes vendor SCSI commands (Plextor 0xD8, etc.) work without root. openSUSE sets it through the permissions framework; the Ubuntu and Debian packages set it in their post-install script.
+
+- systemd-logind grants a uaccess ACL on the device node to whoever holds the active local seat — for optical drives (/dev/sr*) via systemd's own rule, and for USB or legacy floppy drives via a udev rule these packages ship. It appears the moment the package is installed; the drive does not need to be re-plugged.
+
+The capability sits on the dumping tools only (redumper, redumper-rgui, redumper-mpf, aaru, aaru5, DiscImageCreator) and deliberately not on any GUI or on the MPF frontends, which drive those tools rather than a drive: a process holding file capabilities is non-dumpable, so the desktop portal refuses to authorise it and every file dialog it opens dies. dreamdump gets none because it needs none: it sends only INQUIRY, SET CD SPEED and READ CD, which the kernel allows anyone who can open the drive (measured on 2026-10-12 as a plain user in a Fedora VM: drive opened, commands accepted, sectors read).
+
+Only headless / SSH / cron sessions, which have no seat, need more. For optical drives, add yourself to the cdrom group. A headless floppy dump needs root: the floppy node stays root:disk, and the disk group would expose every block device on the system, so it is not a safe substitute.
+
+aarch64 / arm64 is built and published, but not hardware-tested. The drive-access results above were measured on x86_64 only. Nothing in the packaging is architecture-specific — the permissions profile, the postinst setcap and the udev rule are the same files on both arches — but nobody has run a dump from an ARM machine, so it is deliberately not claimed as verified. Reports welcome.
+
+Tumbleweed on ARM uses a second repository, openSUSE_Tumbleweed_ARM: Factory's x86_64 and ARM ports are separate OBS projects (openSUSE:Factory vs openSUSE:Factory:ARM), and one repository cannot serve both. Every other target carries both arches in one repository.
+
+Two things that look like permission errors and are not:
+
+- The desktop may have auto-mounted the medium (GNOME does, KDE does not), so the dumper cannot take its exclusive lock. Release it without root: "udisksctl unmount -b /dev/sr1". Aaru reports this as "Could not open device, error EncodingUnknown", which names everything except the cause.
+
+- Aaru asks a GDPR consent question on its very first run. Until it is answered once, "aaru media dump" stops there. Run "aaru configure" in a terminal, then dump.
+
+Redumper-GUI needs rustc 1.92 or newer (eframe/egui): available on openSUSE, Fedora/EPEL, Ubuntu 26.04 and Debian 13 (via trixie-backports, rustc 1.94.1). Not on Ubuntu 24.04/22.04 (top out at 1.91) or Debian 12 (1.63, no backported rustc).
+
+Unofficial third-party packaging — a hobby project, not affiliated with any upstream tool author.
+
+Packaging recipes: https://github.com/gmipf/packaging-media-preservation
+
+Upstream:
+- redumper: https://github.com/superg/redumper
+- DiscImageCreator: https://github.com/saramibreak/DiscImageCreator
+- Aaru: https://github.com/aaru-dps/Aaru
+- MPF: https://github.com/SabreTools/MPF
+- Redumper-GUI: https://github.com/Deterous/Redumper-GUI
+- dreamdump: https://codeberg.org/MoriGM/dreamdump

@@ -105,7 +105,8 @@ case "$ACTION" in
     echo "-> would collide with COPR; auto-bumping Release to $N."
     sed -i "s/^Release:.*/Release:        ${N}%{?dist}/" "$SPEC"
     git add "$SPEC"
-    git commit -q -m "chore: bump $PKG Release to $N (keep clean NEVRA, supersede prior build)"
+    git commit -q -m "chore: bump $PKG Release to $N (keep clean NEVRA, supersede prior build)" \
+        --trailer "Docs-unchanged: a rebuild of the same upstream version"
     SPEC_RBASE=$N ;;
   abort)
     echo "error: spec version ($SPEC_V) is older than COPR's ($COPR_V) — refusing." >&2

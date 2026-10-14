@@ -35,6 +35,9 @@
 #                   still ships has lost its recipe (changelog-check.py)
 #   DIC helpers     EccEdc, DVDAuth and unscrambler pinned to the same commits in
 #                   both specs and debian/rules (dic-helpers.sh check)
+#   texts           every package named in each text of its lanes, every lane
+#                   and formula in the README, every workflow in how-it-works
+#                   (texts-check.py offline; the live half runs in check-repo.yml)
 set -uo pipefail
 
 ROOT=$(git rev-parse --show-toplevel) || exit 2
@@ -202,6 +205,14 @@ else bad "DIC helpers:"; printf '%s\n' "$out" >&2; fi
 if have python3; then
     if out=$(python3 scripts/changelog-check.py 2>&1); then ok "$out"
     else bad "CHANGELOG.md:"; printf '%s\n' "$out" >&2; fi
+fi
+
+# --- the texts a reader sees ----------------------------------------------------
+# A new package reaches the recipes; the README, how-it-works, the lane READMEs
+# and the live descriptions only if someone remembers. This asks instead.
+if have python3; then
+    if out=$(python3 scripts/texts-check.py offline 2>&1); then ok "$out"
+    else bad "texts:"; printf '%s\n' "$out" >&2; fi
 fi
 # debian/rules travels in debian.tar.gz WITH its mode -- the reason it travels as
 # a tarball at all (gen-deb.sh's header): a 0644 rules is a malformed source

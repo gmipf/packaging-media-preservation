@@ -276,6 +276,20 @@ if ! grep -q '^summary ' <<<"$SCHED"; then
     printf '  \033[33mUNKLAR\033[0m schedule-health.py lieferte kein Ergebnis — keine Messung, keine Entwarnung\n'
 fi
 
+hr "Texte — Beschreibungen live = git, jede gebaute Version im CHANGELOG?"
+# Die Beschreibungen auf GitHub, COPR und OBS gegen docs/descriptions/, und jede
+# Distro-Version/Architektur, die COPR und OBS bauen, gegen CHANGELOG.md, README
+# und die Beschreibungen. Laeuft auch bei jedem Push (check-repo.yml); hier, weil
+# eine Aenderung im Web-Formular keinen Push ausloest. Der Exit-Code ist die
+# Antwort: 2 = nicht gemessen, keine Entwarnung.
+TEXTS=$(python3 "$REPO/scripts/texts-check.py" live 2>&1); TEXTS_RC=$?
+case $TEXTS_RC in
+    0) printf '  \033[32m%s\033[0m\n' "$TEXTS" ;;
+    1) printf '  \033[31m%s\033[0m\n' "$TEXTS" ;;
+    *) printf '  \033[33mUNKLAR\033[0m texts-check.py (Exit %s) — keine Messung, keine Entwarnung\n' "$TEXTS_RC"
+       printf '  %s\n' "$TEXTS" ;;
+esac
+
 # --- silent failure #4: the Debian lane's generated files drift apart ----------
 # Each Debian-delivered tool carries THREE generated files (opensuse/<tool>/):
 # the .dsc, debian.tar.gz and the deb block of _service. They are generated from

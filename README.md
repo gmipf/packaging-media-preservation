@@ -18,7 +18,7 @@ re-hosted.
 |---|---|:-:|:-:|:-:|:-:|:-:|
 | [redumper](https://github.com/superg/redumper) | disc dumper | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [DiscImageCreator](https://github.com/saramibreak/DiscImageCreator) | disc and floppy dumper | ✅ | ✅ | ✅ | ✅ | ✅ ¹ |
-| [Aaru](https://github.com/aaru-dps/Aaru) | dumper and image toolkit (v6 beta) | ✅ | ✅ | ✅ | ✅ | — |
+| [Aaru](https://github.com/aaru-dps/Aaru) | dumper and image toolkit (v6 pre-release) | ✅ | ✅ | ✅ | ✅ | — |
 | [Aaru 5.4](https://github.com/aaru-dps/Aaru) (`aaru5`) | the stable Aaru CLI that MPF drives | ✅ | ✅ | ✅ | ✅ | — |
 | [MPF](https://github.com/SabreTools/MPF) | dumping frontend (GUI and CLI) | ✅ | ✅ | ✅ | ✅ | — |
 | [Redumper-GUI](https://github.com/Deterous/Redumper-GUI) | graphical frontend for redumper | ✅ | ✅ | 26.04 | 13 | — |
@@ -27,9 +27,10 @@ re-hosted.
 
 ¹ optical drives only; no tool reaches a floppy drive on macOS.
 
-A watcher checks every upstream hourly, and new releases are packaged for all
-lanes automatically (`aaru5` is bumped by hand on purpose). What each package
-tracks and how it is built: [docs/how-it-works.md](docs/how-it-works.md).
+Watchers check every upstream several times a day, and new upstream versions
+are packaged for all lanes automatically (`aaru5` is bumped by hand on
+purpose). What each package tracks and how it is built:
+[docs/how-it-works.md](docs/how-it-works.md).
 Which package reached which distribution when: [CHANGELOG.md](CHANGELOG.md).
 
 [copr]: https://copr.fedorainfracloud.org/coprs/gmipf/media-preservation/

@@ -17,9 +17,8 @@ Back to the [README](../README.md). Drive permissions have their own page:
   package bundles DIC + EccEdc + DVDAuth + unscrambler; the three helpers are
   pinned to their master commits too and tracked by the same watcher.
 - **Aaru** (`aaru`) is repackaged and auto-tracked hourly on new
-  `v6.0.0-<alpha|beta|rc>.<N>` tags (beta since 2026-07-16). CLI and Avalonia
-  GUI ship as one binary; launch the GUI via `aaru gui` or the `Aaru` desktop
-  entry.
+  `v6.0.0-<alpha|beta|rc>.<N>` tags. CLI and Avalonia GUI ship as one binary;
+  launch the GUI via `aaru gui` or the `Aaru` desktop entry.
 - **Aaru 5.4.x** (`aaru5`) is the stable 5.4 CLI that MPF drives, repackaged; it
   installs as `/usr/bin/aaru5` alongside the rolling `aaru` v6. It is
   version-pinned: **watched hourly, bumped by hand on purpose** — the version MPF
@@ -83,15 +82,17 @@ source-built tools (DiscImageCreator, Redumper-GUI) simply compile per arch.
 Stream N + EPEL buildroot, so one `.elN` package covers RHEL, CentOS Stream,
 AlmaLinux, Rocky and Oracle Linux N.
 
-openSUSE is **not** built on COPR: COPR only offers an EOL Leap 15.6 and a
-currently-broken Tumbleweed and has no Leap 16.0 chroot. openSUSE is published
-natively on the [openSUSE Build Service](https://build.opensuse.org/) (OBS)
-instead, from specs that keep the Fedora spec's `%if 0%{?suse_version}` branches.
+openSUSE is built on the [openSUSE Build Service](https://build.opensuse.org/)
+(OBS), not on COPR, from specs that keep the Fedora spec's
+`%if 0%{?suse_version}` branches; the same OBS project builds Debian and Ubuntu.
+(When this lane started in July 2026, COPR had no Leap 16.0 chroot.)
 
-`discimagecreator` (the only source build) carries small spec patches so it
-compiles everywhere: for the EL8/EL9 EPEL builds it drops upstream meson's
-`fs.copyfile` and renames a doc file with an `&` in its name for the older
-toolchain (on EL8 it links the vendor-maintained system openssl 1.1.1k). It also
+`discimagecreator`, built from source, carries small spec patches so it
+compiles everywhere. For the older EL toolchains it drops upstream meson's
+`fs.copyfile` (EPEL 9 ships meson 0.63) and renames a doc file with an `&` in
+its name (rpm 4.16 does not quote it); both apply on every distribution and
+leave the installed files alike (on EL8 it links the vendor-maintained system
+openssl 1.1.1k). It also
 keeps `%if 0%{?suse_version}` portability, which the openSUSE (OBS) lane builds on —
 BuildRequiring Ninja under its openSUSE name (`ninja` vs `ninja-build`) — and
 the self-contained .NET tools (`aaru`, `mpf`) map their runtime dependency names
@@ -135,8 +136,8 @@ rewrites the spec on a new release and lets Packit handle the rebuild:
   recompile against OpenSSL 3 ourselves until upstream
   ([saramibreak/DiscImageCreator#321](https://github.com/saramibreak/DiscImageCreator/issues/321))
   migrates or static-links.
-- **aaru** is on the v6.0.0 pre-release track — beta since 2026-07-16; upstream
-  publishes a new alpha/beta/rc tag every two to six weeks.
+- **aaru** is on the v6.0.0 pre-release track; upstream publishes a new
+  alpha, beta or rc tag every two to six weeks.
   `watch-aaru-releases.yml` polls hourly, picks the highest tag across the track
   (alpha < beta < rc, the same order rpm and dpkg give the versions derived from
   it) and rewrites `%global aaruprerel` on a bump. Moving within the track needs
@@ -160,6 +161,24 @@ from the Fedora spec and downloads each new source for its checksum), then run
 `homebrew.yml` on the result: install from source, `brew test` and `brew audit`
 on macOS 26 (Apple Silicon) and macOS 15 (Intel). It also runs weekly, and
 `scripts/lint.sh` fails whenever a formula names other sources than its spec.
+
+### The texts
+
+A recipe moves and the texts about it stay behind unless something asks. Two
+checks do:
+
+- **Every commit** that changes a recipe, `.packit.yaml` or a workflow also
+  changes a text a reader sees (this page, the README, `CHANGELOG.md`, the lane
+  READMEs, [`descriptions/`](descriptions/README.md)), or says why none needs it
+  in a `Docs-unchanged:` trailer. `scripts/docs-gate.py` checks that in the
+  `commit-msg` hook and again for every pushed commit in `check-repo.yml`, and
+  names the texts that mention each package the commit touches.
+- **The texts against the tree and the services** (`scripts/texts-check.py`):
+  every package is named in each text of its lanes and every workflow in the
+  table below (in `scripts/lint.sh`); the GitHub, COPR and OBS descriptions equal
+  their copies in [`descriptions/`](descriptions/README.md), and every release
+  and architecture COPR and OBS build for is named in `CHANGELOG.md` (on every
+  push, and in `scripts/status.sh`).
 
 ## Build notes per lane
 
@@ -202,14 +221,14 @@ floppy there). MPF may follow.
 .
 ├── .packit.yaml            # Packit config: one COPR build job per package (Fedora / EPEL)
 ├── .github/workflows/      # watchers, OBS and COPR safety nets, Homebrew CI, repo checks
-├── .githooks/pre-commit    # proof ledger + lint before every commit
+├── .githooks/              # pre-commit: proof ledger + lint; commit-msg: the docs gate
 ├── Formula/                # Homebrew tap (redumper, discimagecreator)
 ├── fedora/<tool>/          # RPM spec + what it ships besides upstream's files
 ├── ubuntu/<tool>/debian/   # Debian-format recipe, for Debian AND Ubuntu
 ├── opensuse/<tool>/        # OBS lane: openSUSE spec + generated .dsc, debian.tar.gz, _service
 ├── scripts/                # build trigger, generators, linters, health checks and their tests
 ├── proofs/                 # drive-access measurements the proof ledger points to
-├── docs/                   # this page and drive-access.md
+├── docs/                   # this page, drive-access.md, descriptions/ (the GitHub, COPR and OBS texts)
 ├── CHANGELOG.md            # packages, distributions and architectures added or dropped, by date
 └── LICENSE                 # MIT (recipes only; tools keep their own licenses)
 ```
@@ -234,7 +253,7 @@ The workflows in `.github/workflows/`:
 | `copr-reconcile.yml` | re-pushes a COPR trigger that got lost (every six hours) |
 | `obs-health.yml` | red when an OBS build fails or OBS falls behind `main` (every six hours) |
 | `homebrew.yml` | builds and tests every formula on Apple Silicon and Intel |
-| `check-repo.yml` | repository checks (shellcheck, proof ledger, Rust floor, ...) |
+| `check-repo.yml` | repository checks (lint, proof ledger, Rust floor, the docs gate, the live texts, ...) |
 
 The Debian-format recipes live in `ubuntu/` — see [`ubuntu/README.md`](../ubuntu/README.md).
 One recipe serves Debian AND Ubuntu; the directory name predates the Debian targets:

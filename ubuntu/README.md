@@ -138,9 +138,9 @@ one place.
 Two deb targets clear it. **Ubuntu 26.04** carries 1.93. **Debian 13** carries
 1.94 — *from `trixie-backports`*, which is why it builds even though plain trixie
 ships 1.85 and the OBS repository is a Download-on-Demand path onto backports.
-Ubuntu 22.04/24.04 top out at 1.91 and Debian 12 has no rustc in backports at all;
-those three are `build disable`d in the package meta and keep delivering the last
-package they could build.
+Ubuntu 22.04/24.04 top out at 1.91 and Debian 12 has no rustc in backports at all.
+The package meta enables `redumper-gui` for Ubuntu 26.04 and Debian 13 only, so
+those three carry no `redumper-gui` package.
 
 > ⚠️ Until 2026-07-20 this section said "Debian 13 ships 1.85 … only 26.04 clears
 > the floor … build-enabled for exactly one repository". That was already known to

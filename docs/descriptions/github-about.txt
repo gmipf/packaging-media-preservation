@@ -1,0 +1,1 @@
+Packaging recipes for optical-disc preservation tools — redumper, DiscImageCreator, Aaru (v6 + stable 5.4), MPF, Redumper-GUI and dreamdump. Live on Fedora/EPEL (COPR), openSUSE, Ubuntu and Debian (OBS) for x86_64 and aarch64, and macOS (Homebrew tap), all built from upstream. Dumping needs no sudo and no drive group — verified on x86_64 hardware.

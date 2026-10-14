@@ -10,7 +10,9 @@ name: check-repo
 # ::warning:: thrown out of watch-redumper-gui.yml on 2026-07-20, one level up: a
 # report with no delivery is a report nobody reads.
 #
-# What runs here is what is decidable from the checkout alone. The farms have
+# What runs here is what is decidable from the checkout alone, plus two reads
+# that guard the texts: the docs gate over the pushed commits and the live
+# descriptions (jobs docs-gate and live-texts). The farms have
 # their own scheduled workflows: copr-reconcile.yml (COPR behind main or failed)
 # and obs-health.yml (an OBS target failed, or OBS behind main). The sentence
 # that stood here until 2026-10-13 -- "the OBS API is not readable anonymously,
@@ -60,6 +62,14 @@ jobs:
       - name: changelog-check decision tests
         run: python3 scripts/test-changelog-check.py
 
+      # The checks themselves: texts offline in lint.sh, the live texts and the
+      # docs gate in their own jobs below.
+      - name: texts-check decision tests
+        run: python3 scripts/test-texts-check.py
+
+      - name: docs-gate decision tests
+        run: python3 scripts/test-docs-gate.py
+
       # A generator the Debian lane must carry as a COPY (it cannot fetch by URL)
       # has to stay byte-identical to the Fedora one, or one lane quietly runs an
       # older guard. Only the generator SCRIPTS: the manpage templates (*.1.in)
@@ -80,6 +90,45 @@ jobs:
           done
           [ "$n" -gt 0 ] || { echo "::error::compared nothing -- the layout moved"; exit 1; }
           exit $rc
+
+  # Every pushed commit that changes a recipe, .packit.yaml or a workflow also
+  # changes a text a reader sees, or says why not (`Docs-unchanged:` trailer).
+  # The commit-msg hook asks the same, but a hook lives in the clone. Commits
+  # the watchers push start no workflow (GITHUB_TOKEN), so `before` is always
+  # the tip they left and only commits a person pushed are read. A manual run
+  # has no pushed commits to read, so it skips this job instead of judging
+  # whatever happens to be the last commit.
+  docs-gate:
+    if: github.event_name != 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: docs gate over the pushed commits
+        env:
+          RANGE: >-
+            ${{ github.event_name == 'pull_request'
+                && format('{0}..{1}', github.event.pull_request.base.sha, github.event.pull_request.head.sha)
+                || format('{0}..{1}', github.event.before, github.sha) }}
+        run: python3 scripts/docs-gate.py --range "$RANGE"
+
+  # The GitHub, COPR and OBS descriptions against their copies in
+  # docs/descriptions/, and every release COPR and OBS build for against the
+  # CHANGELOG (scripts/texts-check.py live). Public reads; the token only lifts
+  # GitHub's rate limit. Red on a drift either way: a text changed here and not
+  # published, or one edited on a service and not taken into git.
+  live-texts:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: live descriptions and releases against the texts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/texts-check.py live
 
   # Every lint rule, through the script the pre-commit hook runs too
   # (scripts/lint.sh lists them: whitespace, shellcheck incl. shebang files,

@@ -1,9 +1,12 @@
 # OBS account setup (one-time gate)
 
 > **Done.** The project is live at
-> [`home:gmipf:media-preservation`](https://build.opensuse.org/project/show/home:gmipf:media-preservation)
-> with the `16.0` and `openSUSE_Tumbleweed` repositories (x86_64). This document
-> is kept as a record of the setup and as a guide for anyone reproducing it.
+> [`home:gmipf:media-preservation`](https://build.opensuse.org/project/show/home:gmipf:media-preservation).
+> This document records the setup of July 2026 (the two openSUSE repositories
+> first) as a guide for anyone reproducing it. Today the project also builds
+> Ubuntu 22.04, 24.04 and 26.04 and Debian 12 and 13, every repository for x86_64
+> and aarch64, with Tumbleweed's aarch64 in a repository of its own: see
+> [README](README.md) → *Account setup*.
 >
 > Two things worth knowing if you repeat this:
 > - **`api.opensuse.org` offers Basic auth only.** SSH-key authentication is not
@@ -22,9 +25,9 @@ Nothing in this lane can be published until there is an account on the
 with build targets. This is the OBS equivalent of "create the COPR project" /
 "create the COPR project" — you only do it once.
 
-Everything in `opensuse/` is already validated locally without an account (all
-five specs build in a Leap 16.0 chroot, see [README](README.md)), so this is the
-only step that needs a human.
+Everything in `opensuse/` can be validated locally without an account (each spec
+builds in a Leap 16.0 chroot, see [README](README.md)), so this is the only step
+that needs a human.
 
 ---
 
@@ -63,9 +66,10 @@ enable:
 | openSUSE Leap 16.0  | `16.0`                 | current stable Leap; the target every spec was validated against |
 | openSUSE Tumbleweed | `openSUSE_Tumbleweed`  | rolling; stricter second check (newer GCC, newest permissions framework) |
 
-Then use **Edit repository** on each to confirm the architecture is **`x86_64`**
-(every spec is `ExclusiveArch: x86_64` — other arches would only produce
-"excluded" skips).
+Then use **Edit repository** on each to set the architectures: **`x86_64`** and
+**`aarch64`** (every spec is `ExclusiveArch: x86_64 aarch64`; any other arch would
+only produce "excluded" skips). Tumbleweed's aarch64 cannot share the x86_64
+repository; README → *Account setup* has the second repository and why.
 
 > **The repository name matters.** Leap repositories on OBS are named after the
 > bare version — `16.0`, not `openSUSE_Leap_16.0`. That string is what you pass
@@ -105,7 +109,7 @@ than through any tool or agent that captures output.
 
 ```sh
 osc -A https://api.opensuse.org ls home:<user>      # lists packages (empty at first)
-osc repos home:<user>                               # should list: 16.0 x86_64 / openSUSE_Tumbleweed x86_64
+osc repos home:<user>                               # lists each repository with its arches
 ```
 
 If both work, the gate is done.
@@ -114,19 +118,15 @@ If both work, the gate is done.
 
 ## What happens next
 
-With the account in place, each tool is published with the flow in
-[README](README.md) → *Publishing a package*:
+With the account in place, each package is created once and gets nothing but its
+`_service`; from then on OBS pulls the recipe from git and the upstream archives
+from upstream, and a push to `main` is the whole update. The commands and the
+local test build: [README](README.md) → *Updating a package*.
 
 ```sh
-osc checkout home:<user> <tool>
-osc service manualrun     # download the upstream assets (hermetic build => no network at build time)
-osc addremove
-osc build 16.0 x86_64 <tool>.spec   # local chroot build, the `mock` equivalent
-osc commit -m "<tool> <version>"
+osc mkpac <tool>            # then commit ONLY the _service file
+osc add _service && osc commit -m "<tool>: recipe pulled from git"
 ```
-
-Recommended order — `redumper` → `aaru5` → `aaru` / `mpf` → `discimagecreator`
-(the only source build, and therefore the hermetic-build gate).
 
 `osc build` needs network (chroot bootstrap + asset download), so run it outside
 any command sandbox.

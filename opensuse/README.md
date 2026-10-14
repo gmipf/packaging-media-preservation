@@ -23,9 +23,9 @@ invisible, because the *source* stayed "Published" on every series while a binar
 simply did not exist. OBS has no upload step at all; it fetches. A failed build
 here is red.
 
-> **Status: LIVE on OBS.** All eight packages are published from
+> **Status: LIVE on OBS.** Every package is published from
 > **[`home:gmipf:media-preservation`](https://build.opensuse.org/project/show/home:gmipf:media-preservation)**
-> and build for **openSUSE Leap 16.0** and **Tumbleweed**, each on **x86_64 and
+> and builds for **openSUSE Leap 16.0** and **Tumbleweed**, each on **x86_64 and
 > aarch64** — including the
 > `discimagecreator` meson source build, which clears the hermetic-build gate (no
 > network in the OBS build root). The mechanism that differs from the Fedora
@@ -49,7 +49,8 @@ sudo zypper refresh
 sudo zypper install redumper discimagecreator aaru aaru5 mpf redumper-gui dreamdump
 ```
 
-For Tumbleweed, swap `16.0` for `openSUSE_Tumbleweed` in the repo URL.
+For Tumbleweed, swap `16.0` for `openSUSE_Tumbleweed` in the repo URL
+(`openSUSE_Tumbleweed_ARM` on aarch64).
 
 ## How an OBS build works
 
@@ -78,8 +79,8 @@ needs no credential that can write: a scoped `runservice` token is enough to say
 
 **Why not `tar_scm`.** It can do the same job (`extract` pulls build descriptions
 out of an SCM), but it *always* also produces a tarball whose name carries the git
-commit. Every unrelated push to `main` would therefore change the sources of all
-five packages and rebuild them for nothing. `download_url` writes only the files
+commit. Every unrelated push to `main` would therefore change the sources of
+every package and rebuild them all for nothing. `download_url` writes only the files
 themselves, so an unchanged recipe leaves `verifymd5` untouched and nothing
 rebuilds.
 
@@ -375,12 +376,13 @@ Leap 16.0 (`aaru`'s `libicu` / `krb5` / `libopenssl3` / `libz1` /
 `libunwind.so.8`, `dic`'s `ninja` / `pkgconfig(libarchive|openssl|zlib)`) and
 every spec was built with `rpmbuild -ba` on both targets before being pushed.
 
-`discimagecreator` is the only **source build** and the hermetic-build gate:
-its `debian`-free meson compile plus three helper makefiles complete with no
-network in the OBS build root — confirmed on the first OBS build for both Leap
-16.0 and Tumbleweed. Its four upstream archives use rpm's `#/rename` Source
-convention, which `download_files` handles natively, so it uses the same single
-`download_files` service as the other four tools.
+`discimagecreator` was the first **source build** through the hermetic-build
+gate (`redumper-gui` is the other, its crates vendored into the source tarball):
+its meson compile plus three helper makefiles complete with no network in the
+OBS build root — confirmed on its first OBS build for both Leap 16.0 and
+Tumbleweed. Its four upstream archives use rpm's `#/rename` Source convention,
+which `download_files` handles natively, so it uses the same single
+`download_files` service as every other package.
 
 The GUI weak `Recommends` (`aaru`, `mpf-gui`) are expressed as **sonames**
 (`libX11.so.6()(64bit)`, ...) rather than package names. They used to carry the

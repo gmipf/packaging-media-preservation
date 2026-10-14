@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+#
+# A commit that changes a recipe, .packit.yaml or a workflow also changes a text
+# a reader sees, or says why not in a `Docs-unchanged:` trailer (rules and
+# reasons: scripts/docs-gate.py). Installed with the pre-commit hook:
+#
+#     git config core.hooksPath .githooks
+#
+# check-repo.yml reads every pushed commit the same way, so a clone without this
+# hook, or a --no-verify, is caught there.
+set -uo pipefail
+
+root=$(git rev-parse --show-toplevel) || exit 0
+
+# Same as in pre-commit: in a linked worktree git exports GIT_DIR but not
+# GIT_WORK_TREE.
+if [ -n "${GIT_DIR:-}" ] && [ -z "${GIT_WORK_TREE:-}" ]; then
+    export GIT_WORK_TREE="$root"
+fi
+
+gate="$root/scripts/docs-gate.py"
+if [ ! -f "$gate" ]; then
+    echo "commit-msg: scripts/docs-gate.py is missing -- not checked is not clean. Commit aborted." >&2
+    exit 1
+fi
+python3 "$gate" --msg "$1" || {
+    echo "commit-msg: commit aborted (message kept in .git/COMMIT_EDITMSG)." >&2
+    exit 1
+}
