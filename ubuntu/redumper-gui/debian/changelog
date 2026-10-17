@@ -1,3 +1,9 @@
+redumper-gui (1.1.0-1) UNRELEASED; urgency=medium
+
+  * Automated sync to upstream redumper-gui release v1.1.0.
+
+ -- gmipf <gmipf64@gmail.com>  Sat, 17 Oct 2026 04:32:24 +0000
+
 redumper-gui (1.0.6-1) UNRELEASED; urgency=medium
 
   * Automated sync to upstream redumper-gui release v1.0.6.
