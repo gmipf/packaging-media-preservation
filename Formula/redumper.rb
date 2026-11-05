@@ -13,20 +13,20 @@
 class Redumper < Formula
   desc "Low-level byte-perfect CD disc dumper"
   homepage "https://github.com/superg/redumper"
-  url "https://github.com/superg/redumper/archive/refs/tags/b770.tar.gz"
-  sha256 "09aa50d1ca57269e1d94702b80610ffb5086ec32abd14aef51954f5412a1c7c6"
+  url "https://github.com/superg/redumper/archive/refs/tags/b771.tar.gz"
+  sha256 "b69022740e7f8a955f11ed5a70ee8b3250c1efd731a6d1094d44279cc6cbe552"
   license "GPL-3.0-only"
 
   depends_on :macos
 
   resource "binary" do
     on_arm do
-      url "https://github.com/superg/redumper/releases/download/b770/redumper-b770-macos-arm64.zip"
-      sha256 "a63bd580fd19dfd6a353f39e403396a47494a8601f81c34b3257dd8040dd4e5f"
+      url "https://github.com/superg/redumper/releases/download/b771/redumper-b771-macos-arm64.zip"
+      sha256 "fa7c6b2e871873b744f0a3c534428d03069c22fb09458870d25b0a9caf5e3d7a"
     end
     on_intel do
-      url "https://github.com/superg/redumper/releases/download/b770/redumper-b770-macos-x64.zip"
-      sha256 "c0a56ab2a06aac0705c0cf01062aaa376e3bb9bba9c18af8ed96931bd23551d2"
+      url "https://github.com/superg/redumper/releases/download/b771/redumper-b771-macos-x64.zip"
+      sha256 "c8b9de05bc6ee84ccfeb536192f02e0602852d165bb9ee3a3f9c4c02b609c4b3"
     end
   end
 
