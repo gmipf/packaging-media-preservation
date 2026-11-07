@@ -11,7 +11,7 @@
 %global _build_id_links none
 
 Name:           redumper
-Version:        771
+Version:        772
 Release:        0
 Summary:        A low-level byte-perfect CD disc dumper
 
@@ -128,6 +128,9 @@ EOF
 %{_mandir}/man1/redumper.1*
 
 %changelog
+* Sat Nov 07 2026 gmipf <gmipf64@gmail.com> - 772-0
+- Automated sync to upstream redumper release b772.
+
 * Thu Nov 05 2026 gmipf <gmipf64@gmail.com> - 771-0
 - Automated sync to upstream redumper release b771.
 
