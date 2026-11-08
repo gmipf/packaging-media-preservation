@@ -12,8 +12,8 @@
 # SIGSEGV fix (#328) -- that the tag lacks. watch-dic-releases.yml rewrites
 # dicsnap / diccommit on every new master commit; diccommit is the full SHA
 # used for the source archive.
-%global dicsnap      20260913144738.9269234a
-%global diccommit    9269234aab5042d4cfe2e62374a8fa1ab31e98df
+%global dicsnap      20261108082222.6262494f
+%global diccommit    6262494f9f033d0a94fdf05860e460b9414b3f26
 # The three helpers track master as well (their release tags lagged behind:
 # EccEdc 20240901 lacked two fixes master has). The watcher re-pins them; the
 # same pins stand in the other spec and in debian/rules, and
@@ -35,7 +35,7 @@
 
 Name:           discimagecreator
 Version:        %{dicsnap}
-Release:        3%{?dist}
+Release:        1%{?dist}
 Summary:        Low-level disc dumper plus EccEdc / DVDAuth / unscrambler helpers
 License:        Apache-2.0 AND GPL-3.0-or-later AND GPL-2.0-or-later
 URL:            https://github.com/saramibreak/DiscImageCreator
@@ -273,6 +273,10 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
 %{_udevrulesdir}/70-discimagecreator-floppy.rules
 
 %changelog
+* Sun Nov 08 2026 gmipf <gmipf64@gmail.com> - 20261108082222.6262494f-1
+- Automated master-snapshot sync to upstream DiscImageCreator commit
+  6262494f (committed 20261108082222 UTC); Release reset to 1.
+
 * Wed Oct 14 2026 gmipf <gmipf64@gmail.com> - 20260913144738.9269234a-3
 - Build EccEdc, DVDAuth and unscrambler from their master commits, like DIC
   itself, instead of their release tags; watch-dic-releases follows all four.
