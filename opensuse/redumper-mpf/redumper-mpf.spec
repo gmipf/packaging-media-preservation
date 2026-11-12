@@ -27,7 +27,7 @@
 # same build. The rolling package moves on its own; MPF has no version check and
 # would silently dump with an untested build. This pin always matches what MPF
 # bundles, because a watcher keeps its version equal to publish-nix.sh.
-%global rdbuild 767
+%global rdbuild 772
 
 Name:           redumper-mpf
 Version:        %{rdbuild}
@@ -163,6 +163,9 @@ EOF
 %{_datadir}/permissions/permissions.d/redumper-mpf
 
 %changelog
+* Thu Nov 12 2026 gmipf <gmipf64@gmail.com> - 772-0
+- Automated: consumer moved its bundled redumper build b772; the pin follows.
+
 * Sat Oct 17 2026 gmipf <gmipf64@gmail.com> - 767-0
 - Automated: consumer moved its bundled redumper build b767; the pin follows.
 

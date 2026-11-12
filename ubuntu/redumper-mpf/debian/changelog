@@ -1,3 +1,9 @@
+redumper-mpf (772-1) UNRELEASED; urgency=medium
+
+  * Automated: consumer moved its bundled redumper build b772; the pin follows.
+
+ -- gmipf <gmipf64@gmail.com>  Thu, 12 Nov 2026 17:44:25 +0000
+
 redumper-mpf (767-1) UNRELEASED; urgency=medium
 
   * Automated: consumer moved its bundled redumper build b767; the pin follows.
