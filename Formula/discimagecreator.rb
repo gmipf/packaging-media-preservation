@@ -9,9 +9,9 @@
 class Discimagecreator < Formula
   desc "Low-level disc dumper plus EccEdc / DVDAuth / unscrambler helpers"
   homepage "https://github.com/saramibreak/DiscImageCreator"
-  url "https://github.com/saramibreak/DiscImageCreator/archive/7afacae44d1c541a25161984eb0b611182d99e6e.tar.gz"
-  version "20261108153824.7afacae4"
-  sha256 "587f265bf4ecbef210fabb05365db271590de85f7965a2f6ece709628fdb9047"
+  url "https://github.com/saramibreak/DiscImageCreator/archive/5b0ea25ea385804914a9a9c36ac89c18d6af8b5f.tar.gz"
+  version "20261114161746.5b0ea25e"
+  sha256 "5970a69cf189d974c80579fd9afa9634e7e7782aa80f5520608815a48fcb5de5"
   license all_of: ["Apache-2.0", "GPL-3.0-or-later", "GPL-2.0-or-later"]
 
   depends_on "pkgconf" => :build

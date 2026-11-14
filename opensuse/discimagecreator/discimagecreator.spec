@@ -6,8 +6,8 @@
 # plus short SHA: dicsnap = <YYYYMMDDHHMMSS>.<short-SHA>. watch-dic-releases
 # rewrites dicsnap / diccommit on every new master commit; diccommit is the
 # full SHA used for the source archive.
-%global dicsnap      20261108153824.7afacae4
-%global diccommit    7afacae44d1c541a25161984eb0b611182d99e6e
+%global dicsnap      20261114161746.5b0ea25e
+%global diccommit    5b0ea25ea385804914a9a9c36ac89c18d6af8b5f
 # The three helpers track master as well (their release tags lagged behind:
 # EccEdc 20240901 lacked two fixes master has). The watcher re-pins them; the
 # same pins stand in the other spec and in debian/rules, and
@@ -288,6 +288,9 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
 %{_datadir}/permissions/permissions.d/discimagecreator
 
 %changelog
+* Sat Nov 14 2026 gmipf <gmipf64@gmail.com> - 20261114161746.5b0ea25e-0
+- Automated master-snapshot sync to upstream DiscImageCreator commit 5b0ea25e (committed 20261114161746 UTC).
+
 * Sun Nov 08 2026 gmipf <gmipf64@gmail.com> - 20261108153824.7afacae4-0
 - Automated master-snapshot sync to upstream DiscImageCreator commit 7afacae4 (committed 20261108153824 UTC).
 
