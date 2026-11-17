@@ -106,6 +106,13 @@ if f'<repository name="{name}"' in meta:
           file=sys.stderr)
     sys.exit(2)
 
+# The inventory spells a Leap repository openSUSE_Leap_<version> while OBS calls
+# it <version>: check-distro-lifecycle.sh finds our Leap targets by that word,
+# and obs-health.py maps the spelling back (obs_repo()). A row written as the bare
+# "16.1" would leave the lifecycle check red with the repository in place.
+tsv_name = (f"openSUSE_Leap_{name}"
+            if up_prj.startswith("openSUSE:Leap:") and re.fullmatch(r"\d+\.\d+", name) else name)
+
 # --- 1. the floor decides whether the Rust package ships there ------------------
 # NOT "add it as ship and see": a new row marked ship with a LOWER rustc would drag
 # the derived floor down, and msrv-sync.sh would then lower BuildRequires in every
@@ -118,6 +125,10 @@ for line in tsv_lines:
     if line.startswith("#") or not line.strip():
         continue
     f = line.split("\t")
+    if len(f) >= 2 and f[0] == "obs" and f[1] == tsv_name:
+        print(f"ERROR: {targets_p} already has a row for {tsv_name}. Nothing was written.",
+              file=sys.stderr)
+        sys.exit(2)
     if len(f) >= 4 and f[3] == "ship":
         rows.append(f[2])
 floor = min(rows, key=vt)
@@ -131,11 +142,25 @@ status = "ship" if ships else "out"
 # package, rpm ones are not -- and reading it off the live project means a change
 # in that convention cannot silently invalidate this script.
 family = up_prj.split(":")[0]
-sib_of_family = []
+
+
+def shared(a, b):
+    """How many leading :-components two OBS project names have in common."""
+    n = 0
+    for x, y in zip(a.split(":"), b.split(":")):
+        if x != y:
+            break
+        n += 1
+    return n
+
+
+sibs = {}   # repository name -> (its block, closeness of its upstream to up_prj)
 for block in re.findall(r"<repository name=\"[^\"]+\">.*?</repository>", meta, re.S):
     rn = re.search(r'name="([^"]+)"', block).group(1)
-    if re.search(rf'<path project="{re.escape(family)}:', block):
-        sib_of_family.append(rn)
+    paths = re.findall(r'<path project="([^"]+)"', block)
+    if any(p.split(":")[0] == family for p in paths):
+        sibs[rn] = (block, max(shared(p, up_prj) for p in paths))
+sib_of_family = list(sibs)
 
 disabled = set(re.findall(r'<build>.*?</build>', meta, re.S))
 proj_disabled = set(re.findall(r'<disable repository="([^"]+)"/>', "".join(disabled)))
@@ -160,17 +185,23 @@ if needs_project_disable:
 else:
     enable_in, skipped = [], []
 
-arches = re.findall(r"<arch>([^<]+)</arch>",
-                    re.search(rf'<repository name="{re.escape(sib_of_family[0])}">.*?</repository>',
-                              meta, re.S).group(0)) if sib_of_family else ["x86_64", "aarch64"]
+# Arches from the CLOSEST sibling, not the first one of the family: openSUSE's
+# first is openSUSE_Tumbleweed_ARM (openSUSE:Factory:ARM, aarch64 only), and a
+# Leap 16.1 copied from it would have lost x86_64. Closest = the longest shared
+# :-prefix with the new upstream (openSUSE:Leap:16.0 for openSUSE:Leap:16.1);
+# on a tie the first in the meta, as before.
+closest = max(sib_of_family, key=lambda n: sibs[n][1]) if sib_of_family else None
+arches = (re.findall(r"<arch>([^<]+)</arch>", sibs[closest][0]) if closest
+          else ["x86_64", "aarch64"])
 
 block = (f'  <repository name="{name}">\n'
          f'    <path project="{up_prj}" repository="{up_repo}"/>\n'
          + "".join(f"    <arch>{a}</arch>\n" for a in arches)
          + "  </repository>\n")
 
-print(f"repository   {name}  ->  {up_prj}/{up_repo}   arches: {', '.join(arches)}")
-print(f"rust floor   {floor} (derived) vs measured {rustc}  ->  rust-targets.tsv row `{status}`")
+arch_from = f"as {closest}" if closest else "no sibling: default"
+print(f"repository   {name}  ->  {up_prj}/{up_repo}   arches: {', '.join(arches)}  ({arch_from})")
+print(f"rust floor   {floor} (derived) vs measured {rustc}  ->  rust-targets.tsv row {tsv_name} `{status}`")
 print(f"project      {'add <disable> (this lane is per-package enabled)' if needs_project_disable else 'no project-level disable (rpm-style lane)'}")
 if enable_in:
     print(f"packages     enable in {len(enable_in)}: {', '.join(enable_in)}")
@@ -194,7 +225,7 @@ if not apply_:
     print("--- project meta (dry run, nothing written) ---")
     print(new_meta)
     print("--- rust-targets.tsv row ---")
-    print("\t".join(["obs", name, rustc, status, datetime.date.today().isoformat(),
+    print("\t".join(["obs", tsv_name, rustc, status, datetime.date.today().isoformat(),
                      "added with scripts/obs/add-repo.sh"]))
     if enable_in:
         print(f"--- and <enable repository=\"{name}\"/> in {len(enable_in)} package metas ---")
@@ -239,7 +270,7 @@ for p in enable_in:
     print(f"  {p}: enabled")
 
 # --- 5. the inventory row, in the same operation -------------------------------
-row = "\t".join(["obs", name, rustc, status, datetime.date.today().isoformat(),
+row = "\t".join(["obs", tsv_name, rustc, status, datetime.date.today().isoformat(),
                  "added with scripts/obs/add-repo.sh"])
 last = max(i for i, l in enumerate(tsv_lines) if l.startswith("obs\t"))
 tsv_lines.insert(last + 1, row)

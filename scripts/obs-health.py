@@ -54,6 +54,7 @@ Not measured is not fine: an OBS that does not answer, an answer that is not the
 document asked for, or a git that cannot fetch is an ERROR too.
 """
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -75,10 +76,15 @@ GOOD = {"succeeded", "disabled", "excluded", "locked"}
 BUSY = {"building", "scheduled", "blocked", "dispatching", "signing", "finished",
         "unknown", "outdated", "unpublished"}
 RUST_PKG = "redumper-gui"
-# rust-targets.tsv spells one OBS repository differently. The aliases are checked
-# against the repositories OBS reports, so a rotten one cannot quietly turn an
+# rust-targets.tsv spells Leap repositories openSUSE_Leap_<version>, OBS names
+# them <version> (check-distro-lifecycle.sh finds our Leap targets by the word,
+# and scripts/obs/add-repo.sh writes new rows that way). A rule, not a list: a
+# one-entry list would have missed the next Leap. The result is checked against
+# the repositories OBS reports, so a rotten spelling cannot quietly turn an
 # expected failure into an unexpected one, or the other way round.
-ALIAS = {"openSUSE_Leap_16.0": "16.0"}
+def obs_repo(target):
+    m = re.fullmatch(r"openSUSE_Leap_(\d+\.\d+)", target)
+    return m[1] if m else target
 
 
 def git(*args):
@@ -103,7 +109,7 @@ def inventory(path):
                 continue
             f = line.rstrip("\n").split("\t")
             if len(f) >= 4 and f[0] == "obs":
-                inv[ALIAS.get(f[1], f[1])] = f[3]
+                inv[obs_repo(f[1])] = f[3]
     if not inv:
         raise ValueError(f"{path} has no obs rows")
     return inv

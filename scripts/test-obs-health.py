@@ -123,6 +123,20 @@ for label, doc, pkg, expect in P:
     check(f"published: {label}", h.published(doc, pkg), expect)
 
 
+# --- inventory: the TSV's spelling against OBS's repository names ----------------
+# A one-entry alias list knew 16.0 only; Leap 16.1 is the case that broke it.
+with tempfile.TemporaryDirectory() as tmp:
+    tsv = pathlib.Path(tmp, "targets.tsv")
+    tsv.write_text("# lane\ttarget\trustc\tstatus\n"
+                   "copr\tepel-8\t1.92\tship\t-\t-\n"
+                   "obs\topenSUSE_Leap_16.0\t1.96\tship\t-\t-\n"
+                   "obs\topenSUSE_Leap_16.1\t1.97\tship\t-\t-\n"
+                   "obs\txUbuntu_24.04\t1.75\tout\t-\t-\n")
+    check("inventory: openSUSE_Leap_<v> is OBS's <v>, other names as they are", h.inventory(str(tsv)),
+          {"16.0": "ship", "16.1": "ship", "xUbuntu_24.04": "out"})
+check("obs_repo: Tumbleweed is not a Leap", h.obs_repo("openSUSE_Tumbleweed"), "openSUSE_Tumbleweed")
+
+
 # --- an answer must be the document asked for -------------------------------------
 with tempfile.TemporaryDirectory() as tmp:
     pathlib.Path(tmp, "html").write_text("<html><body>maintenance</body></html>\n")
