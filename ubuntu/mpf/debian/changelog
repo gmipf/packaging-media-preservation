@@ -1,3 +1,9 @@
+mpf (3.11.1~20261116200713.fa305478-3) UNRELEASED; urgency=medium
+
+  * Wrappers: below glibc 2.34 keep log compression off and refuse to run MPF on a log archive (*_logs.zip), named or lying next to the input; the libGrindCore MPF bundles for them needs glibc 2.34. The config is now always $HOME/.config/mpf, the one MPF reads.
+
+ -- gmipf <gmipf64@gmail.com>  Tue, 17 Nov 2026 02:45:00 +0000
+
 mpf (3.11.1~20261116200713.fa305478-2) UNRELEASED; urgency=medium
 
   * Repackage the net11.0 debug zips: since 2026-11-13 MPF rolling carries no other Linux build, and the net10.0 release zips are gone.

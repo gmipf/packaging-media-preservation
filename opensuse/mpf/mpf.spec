@@ -306,13 +306,20 @@ install -m 0755 gui/MPF %{buildroot}%{_libdir}/mpf-gui/MPF.Avalonia
 #                              exists), and reset DefaultOutputPath IFF it
 #                              is empty or relative; an absolute path the
 #                              user chose is kept
+#   * glibc older than 2.34 -> keep CompressLogFiles off and refuse to run
+#                              MPF on a log archive (*_logs.zip): the library
+#                              MPF handles them with needs 2.34, and Enterprise
+#                              Linux 8 has 2.28 (MPF-GLIBC-GUARD in the script)
+# The config lives in $HOME/.config/mpf, where MPF reads it; MPF ignores
+# XDG_CONFIG_HOME, so the wrapper does too.
 # Atomicity: heal writes to a sibling tmp file via mktemp + mv so a
 # crashed jq never leaves a half-written config behind.
 install -d %{buildroot}%{_bindir}
 
-# All three wrappers share the same seed/heal preamble; only the exec
-# target differs. We generate them in a small loop to keep the spec
-# DRY — the heredoc body is reused verbatim.
+# All three wrappers are one script with a different exec target, written
+# in a loop. The heredoc body is generated from the Debian lane's template
+# ubuntu/mpf/debian/mpf-wrapper.in by scripts/mpf-wrapper-sync.py, and
+# lint.sh fails when they differ: edit the template, never the heredoc.
 for pair in \
     "mpf-check:/usr/lib64/mpf-check/MPF.Check" \
     "mpf-cli:/usr/lib64/mpf-cli/MPF.CLI" \
@@ -321,21 +328,72 @@ for pair in \
     target=${pair#*:}
     cat > %{buildroot}%{_bindir}/$name <<EOF
 #!/bin/sh
-config_dir="\${XDG_CONFIG_HOME:-\$HOME/.config}/mpf"
+# MPF launcher wrapper. Seeds AND heals ~/.config/mpf/config.json so the four
+# dumper-path keys and the output path are always present and usable. Bare tool
+# names are seeded (aaru5, DiscImageCreator.out, dreamdump, redumper-mpf): MPF resolves a bare
+# name through its runtime directory and \$PATH, so the config stays valid
+# wherever the distro installs the dumpers and keeps working after the user
+# deletes config.json. The exec target at the end is filled in per role when
+# the package is built. The RPM specs write this same script from a heredoc;
+# edit only this file, then run scripts/mpf-wrapper-sync.py write.
+#
+# The same mismatch applies to DefaultOutputPath, whose upstream default is the
+# RELATIVE "ISO". For the portable Windows bundle that means "an ISO folder next
+# to the executable"; in a /usr-tree install there is no such place, and a
+# relative path resolves against the process's working directory instead -- so
+# dumps land wherever the app happened to be started from, and the Browse dialog
+# opens there. We point it at an absolute directory in the user's home; MPF
+# creates it on the first dump.
+#
+# MPF reads \$HOME/.config/mpf/config.json on Linux and ignores XDG_CONFIG_HOME
+# (OptionsLoader.GetUserConfigurationPath), so the wrapper writes there too: a
+# seed under a custom XDG_CONFIG_HOME would never be read.
+config_dir="\$HOME/.config/mpf"
 config="\$config_dir/config.json"
+# Two of the three backends are PINNED to the build MPF bundles, and are named
+# after it. Never seed the rolling \`redumper\` here -- not even while it carries
+# the same build (it does today): the rolling package moves, MPF has no version
+# check, and an untested dumper build would go unnoticed. dic is deliberately not
+# pinned (its CLI surface is frozen). See debian/control and scripts/status.sh.
 aaru_p=aaru5
 dic_p=DiscImageCreator.out
 red_p=redumper-mpf
 dd_p=dreamdump
-# Without a HOME there is no sane home-relative output directory; leave the
-# key alone rather than rewriting it to a root-owned "/ISO".
+# Without a HOME there is no sane home-relative output directory; leave the key
+# alone rather than rewriting it to a root-owned "/ISO".
 out_p=""
 [ -n "\$HOME" ] && out_p="\$HOME/ISO"
 mkdir -p "\$config_dir" 2>/dev/null
 
-# Does a configured tool value resolve the way MPF (#979) resolves it? A
-# value containing a separator must exist as a file; a bare name must be
-# found on \$PATH (command -v mirrors MPF's runtime-dir + \$PATH lookup).
+# MPF-GLIBC-GUARD: MPF writes and reads its log archives (*_logs.zip) through
+# the libGrindCore it bundles, which needs glibc 2.34 or newer. On an older
+# glibc (Enterprise Linux 8 has 2.28) that library does not load, and MPF fails
+# two ways (measured on AlmaLinux 8, 2026-11-17): compressing the logs prints
+# FAILURE and leaves an empty _logs.zip; extracting an archive writes every
+# file from it as 0 bytes, over the logs already in the folder, and still
+# reports SUCCESS. Below that glibc the
+# wrapper keeps log compression off in the config and refuses to run MPF on an
+# archive.
+grind_glibc=34
+glibc=\$(getconf GNU_LIBC_VERSION 2>/dev/null)
+glibc=\${glibc#glibc }
+grind_ok=1
+case "\$glibc" in
+    2.*)
+        gmin=\${glibc#2.}
+        gmin=\${gmin%%%%.*}
+        case "\$gmin" in
+            ''|*[!0-9]*) ;;
+            *) [ "\$gmin" -lt "\$grind_glibc" ] && grind_ok=0 ;;
+        esac
+        ;;
+esac
+cl_seed=""
+[ "\$grind_ok" = 0 ] && cl_seed='
+  "CompressLogFiles": "False",'
+
+# Does a configured tool value resolve the way MPF resolves it? A value with a
+# separator must exist as a file; a bare name must be found on \$PATH.
 resolves() {
     case "\$1" in
         "")  return 1 ;;
@@ -344,16 +402,16 @@ resolves() {
     esac
 }
 
-# The output path must be absolute: a relative one resolves against the
-# working directory, which for a /usr-installed app is wherever it was
-# started from. The directory need not exist -- MPF creates it.
+# The output path must be absolute: a relative one resolves against the working
+# directory, which for a /usr-installed app is wherever it was started from. The
+# directory need not exist -- MPF creates it.
 is_abs() {
     case "\$1" in /*) return 0 ;; *) return 1 ;; esac
 }
 
 if [ ! -s "\$config" ]; then
     cat > "\$config" <<JSON
-{
+{\$cl_seed
   "AaruPath": "\$aaru_p",
   "DiscImageCreatorPath": "\$dic_p",
   "DreamdumpPath": "\$dd_p",
@@ -367,30 +425,87 @@ elif command -v jq >/dev/null 2>&1; then
     cr=\$(jq -r '.RedumperPath // ""' "\$config" 2>/dev/null)
     cdd=\$(jq -r '.DreamdumpPath // ""' "\$config" 2>/dev/null)
     co=\$(jq -r '.DefaultOutputPath // ""' "\$config" 2>/dev/null)
-    fa=0; fd=0; fr=0; fdd=0; fo=0
+    ccl=\$(jq -r '.CompressLogFiles | if . == null then "" else tostring end' "\$config" 2>/dev/null)
+    fa=0; fd=0; fr=0; fdd=0; fo=0; fcl=0
     resolves "\$ca"  || fa=1
     resolves "\$cd_" || fd=1
     resolves "\$cr"  || fr=1
     resolves "\$cdd" || fdd=1
     [ -n "\$out_p" ] && { is_abs "\$co" || fo=1; }
-    if [ \$((fa + fd + fr + fdd + fo)) -gt 0 ]; then
+    # MPF parses the value case-insensitively; a missing key means "on".
+    if [ "\$grind_ok" = 0 ]; then
+        case "\$ccl" in [Ff][Aa][Ll][Ss][Ee]) ;; *) fcl=1 ;; esac
+    fi
+    if [ \$((fa + fd + fr + fdd + fo + fcl)) -gt 0 ]; then
         tmp=\$(mktemp -p "\$config_dir" .config.json.XXXXXX 2>/dev/null)
         if [ -n "\$tmp" ] && jq \\
             --arg ap "\$aaru_p" --arg dp "\$dic_p" --arg rp "\$red_p" --arg ddp "\$dd_p" \\
             --arg op "\$out_p" \\
             --argjson fa "\$fa" --argjson fd "\$fd" --argjson fr "\$fr" --argjson fdd "\$fdd" \\
-            --argjson fo "\$fo" '
+            --argjson fo "\$fo" --argjson fcl "\$fcl" '
             (if \$fa == 1 then .AaruPath = \$ap else . end)
             | (if \$fd == 1 then .DiscImageCreatorPath = \$dp else . end)
             | (if \$fr == 1 then .RedumperPath = \$rp else . end)
             | (if \$fdd == 1 then .DreamdumpPath = \$ddp else . end)
             | (if \$fo == 1 then .DefaultOutputPath = \$op else . end)
+            | (if \$fcl == 1 then .CompressLogFiles = "False" else . end)
             ' "\$config" > "\$tmp" 2>/dev/null; then
-            mv "\$tmp" "\$config"
+            if mv "\$tmp" "\$config" && [ "\$fcl" = 1 ]; then
+                echo "\${0##*/}: turned log compression off in \$config: MPF cannot compress logs with glibc \$glibc (it needs 2.\$grind_glibc)." >&2
+            fi
         else
             [ -n "\$tmp" ] && rm -f "\$tmp"
         fi
     fi
+fi
+
+# Refuse to hand MPF a log archive it cannot read (MPF-GLIBC-GUARD above). MPF
+# extracts <name>_logs.zip whenever it lies next to the file it is given, not
+# only when the archive itself is the argument. MPF extracts the entries the
+# archive's end record lists; one that lists none is what MPF leaves when
+# compression fails (77 bytes on AlmaLinux 8: a file header, no entry), and
+# extracting it writes nothing. An archive whose last 22 bytes are not such an
+# end record (a comment, or no zip at all) counts as one with entries.
+if [ "\$grind_ok" = 0 ]; then
+    me=\${0##*/}
+    mpf_target=$target
+    for a in "\$@"; do
+        case "\$a" in
+            -z|--zip)
+                case "\$mpf_target" in
+                    */MPF.Check)
+                        echo "\$me: not running: -z/--zip makes MPF compress the logs, which needs glibc 2.\$grind_glibc (this system has \$glibc); MPF would leave an empty _logs.zip. Run it without -z." >&2
+                        exit 1 ;;
+                esac
+                continue ;;
+            -*=*) a=\${a#*=} ;;
+            -*) continue ;;
+        esac
+        d=""
+        case "\$a" in */*) d=\${a%%/*}/ ;; esac
+        f=\${a##*/}
+        case "\$f" in
+            *_[Ll][Oo][Gg][Ss].[Zz][Ii][Pp])
+                z=\$a
+                todo="Extract it with unzip, move it out of the folder, and run \$me on the extracted files." ;;
+            *)
+                case "\$f" in *.*) f=\${f%%.*} ;; esac
+                z="\$d\${f}_logs.zip"
+                todo="Move it out of the folder (extract it with unzip first if the logs exist only in there) and run \$me again." ;;
+        esac
+        [ -f "\$z" ] || continue
+        case "\$(tail -c 22 "\$z" 2>/dev/null | od -An -tx1 | tr -d ' \\n')" in
+            504b0506????????00000000*) continue ;;
+        esac
+        cat >&2 <<MSG
+\$me: not running: MPF would extract \$z,
+but the library it reads log archives with needs glibc 2.\$grind_glibc and this
+system has \$glibc. MPF would write every file from the archive as 0 bytes, over
+any copy already in the folder, and still report SUCCESS.
+\$todo
+MSG
+        exit 1
+    done
 fi
 
 exec $target "\$@"
@@ -479,6 +594,9 @@ install -m 0644 %{SOURCE6} %{buildroot}%{_mandir}/man1/mpf-gui.1
 %{_datadir}/icons/hicolor/*/apps/mpf.png
 
 %changelog
+* Tue Nov 17 2026 gmipf <gmipf64@gmail.com> - 3.11.1~20261116200713.fa305478-0
+- Wrappers: below glibc 2.34 keep log compression off and refuse to run MPF on a log archive (*_logs.zip), named or lying next to the input; the libGrindCore MPF bundles for them needs glibc 2.34. The config is now always $HOME/.config/mpf, the one MPF reads.
+
 * Tue Nov 17 2026 gmipf <gmipf64@gmail.com> - 3.11.1~20261116200713.fa305478-0
 - Repackage the net11.0 debug zips: since 2026-11-13 MPF rolling carries no other Linux build, and the net10.0 release zips are gone.
 

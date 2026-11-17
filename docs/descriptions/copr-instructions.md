@@ -15,6 +15,8 @@ sudo dnf install epel-release
 
 `mpf` is a meta-package; it pulls in `mpf-check` (log validator + Redump !submissionInfo.txt writer), `mpf-cli` (headless dump orchestrator) and `mpf-gui` (Avalonia desktop frontend). Install the individual subpackages if you only need part of it, e.g. `sudo dnf install mpf-check`. Launch the GUI via `mpf-gui` or the **MPF** desktop entry.
 
+On Enterprise Linux 8, MPF cannot compress or read its log archives (`*_logs.zip`): the library it uses for them needs glibc 2.34, and EL8 has 2.28. Reading one there writes its files as 0 bytes over the logs next to it, and MPF reads an archive whenever it lies next to the dump. The `mpf-*` commands keep log compression off on EL8, and `mpf-check`/`mpf-cli` refuse to run on such an archive or next to one. In `mpf-gui`, do not check a dump that has a `_logs.zip` next to it.
+
 `aaru5` is the version-pinned stable Aaru 5.4 CLI that MPF drives; it installs as `/usr/bin/aaru5` and co-exists with the rolling `aaru` v6.
 
 `dreamdump` dumps the high-density area of Sega Dreamcast GD-ROMs and follows the release MPF bundles; the packaged MPF finds it on its own. It needs a drive that can read that area: upstream's record of tested drives is in `man dreamdump`.

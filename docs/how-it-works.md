@@ -210,6 +210,19 @@ them (measured on AlmaLinux 9; the `epel-N` buildroot carries EPEL, which is why
 the packages build regardless). The COPR `dnf` plugin itself lives in
 `dnf-plugins-core` and is in the base repos. Fedora needs no extra repository.
 
+**MPF on Enterprise Linux 8** cannot compress or read its log archives
+(`*_logs.zip`): the library it uses for them (libGrindCore, bundled in MPF)
+needs glibc 2.34, and EL8 has 2.28. MPF does not say so. Compressing the logs
+leaves an empty archive, and reading one writes every file from it as 0 bytes,
+over the logs already in the folder, while MPF reports success (measured on
+AlmaLinux 8). MPF reads an archive whenever it lies next to the dump it checks.
+The `mpf-check`, `mpf-cli` and `mpf-gui` commands therefore check the glibc at
+every start. Below 2.34 they keep log compression off in MPF's config, and the
+command-line tools refuse to run MPF on an archive or on a file that has one
+next to it. The GUI's own file dialogs are out of their reach: on EL8, do not
+check a dump in `mpf-gui` that has a `_logs.zip` next to it. Every other
+distribution here has glibc 2.34 or newer.
+
 **One `debian/` recipe serves every Ubuntu and Debian release.** An Ubuntu `.deb`
 does not fit Debian, because the ICU runtime carries its soname in the package
 name (`libicu70` on jammy vs `libicu72` on bookworm), so the dependency is

@@ -35,6 +35,8 @@
 #                   still ships has lost its recipe (changelog-check.py)
 #   DIC helpers     EccEdc, DVDAuth and unscrambler pinned to the same commits in
 #                   both specs and debian/rules (dic-helpers.sh check)
+#   mpf wrappers    both specs' wrapper heredoc is the Debian template
+#                   ubuntu/mpf/debian/mpf-wrapper.in (mpf-wrapper-sync.py check)
 #   texts           every package named in each text of its lanes, every lane
 #                   and formula in the README, every workflow in how-it-works
 #                   (texts-check.py offline; the live half runs in check-repo.yml)
@@ -198,6 +200,15 @@ fi
 # never delivered, and OBS goes red only after the push.
 if out=$(bash scripts/dic-helpers.sh check 2>&1); then ok "$out"
 else bad "DIC helpers:"; printf '%s\n' "$out" >&2; fi
+
+# --- mpf wrappers -------------------------------------------------------------
+# One launcher script, three copies: the Debian template and a heredoc in each
+# spec. A fix made in one copy alone ships to one lane, and every lane still
+# builds green.
+if have python3; then
+    if out=$(python3 scripts/mpf-wrapper-sync.py check 2>&1); then ok "$out"
+    else bad "mpf wrappers:"; printf '%s\n' "$out" >&2; fi
+fi
 
 # --- CHANGELOG.md -------------------------------------------------------------
 # The log says which package reached which distribution when. No watcher adds or
