@@ -1,5 +1,5 @@
 %global mpfver         3.11.1
-%global mpfsnap        20261117133608.938030d8
+%global mpfsnap        20261117144819.737d4bce
 %global rolltag        rolling
 # Which build of the rolling release we repackage, as it appears in the asset
 # names (MPF.Check_<mpfnet>_linux-x64_<mpfcfg>.zip). Since MPF 207dedba
@@ -16,12 +16,12 @@
 # %%prep fails on any other zip. Written by watch-mpf-rolling.yml through
 # scripts/mpf-pins.py, together with the Fedora spec and debian/rules; lint.sh
 # fails when the three differ.
-%global mpfsha_check_x64    68489f5fb64e6766eefb409b62bb9274f12241e824913f99491ed7656e50dd29
-%global mpfsha_cli_x64      83823dc0c58ac423cb89ced475ad981360b55064feddbe6c062311d971f46630
-%global mpfsha_gui_x64      8cf7753dba3b7a6fc1884a00176b57fd4b4bb002985d676c8df26998e06cbf18
-%global mpfsha_check_arm64  9a9b30d16f8c2592ca92f230fc0524f5f78ecc734d528a6fbc2c4b5557baeb42
-%global mpfsha_cli_arm64    235261c9112ddbe50103e9d8eda978a44716ef03468a101cc9d4a5fd98eb7cb9
-%global mpfsha_gui_arm64    7692aad01230b3af1b0a977361164885c19449cc7ddd12ab06fdba60389cb3be
+%global mpfsha_check_x64    eb18226291deeb6f0d0125fa1669b18ac5380dd4b3f8b28d77231eb6c0f8aa74
+%global mpfsha_cli_x64      65bf8e63d5baa7fd260434b0cfb28e8314de0c58a3ff8564ec6adbe064f542cc
+%global mpfsha_gui_x64      8b460aabfa0abf3e29cf863d8f00f1fe5098f2359eecb25b5fe3c42f7acd54a5
+%global mpfsha_check_arm64  9d017c6a23ce04a0c76acdef7bade5733021c52d99865bfa3c73027781f9694a
+%global mpfsha_cli_arm64    3c384867f61b4b969a70f47aac1bb70df8d0efe0a68c701988a38b376a9d3857
+%global mpfsha_gui_arm64    9a320aba4fe3e9fe88577b6cd66c50be12758afc1560f461cf55b2d56b73c7be
 
 %global debug_package      %{nil}
 %global __strip            /bin/true
@@ -619,6 +619,9 @@ install -m 0644 %{SOURCE6} %{buildroot}%{_mandir}/man1/mpf-gui.1
 %{_datadir}/icons/hicolor/*/apps/mpf.png
 
 %changelog
+* Tue Nov 17 2026 gmipf <gmipf64@gmail.com> - 3.11.1~20261117144819.737d4bce-0
+- Automated rolling-snapshot sync to upstream MPF commit 737d4bce (published 20261117144819 UTC).
+
 * Tue Nov 17 2026 gmipf <gmipf64@gmail.com> - 3.11.1~20261117133608.938030d8-0
 - Automated rolling-snapshot sync to upstream MPF commit 938030d8 (published 20261117133608 UTC).
 
