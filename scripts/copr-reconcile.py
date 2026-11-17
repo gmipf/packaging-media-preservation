@@ -28,19 +28,32 @@ same evaluation Packit uses) against the builds COPR has for that package.
             be on its way to Packit
   heal      COPR has NO build of main's NEVRA at all, in any state: the trigger
             branch is pushed again (main's tree + the branch's own README)
-  ERROR     needs a look, and is never retried here:
+  reheal    our own earlier re-push of this exact tree produced no build and is
+            RETRY_AFTER old: pushed again, and the run is still red
+  ERROR     needs a look:
             - a build of main's NEVRA failed or was cancelled (a failed build
               can still have published some chroots, so a rebuild of the same
               NEVRA could swap packages under dnf's feet -- the same reason
-              build-tool.sh bumps the Release instead)
-            - COPR's latest success is NEWER than main
-            - our own earlier re-push of this exact tree produced no build
+              build-tool.sh bumps the Release instead); never retried here
+            - COPR's latest success is NEWER than main; never retried here
+            - our own earlier re-push of this exact tree produced no build and
+              is younger than RETRY_AFTER (then: reheal)
             - COPR or git did not answer (not measurable is not "fine")
 
+Why reheal exists: from 2026-11-14 ~17:00 to 2026-11-16 ~20:00 UTC Packit
+answered no push from a workflow (watcher pushes and our re-pushes alike), while
+it did answer before and after. The one re-push this script allowed itself fell
+into that window, so redumper, redumper-rgui and redumper-gui stayed unbuilt,
+red every run, until a person pushed them. A re-push that produced nothing is
+still a finding -- reheal never turns a run green -- but it no longer ends the
+automation.
+
 It only ever pushes a version that COPR has never seen, so it cannot publish the
-same NEVRA twice. Exit status: 1 if any package is ERROR (or a heal push failed).
+same NEVRA twice. Exit status: 1 if any package is ERROR or reheal (or a heal
+push failed).
 """
 import argparse
+import functools
 import json
 import os
 import subprocess
@@ -60,6 +73,10 @@ REF = "origin/main"
 # needs a few minutes to submit. An hour keeps us clear of that window, which is
 # what makes a duplicate submission of the same NEVRA impossible.
 GRACE = 3600
+# How long our own re-push may sit without a build before it is pushed again.
+# Not every run: a push that keeps producing nothing would just repeat every six
+# hours. A day lets an outage end and still heals the day after.
+RETRY_AFTER = 24 * 3600
 IN_FLIGHT = {"importing", "pending", "starting", "running", "waiting"}
 HEAL_SUBJECT = "reconcile:"
 
@@ -150,18 +167,39 @@ def judge(pkg, branch, pkgdir, spec, tmp, now):
 
     # The trigger branch already carries this tree: someone pushed it (a watcher
     # late, a human, or we ourselves on an earlier run). Recently -> wait for
-    # Packit, never push twice. Long ago, and it was OUR re-push -> pushing yet
-    # again would just repeat that every run, green and useless.
+    # Packit, never push twice. It was OUR re-push and it produced nothing ->
+    # red; pushed again only once it is RETRY_AFTER old, never every run.
     tip_time, tip_subject = git("log", "-1", "--format=%ct%n%s", f"origin/{branch}").split("\n", 1)
     tip_age = now - int(tip_time)
     if git("rev-parse", f"origin/{branch}:{pkgdir}") == git("rev-parse", f"{REF}:{pkgdir}"):
         if tip_age < GRACE:
             return "fresh", f"{branch} got this tree {tip_age // 60} min ago, waiting for Packit", want
         if tip_subject.startswith(HEAL_SUBJECT):
-            return "ERROR", (f"{branch} was re-pushed for {want} at "
-                             f"{time.strftime('%Y-%m-%d %H:%M UTC', time.gmtime(int(tip_time)))} "
-                             "and Packit never submitted a COPR build"), want
+            lost = (f"{branch} was re-pushed for {want} at "
+                    f"{time.strftime('%Y-%m-%d %H:%M UTC', time.gmtime(int(tip_time)))} "
+                    "and Packit never submitted a COPR build")
+            if tip_age < RETRY_AFTER:
+                return "ERROR", f"{lost}; pushed again once that is {RETRY_AFTER // 3600} h old", want
+            return "reheal", lost, want
     return "heal", f"COPR never got {want} (has {have or 'nothing'}); main changed {(now - changed) // 3600} h ago", want
+
+
+def act(state, detail, branch, heal_mode, push):
+    """judge()'s verdict -> (state, detail) this run reports. push() runs at most once.
+
+    A reheal stays red even when its push went through: the push before it
+    produced nothing, and only a build on COPR ends that finding.
+    """
+    if state not in ("heal", "reheal"):
+        return state, detail
+    again = state == "reheal"
+    if not heal_mode:
+        return ("ERROR", f"{detail}; due to be pushed again (report only)") if again else ("would-heal", detail)
+    if not push():
+        return "ERROR", f"{detail} -> re-push of {branch} FAILED"
+    if again:
+        return "ERROR", f"{detail} -> {branch} pushed again"
+    return "healed", f"{detail} -> {branch} re-pushed"
 
 
 def heal(pkg, branch, want):
@@ -203,13 +241,7 @@ def main():
                 state, detail, want = judge(pkg, branch, pkgdir, spec, tmp, now)
             except Exception as e:  # any failure to measure is a finding, not a pass
                 state, detail = "ERROR", f"could not measure: {type(e).__name__}: {e}"
-            if state == "heal":
-                if not args.heal:
-                    state = "would-heal"
-                elif heal(pkg, branch, want):
-                    state, detail = "healed", f"{detail} -> {branch} re-pushed"
-                else:
-                    state, detail = "ERROR", f"{detail} -> re-push of {branch} FAILED"
+            state, detail = act(state, detail, branch, args.heal, functools.partial(heal, pkg, branch, want))
             if state == "ERROR":
                 bad += 1
                 if os.environ.get("GITHUB_ACTIONS"):

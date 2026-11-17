@@ -8,7 +8,9 @@ whose own decisions are broken must not push anything.
 
 Each case was seen to fail against a deliberately broken copy of the script
 (2026-10-13: dropping the young-trigger wait, counting SRPM-less failures from
-before the change, GRACE = 0 -> 2, 1 and 3 cases red), so it can go red.
+before the change, GRACE = 0 -> 2, 1 and 3 cases red; 2026-11-17, reheal: RETRY_AFTER = 0, a
+RETRY_AFTER that never comes, a reheal that turns green after its push -> 2, 1
+and 1 cases red), so it can go red.
 """
 import importlib.util
 import os
@@ -81,10 +83,37 @@ CASES = [
     ("lost trigger of a brand-new package", dict(have=None), "heal"),
     ("trigger got this tree 10 min ago", dict(have="1.2-2", same_tree=True, tip_age=600), "fresh"),
     ("our own re-push 10 min ago", dict(have="1.2-2", same_tree=True, tip_age=600, tip_subject="reconcile: pkg"), "fresh"),
-    ("our own re-push long ago, still no build", dict(have="1.2-2", same_tree=True, tip_subject="reconcile: pkg"), "ERROR"),
+    ("our own re-push 10 h ago, still no build", dict(have="1.2-2", same_tree=True, tip_subject="reconcile: pkg"), "ERROR"),
+    ("our own re-push 23 h ago, still no build",
+     dict(have="1.2-2", same_tree=True, tip_age=23 * H, tip_subject="reconcile: pkg"), "ERROR"),
+    ("our own re-push 25 h ago, still no build (Packit outage)",
+     dict(have="1.2-2", same_tree=True, tip_age=25 * H, tip_subject="reconcile: pkg"), "reheal"),
+    ("watcher push 25 h ago, Packit dropped it", dict(have="1.2-2", same_tree=True, tip_age=25 * H), "heal"),
     ("watcher push long ago, Packit dropped it", dict(have="1.2-2", same_tree=True), "heal"),
     ("our re-push was of an older tree", dict(have="1.2-2", tip_subject="reconcile: pkg"), "heal"),
 ]
+
+
+def act_checks():
+    """act(): what a verdict turns into, and whether it pushed."""
+    def run(state, heal_mode, push_ok=True):
+        calls = []
+
+        def push():
+            calls.append(1)
+            return push_ok
+        got, _ = rec.act(state, "d", "build-pkg", heal_mode, push)
+        return got, len(calls)
+
+    return {
+        "heal pushes and goes green": run("heal", True) == ("healed", 1),
+        "reheal pushes and STAYS red": run("reheal", True) == ("ERROR", 1),
+        "failed push is red": run("heal", True, push_ok=False) == ("ERROR", 1),
+        "failed push again is red": run("reheal", True, push_ok=False) == ("ERROR", 1),
+        "report only: heal does not push": run("heal", False) == ("would-heal", 0),
+        "report only: reheal is red, does not push": run("reheal", False) == ("ERROR", 0),
+        "other states pass through, never push": all(run(s, True) == (s, 0) for s in ("ok", "fresh", "running", "ERROR")),
+    }
 
 
 def heal_checks(w):
@@ -141,6 +170,10 @@ def main():
         total += 1
         fails += state != expected
         print(f"{'PASS' if state == expected else 'FAIL'}  {expected:<7} got {state:<7} {name}  [{detail}]")
+    for name, ok in act_checks().items():
+        total += 1
+        fails += not ok
+        print(f"{'PASS' if ok else 'FAIL'}  act(): {name}")
     with tempfile.TemporaryDirectory() as w:
         for name, ok in heal_checks(pathlib.Path(w)).items():
             total += 1

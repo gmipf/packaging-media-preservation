@@ -51,7 +51,10 @@ is never published twice. No manual `copr-cli build` needed.
 
 If a trigger gets lost on the way (a failed push, an outage on either side),
 `copr-reconcile` notices: every six hours it compares each spec on `main` with
-COPR and re-pushes the trigger of any version COPR never received. For OBS,
+COPR and re-pushes the trigger of any version COPR never received. If that
+re-push brings no build either, the run is red, and once a day it pushes
+again until COPR has the version (in November 2026 Packit answered no
+workflow push for two days). For OBS,
 `obs-trigger` asks for every recipe to be re-read once a day, and
 `obs-health` turns red when an OBS build fails or OBS still publishes a
 version `main` moved past more than a day ago.

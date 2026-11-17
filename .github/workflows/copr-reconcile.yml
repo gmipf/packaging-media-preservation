@@ -8,8 +8,10 @@ name: copr-reconcile
 # already bumped and has nothing left to do. Every six hours this compares each
 # spec on main with what COPR has and re-pushes the trigger of any version COPR
 # never got -- only one it never got, so the same NEVRA is never built twice.
-# Anything it must not fix itself (a failed build, COPR ahead of main, a re-push
-# that produced nothing, an API that did not answer) turns this run red.
+# Anything it must not fix itself (a failed build, COPR ahead of main, an API
+# that did not answer) turns this run red. So does a re-push that produced
+# nothing; that one is pushed again once it is a day old, and stays red until
+# COPR has the version.
 # The rules and every state: scripts/copr-reconcile.py.
 
 on:
