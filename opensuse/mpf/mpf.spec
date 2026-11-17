@@ -1,5 +1,5 @@
 %global mpfver         3.11.1
-%global mpfsnap        20261116200713.fa305478
+%global mpfsnap        20261117133608.938030d8
 %global rolltag        rolling
 # Which build of the rolling release we repackage, as it appears in the asset
 # names (MPF.Check_<mpfnet>_linux-x64_<mpfcfg>.zip). Since MPF 207dedba
@@ -16,12 +16,12 @@
 # %%prep fails on any other zip. Written by watch-mpf-rolling.yml through
 # scripts/mpf-pins.py, together with the Fedora spec and debian/rules; lint.sh
 # fails when the three differ.
-%global mpfsha_check_x64    6fc61d1a56f32f043aa055483ffdf4a8a410bbb6142b49e3668ab43be0772728
-%global mpfsha_cli_x64      4eab1e008ca148273f2c01bbfb53a0b959baa73f8cd18d4761c8ff7cace10b43
-%global mpfsha_gui_x64      042c08279833ecc645bafaa13d9bd9974a8bcaa8addf6cbaa2a5ce0b04b9730e
-%global mpfsha_check_arm64  7c38a8820cd747aa912bb871aaf6f80b5ac4135cd8230e12143557e3fc6cf353
-%global mpfsha_cli_arm64    5bc816c1149876e211a7e8d6b5bceeb87d46a0c726093ed31f3232739a6a1aef
-%global mpfsha_gui_arm64    68e44d3d47c162e8ed6edcd9ff0603f9296e70c27770ef191e68806000a80c09
+%global mpfsha_check_x64    68489f5fb64e6766eefb409b62bb9274f12241e824913f99491ed7656e50dd29
+%global mpfsha_cli_x64      83823dc0c58ac423cb89ced475ad981360b55064feddbe6c062311d971f46630
+%global mpfsha_gui_x64      8cf7753dba3b7a6fc1884a00176b57fd4b4bb002985d676c8df26998e06cbf18
+%global mpfsha_check_arm64  9a9b30d16f8c2592ca92f230fc0524f5f78ecc734d528a6fbc2c4b5557baeb42
+%global mpfsha_cli_arm64    235261c9112ddbe50103e9d8eda978a44716ef03468a101cc9d4a5fd98eb7cb9
+%global mpfsha_gui_arm64    7692aad01230b3af1b0a977361164885c19449cc7ddd12ab06fdba60389cb3be
 
 %global debug_package      %{nil}
 %global __strip            /bin/true
@@ -619,6 +619,9 @@ install -m 0644 %{SOURCE6} %{buildroot}%{_mandir}/man1/mpf-gui.1
 %{_datadir}/icons/hicolor/*/apps/mpf.png
 
 %changelog
+* Tue Nov 17 2026 gmipf <gmipf64@gmail.com> - 3.11.1~20261117133608.938030d8-0
+- Automated rolling-snapshot sync to upstream MPF commit 938030d8 (published 20261117133608 UTC).
+
 * Tue Nov 17 2026 gmipf <gmipf64@gmail.com> - 3.11.1~20261116200713.fa305478-0
 - Check each of the six upstream zips against its sha256, taken from MPF's own build of this commit, before unpacking: MPF moves its rolling tag before it uploads, and a rebuild after MPF moved on would package newer zips under this version.
 
