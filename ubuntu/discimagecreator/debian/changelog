@@ -1,3 +1,9 @@
+discimagecreator (20261116162423.29886483-2) UNRELEASED; urgency=medium
+
+  * Build against the libarchive CAB reader DIC bundles since 2026-11-16: BuildRequires the ext2fs headers its config_linux.h includes, instead of the system libarchive, and drop meson's method: 'system' for zlib and OpenSSL, which EL8 and jammy meson cannot do on Linux. Drop cap_sys_rawio from DVDAuth.out: it opens the drive read-only and sends only READ(12), READ DVD STRUCTURE, REPORT KEY, SEND KEY and the DVD_AUTH ioctl, which the kernel allows to anyone who can open the drive (read from the kernel and DVDAuth sources, not yet measured on a drive).
+
+ -- gmipf <gmipf64@gmail.com>  Tue, 17 Nov 2026 00:13:19 +0000
+
 discimagecreator (20261116162423.29886483-1) UNRELEASED; urgency=medium
 
   * Automated master-snapshot sync to upstream DiscImageCreator commit 29886483 (committed 20261116162423 UTC).

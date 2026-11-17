@@ -1,7 +1,7 @@
 # rpmlintrc for the media-preservation discimagecreator package (personal OBS
 # home: project). DIC ships one permissions.d profile that grants cap_sys_rawio
-# to both /usr/libexec/discimagecreator/DiscImageCreator.out and DVDAuth.out so
-# vendor SCSI passthrough works without sudo — the same capability the
+# to /usr/libexec/discimagecreator/DiscImageCreator.out so vendor SCSI
+# passthrough works without sudo — the same capability the
 # Fedora/COPR (%caps) and Ubuntu/PPA lanes already ship.
 #
 # openSUSE's rpmlint flags any non-whitelisted permissions.d profile with
@@ -11,6 +11,7 @@
 # require the profile to be reviewed and whitelisted in the central
 # `permissions` package. For this personal repo the capability is intentional
 # and packager-reviewed, so drop its badness to 0 to keep the rpmlint score
-# clean. Verified in a Leap 16.0 chroot: both caps land (getcap) and the profile
-# parses (permctl); the meson source build completes hermetically.
+# clean. Verified in a Leap 16.0 chroot (July 2026, when DVDAuth.out carried the
+# capability too): the caps land (getcap) and the profile parses (permctl); the
+# meson source build completes hermetically.
 setBadness("permissions-file-unauthorized", 0)

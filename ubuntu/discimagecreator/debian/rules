@@ -68,6 +68,16 @@ override_dh_auto_configure:
 	# No-op on noble (meson >= 1.3 keeps them; the installed tree is identical).
 	grep -q 'fs\.copyfile(' meson.build
 	sed -i '/fs\.copyfile(/d' meson.build
+	# Upstream looks up zlib and OpenSSL with method: 'system' since 2026-11-16
+	# (29886483), which jammy's meson 0.61 cannot do for OpenSSL on Linux ("Dependency
+	# openssl not found", OBS log 2026-11-16). Dropping the method gives meson's
+	# default lookup, pkg-config first -- what every series used before. The check
+	# asserts the system lookup is gone, so a reformatted line cannot slip past.
+	sed -i -E "s/,[[:space:]]*method[[:space:]]*:[[:space:]]*'system'//" meson.build
+	if grep -q "method[[:space:]]*:[[:space:]]*'system'" meson.build; then \
+	    echo "ERROR: meson.build still asks for method: 'system'; extend the sed." >&2; \
+	    exit 1; \
+	fi
 	# All three helper makefiles omit -fPIE; Ubuntu's default-PIE linker then
 	# rejects non-PIC relocations. Append it to the first CXXFLAGS/CFLAGS
 	# assignment so the implicit rules pick it up (LDFLAGS=-pie is passed in

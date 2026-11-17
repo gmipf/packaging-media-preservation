@@ -33,6 +33,12 @@ SET CD SPEED, READ CD) is on the kernel's unprivileged SG_IO list, measured as a
 plain user on 2026-10-12 ([proof](../proofs/dreamdump-optical-access-MEASURED-x86_64.md)).
 Its build fails the day a new SCSI command appears in its source.
 
+DiscImageCreator's `dvdauth` helper gets none either (since 2026-11-17). It opens
+the drive read-only and sends READ DVD STRUCTURE, REPORT KEY, SEND KEY and
+READ(12) plus the kernel's `DVD_AUTH` ioctl, all of which the kernel allows to
+anyone who can open the drive. That comes from reading the kernel and DVDAuth
+sources; a CSS authentication as a plain user has not been measured yet.
+
 Only headless / SSH / cron sessions, which have no seat, need more. For optical
 drives, add yourself to the `cdrom` group. A headless floppy dump needs root: the
 floppy node stays `root:disk`, and the `disk` group would expose every block

@@ -63,12 +63,13 @@ GameCube/Wii optical disks). Real binary
 in libexec.
 .SH DRIVE ACCESS
 .B discimagecreator
-and
-.B dvdauth
-ship with the
+ships with the
 .B cap_sys_rawio
-file capability set, so they can issue SCSI vendor commands (e.g.\&
+file capability set, so it can issue SCSI vendor commands (e.g.\&
 Plextor read method D8, Kreon XGD passthrough) without root.
+.B dvdauth
+carries no capability: the commands it sends (READ DVD STRUCTURE, REPORT KEY,
+SEND KEY, READ(12)) are allowed to anyone who can open the drive.
 .PP
 The invoking user must additionally have access to
 .IR /dev/sr* :

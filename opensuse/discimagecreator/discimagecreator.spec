@@ -71,7 +71,11 @@ BuildRequires:  ninja
 %else
 BuildRequires:  ninja-build
 %endif
-BuildRequires:  pkgconfig(libarchive)
+# DIC bundles libarchive's CAB reader since 2026-11-16 (c154591b), so the system
+# libarchive is gone. Its pregenerated config_linux.h defines
+# HAVE_EXT2FS_EXT2_FS_H, and archive_entry.c then includes ext2fs/ext2_fs.h for
+# the file-flag constants: the header only, nothing links against libext2fs.
+BuildRequires:  pkgconfig(ext2fs)
 BuildRequires:  pkgconfig(openssl)
 BuildRequires:  pkgconfig(zlib)
 # openSUSE grants file capabilities through the permissions framework
@@ -97,12 +101,12 @@ This RPM bundles four binaries from the same upstream author:
   * dvdauth:          CSS/CPPM/CPRM DVD authentication tool
   * unscrambler:      brute-force unscramble for non-standard DVD IVs
 
-cap_sys_rawio is set on the main DIC binary and dvdauth (via the openSUSE
-permissions framework) so vendor SCSI passthrough commands work without
-sudo. A udev rule tags floppy drives with `uaccess`, so the user logged in
-at the local desktop seat can use the `fd` (floppy dump) command without
-root and without joining any group. Headless, SSH and cron sessions have no
-seat and therefore no ACL; dump as root there. See discimagecreator(1) for
+cap_sys_rawio is set on the main DIC binary (via the openSUSE permissions
+framework) so vendor SCSI passthrough commands work without sudo. A udev
+rule tags floppy drives with `uaccess`, so the user logged in at the local
+desktop seat can use the `fd` (floppy dump) command without root and
+without joining any group. Headless, SSH and cron sessions have no seat
+and therefore no ACL; dump as root there. See discimagecreator(1) for
 details on drive access and runtime data file locations.
 
 %prep
@@ -128,6 +132,21 @@ sed -i \
 # the build fails loudly if upstream ever restructures this block.
 grep -q 'fs\.copyfile(' meson.build
 sed -i '/fs\.copyfile(/d' meson.build
+
+# Upstream's meson.build looks up zlib and OpenSSL with method: 'system' since
+# 2026-11-16 (29886483), so its macOS build needs no pkg-config. Old meson cannot
+# do that on Linux: EL8's meson 0.58 found no zlib that way and jammy's 0.61 no
+# OpenSSL (COPR and OBS logs, 2026-11-16), though both were installed. Dropping
+# the method gives meson's default lookup, which tries pkg-config first (the
+# pkgconfig() BuildRequires above) -- the lookup every lane used before. The
+# check after the sed asserts the system lookup is gone, so a reformatted line
+# cannot slip past it; it stays quiet if upstream drops the method itself.
+sed -i -E "s/,[[:space:]]*method[[:space:]]*:[[:space:]]*'system'//" meson.build
+if grep -q "method[[:space:]]*:[[:space:]]*'system'" meson.build; then
+    echo "ERROR: meson.build still asks for method: 'system', which EL8 and" >&2
+    echo "       jammy meson cannot do on Linux -- extend the sed above." >&2
+    exit 1
+fi
 
 # Rename the bundled doc that upstream ships with an ampersand in its
 # filename to a shell-safe name so older rpm doc-copy helpers don't choke.
@@ -160,7 +179,8 @@ sed -i -e '0,/^CFLAGS\s*:=/{/^CFLAGS\s*:=/s/$/ -fPIE/}' \
     unscrambler-%{unscramblcommit}/makefile
 
 %build
-# Main DiscImageCreator via meson against system openssl/zlib/libarchive
+# Main DiscImageCreator via meson against system openssl/zlib (the libarchive
+# CAB reader comes bundled with DIC since 2026-11-16)
 %meson
 %meson_build
 
@@ -228,20 +248,18 @@ ln -s %{name}.1 %{buildroot}%{_mandir}/man1/unscrambler.1
 install -D -m 0644 %{SOURCE5} \
     %{buildroot}%{_udevrulesdir}/70-discimagecreator-floppy.rules
 
-# Permissions framework profile: grant cap_sys_rawio on the main dumper and
-# DVDAuth for sudo-less SCSI passthrough. Each capability lives on the
-# continuation line beginning with " +capabilities".
+# Permissions framework profile: grant cap_sys_rawio on the main dumper for
+# sudo-less SCSI passthrough. The capability lives on the continuation line
+# beginning with " +capabilities".
 install -d %{buildroot}%{_datadir}/permissions/permissions.d
 cat > %{buildroot}%{_datadir}/permissions/permissions.d/discimagecreator <<EOF
-# DIC main dumper and DVDAuth need raw SCSI passthrough for vendor commands.
+# The DIC main dumper needs raw SCSI passthrough for vendor commands.
 %{dicdir}/DiscImageCreator.out root:root 0755
- +capabilities cap_sys_rawio=ep
-%{dicdir}/DVDAuth.out root:root 0755
  +capabilities cap_sys_rawio=ep
 EOF
 
 %post
-%set_permissions %{dicdir}/DiscImageCreator.out %{dicdir}/DVDAuth.out
+%set_permissions %{dicdir}/DiscImageCreator.out
 # Make the udev rule take effect on drives that are ALREADY connected. The file
 # trigger shipped by udev only reloads the rule set, and it runs at the very end
 # of the transaction, so a floppy plugged in right now would keep its old
@@ -256,7 +274,6 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
 
 %verifyscript
 %verify_permissions -e %{dicdir}/DiscImageCreator.out
-%verify_permissions -e %{dicdir}/DVDAuth.out
 
 %files
 %license LICENSE
@@ -288,6 +305,9 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
 %{_datadir}/permissions/permissions.d/discimagecreator
 
 %changelog
+* Tue Nov 17 2026 gmipf <gmipf64@gmail.com> - 20261116162423.29886483-0
+- Build against the libarchive CAB reader DIC bundles since 2026-11-16: BuildRequires the ext2fs headers its config_linux.h includes, instead of the system libarchive, and drop meson's method: 'system' for zlib and OpenSSL, which EL8 and jammy meson cannot do on Linux. Drop cap_sys_rawio from DVDAuth.out: it opens the drive read-only and sends only READ(12), READ DVD STRUCTURE, REPORT KEY, SEND KEY and the DVD_AUTH ioctl, which the kernel allows to anyone who can open the drive (read from the kernel and DVDAuth sources, not yet measured on a drive).
+
 * Mon Nov 16 2026 gmipf <gmipf64@gmail.com> - 20261116162423.29886483-0
 - Automated master-snapshot sync to upstream DiscImageCreator commit 29886483 (committed 20261116162423 UTC).
 

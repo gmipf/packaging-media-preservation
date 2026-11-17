@@ -5,11 +5,15 @@ Maintainer: gmipf <gmipf64@gmail.com>
 # Unlike the other tools in this PPA, discimagecreator is a real source build
 # (meson for the main dumper, three bundled makefiles for the helper tools),
 # not a repackage — so it carries a genuine compile toolchain here.
+# libext2fs-dev: DIC bundles libarchive's CAB reader since 2026-11-16, and its
+# pregenerated config_linux.h makes archive_entry.c include ext2fs/ext2_fs.h
+# (header only, nothing links against it). The system libarchive is no longer
+# used; its -dev package had pulled the ext2fs headers in on bookworm-and-later.
 Build-Depends: debhelper-compat (= 13),
                meson,
                ninja-build,
                pkg-config,
-               libarchive-dev,
+               libext2fs-dev,
                libssl-dev,
                zlib1g-dev
 Standards-Version: 4.6.2
@@ -21,7 +25,7 @@ Vcs-Browser: https://github.com/gmipf/packaging-media-preservation
 Package: discimagecreator
 Architecture: amd64 arm64
 # Compiled from source and dynamically linked, so ${shlibs:Depends} resolves the
-# libarchive / openssl / zlib runtime from the ELF automatically (no hand-declared
+# openssl / zlib runtime from the ELF automatically (no hand-declared
 # runtime deps as the self-contained .NET tools need). libcap2-bin is for the
 # postinst setcap.
 Depends: ${shlibs:Depends},
@@ -43,8 +47,8 @@ Description: low-level disc dumper plus EccEdc / DVDAuth / unscrambler helpers
    * dvdauth:          CSS/CPPM/CPRM DVD authentication tool
    * unscrambler:      brute-force unscramble for non-standard DVD IVs
  .
- On install, cap_sys_rawio is set on the main DIC binary and dvdauth so vendor
- SCSI passthrough commands work without sudo. A shipped udev rule tags floppy
+ On install, cap_sys_rawio is set on the main DIC binary so vendor SCSI
+ passthrough commands work without sudo. A shipped udev rule tags floppy
  drives with uaccess, so the user logged in at the local desktop seat can use
  the `fd` (floppy dump) command without root and without joining any group.
  Headless, SSH and cron sessions have no seat and therefore no ACL; dump as
