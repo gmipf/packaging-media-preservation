@@ -31,7 +31,8 @@ copr	fedora-43+	1.96	ship	2026-07-13	rolling Fedora, always ahead of the floor
 copr	epel-8	1.92	ship	2026-07-13	EXACTLY at the floor, zero headroom
 copr	epel-9	1.92	ship	2026-07-13	EXACTLY at the floor, zero headroom
 copr	epel-10	1.92	ship	2026-07-13	EXACTLY at the floor, zero headroom
-obs	openSUSE_Leap_16.0	1.96	ship	2026-07-13	-
+obs	openSUSE_Leap_16.0	1.98	ship	2026-11-17	rust1.98 1.98.0 (re-measured with 16.1)
+obs	openSUSE_Leap_16.1	1.98	ship	2026-11-17	rust1.98 1.98.1, x86_64 and aarch64; added with scripts/obs/add-repo.sh
 obs	openSUSE_Tumbleweed	1.96	ship	2026-07-13	-
 obs	Debian_13	1.94	ship	2026-07-13	from trixie-backports; plain trixie ships 1.85
 obs	xUbuntu_26.04	1.93	ship	2026-07-13	-

@@ -23,6 +23,11 @@ Ubuntu (ubuntu/), macOS (Formula/). A line may wrap; continuation lines are
 indented. Every other line is free text and is not checked.
 -->
 
+## 2026-11-17
+
+- openSUSE Leap 16.1 for every package on OBS, x86_64 and aarch64. Leap 16.0
+  stays until openSUSE ends its support.
+
 ## 2026-10-13
 
 - Added `redumper` and `discimagecreator` on macOS. A Homebrew tap in this

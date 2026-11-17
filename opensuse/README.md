@@ -6,7 +6,7 @@ except Fedora/EPEL** (which is COPR's, from `fedora/`):
 
 | Target | Recipe | Built from |
 |---|---|---|
-| openSUSE Leap 16.0, Tumbleweed | `opensuse/<tool>/<tool>.spec` | this directory |
+| openSUSE Leap 16.0 and 16.1, Tumbleweed | `opensuse/<tool>/<tool>.spec` | this directory |
 | Ubuntu 22.04, 24.04, 26.04 | `opensuse/<tool>/<tool>.dsc` + `debian.tar.gz` | **generated** from `ubuntu/<tool>/debian/` |
 | Debian 12, 13 | same | same |
 
@@ -25,7 +25,7 @@ here is red.
 
 > **Status: LIVE on OBS.** Every package is published from
 > **[`home:gmipf:media-preservation`](https://build.opensuse.org/project/show/home:gmipf:media-preservation)**
-> and builds for **openSUSE Leap 16.0** and **Tumbleweed**, each on **x86_64 and
+> and builds for **openSUSE Leap 16.0 and 16.1** and **Tumbleweed**, each on **x86_64 and
 > aarch64** — including the
 > `discimagecreator` meson source build, which clears the hermetic-build gate (no
 > network in the OBS build root). The mechanism that differs from the Fedora
@@ -49,8 +49,8 @@ sudo zypper refresh
 sudo zypper install redumper discimagecreator aaru aaru5 mpf redumper-gui dreamdump
 ```
 
-For Tumbleweed, swap `16.0` for `openSUSE_Tumbleweed` in the repo URL
-(`openSUSE_Tumbleweed_ARM` on aarch64).
+For Leap 16.1, swap `16.0` for `16.1` in the repo URL. For Tumbleweed, swap it for
+`openSUSE_Tumbleweed` (`openSUSE_Tumbleweed_ARM` on aarch64).
 
 ## How an OBS build works
 
@@ -69,7 +69,7 @@ network). The only file committed to OBS is `_service` itself:
    it strips the `_service:<svc>:` prefix when it globs for `*.spec`. It also
    honours rpm's `#/rename` convention (`<URL>#/<filename>`), which is what
    `discimagecreator`'s four archives rely on.
-3. OBS builds the `.rpm` for each configured repository (Leap 16.0, Tumbleweed)
+3. OBS builds the `.rpm` for each configured repository (Leap 16.0, Leap 16.1, Tumbleweed)
    and publishes them.
 
 Because OBS **pulls** the recipe rather than having it pushed, updating a package
@@ -193,10 +193,11 @@ and its build targets. Full walkthrough: **[ACCOUNT-SETUP.md](ACCOUNT-SETUP.md)*
 In short: OBS logins are SUSE IDP accounts (sign up via the link on
 build.opensuse.org, *not* `accounts.opensuse.org`); create `home:<user>`, add the
 repositories **`16.0`** (openSUSE Leap 16.0 — the name is the bare version, not
-`openSUSE_Leap_16.0`) and **`openSUSE_Tumbleweed`**. Arches are set per repository
+`openSUSE_Leap_16.0`; **`16.1`** likewise, added 2026-11-17 with
+`scripts/obs/add-repo.sh`) and **`openSUSE_Tumbleweed`**. Arches are set per repository
 in the **project `_meta`**, and that is the real gate — a package builds for an
 arch only if the meta offers it *and* the recipe allows it (`ExclusiveArch` / deb
-`Architecture:`). `16.0` and the Debian/Ubuntu repositories take `x86_64` and
+`Architecture:`). `16.0`, `16.1` and the Debian/Ubuntu repositories take `x86_64` and
 `aarch64` together.
 
 **Tumbleweed needs a second repository for ARM, and merging the two is a trap.**

@@ -46,7 +46,7 @@ sudo dnf copr enable gmipf/media-preservation
 sudo dnf install redumper discimagecreator aaru aaru5 mpf redumper-gui dreamdump
 ```
 
-### openSUSE Leap 16.0 and Tumbleweed
+### openSUSE Leap 16.0, Leap 16.1 and Tumbleweed
 
 ```sh
 REPO=https://download.opensuse.org/repositories/home:gmipf:media-preservation
@@ -55,8 +55,8 @@ sudo zypper refresh
 sudo zypper install redumper discimagecreator aaru aaru5 mpf redumper-gui dreamdump
 ```
 
-For Tumbleweed, replace `16.0` with `openSUSE_Tumbleweed`
-(`openSUSE_Tumbleweed_ARM` on aarch64).
+For Leap 16.1, replace `16.0` with `16.1`. For Tumbleweed, replace it with
+`openSUSE_Tumbleweed` (`openSUSE_Tumbleweed_ARM` on aarch64).
 
 ### Ubuntu 22.04, 24.04, 26.04 and Debian 12, 13
 
