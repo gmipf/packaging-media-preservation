@@ -37,6 +37,8 @@
 #                   both specs and debian/rules (dic-helpers.sh check)
 #   mpf wrappers    both specs' wrapper heredoc is the Debian template
 #                   ubuntu/mpf/debian/mpf-wrapper.in (mpf-wrapper-sync.py check)
+#   mpf pins        the sha256 of MPF's six zips is the same in both specs and
+#                   debian/rules (mpf-pins.py check)
 #   texts           every package named in each text of its lanes, every lane
 #                   and formula in the README, every workflow in how-it-works
 #                   (texts-check.py offline; the live half runs in check-repo.yml)
@@ -208,6 +210,15 @@ else bad "DIC helpers:"; printf '%s\n' "$out" >&2; fi
 if have python3; then
     if out=$(python3 scripts/mpf-wrapper-sync.py check 2>&1); then ok "$out"
     else bad "mpf wrappers:"; printf '%s\n' "$out" >&2; fi
+fi
+
+# --- mpf pins -----------------------------------------------------------------
+# Each build checks MPF's zips against a sha256 written into three recipes. A
+# hand edit to one of them makes that lane alone fail every build, or pass
+# zips the other two refuse.
+if have python3; then
+    if out=$(python3 scripts/mpf-pins.py check 2>&1); then ok "$out"
+    else bad "mpf pins:"; printf '%s\n' "$out" >&2; fi
 fi
 
 # --- CHANGELOG.md -------------------------------------------------------------

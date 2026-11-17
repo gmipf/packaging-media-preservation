@@ -58,6 +58,10 @@ jobs:
       - name: brew-sync decision tests
         run: python3 scripts/test-brew-sync.py
 
+      # The check itself (the three recipes carry the same pins) runs in lint.sh.
+      - name: mpf-pins decision tests
+        run: python3 scripts/test-mpf-pins.py
+
       # The check itself (CHANGELOG.md against the recipes) runs in lint.sh, below.
       - name: changelog-check decision tests
         run: python3 scripts/test-changelog-check.py

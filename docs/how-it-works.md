@@ -126,6 +126,17 @@ rewrites the spec on a new release and lets Packit handle the rebuild:
   and on a new SHA it picks the complete set with the highest .NET,
   preferring a release build over a debug one. No complete set: the
   watcher fails and the version stays where it is.
+  MPF moves the tag before it uploads the zips, so for some minutes the
+  tag names a commit whose zips are not there yet, and every later
+  rebuild downloads whatever is there then. The watcher therefore takes
+  the zips only once MPF's own "Build and Test" run for exactly that
+  commit has succeeded, and only if every zip was uploaded during that
+  run and matches the sha256 GitHub lists for it (`scripts/mpf-pins.py`).
+  It writes each sha256 into both specs and `debian/rules`, and every
+  build checks the zips against it before unpacking: a zip MPF uploaded
+  later fails the build instead of shipping under the old version. On
+  the same download the watcher measures the glibc the bundled
+  libGrindCore needs, against the EL8 guard below.
 - **discimagecreator** is packaged from a pinned master commit rather
   than the release tag: master carries the accumulated Linux fixes --
   notably the fd (floppy) SIGSEGV fix (#328) -- that the last release tag

@@ -58,8 +58,19 @@ jobs:
               echo "::error::The rolling release no longer carries all six MPF.{Check,CLI,Avalonia}_${spec_net}_linux-{x64,arm64}_${spec_cfg}.zip our recipes download, although its tag did not move (${LOCAL_SHA:0:8}). Every rebuild of mpf fails on the download until upstream moves the tag again; this watcher then picks the new set. Assets seen: $(tr '\n' ' ' <<<"$ASSETS")"
               exit 1
             fi
-            echo "Rolling SHA unchanged ($LOCAL_SHA), all six ${spec_net}/${spec_cfg} zips present — no rebuild needed"
-            exit 0
+            # The recipes pin each zip by sha256 (scripts/mpf-pins.py), and every
+            # build checks it. If MPF uploaded other zips for the same commit (a
+            # re-run of its workflow), every rebuild would now fail that check,
+            # and nothing else would move: take them again, below, exactly as for
+            # a new commit. 0 = still the pinned zips, 10 = re-uploaded.
+            rc=0
+            python3 scripts/mpf-pins.py current "$spec_net" "$spec_cfg" || rc=$?
+            case $rc in
+              0)  echo "Rolling SHA unchanged ($LOCAL_SHA), all six ${spec_net}/${spec_cfg} zips present and pinned — no rebuild needed"
+                  exit 0 ;;
+              10) echo "Rolling SHA unchanged ($LOCAL_SHA), but MPF uploaded other zips for it — taking them again" ;;
+              *)  exit 1 ;;
+            esac
           fi
 
           # Held by hand: while fedora/mpf/.hold exists, no new MPF build is
@@ -131,6 +142,38 @@ jobs:
             echo "MPF's Linux zips moved from ${spec_net}/${spec_cfg} to ${NET}/${CFG}"
           fi
 
+          # Take the six zips only from MPF's own run for exactly this commit, and
+          # pin each by sha256 in all three recipes (scripts/mpf-pins.py; its
+          # header has the measurement). MPF moves the rolling tag BEFORE it
+          # uploads, so for some minutes the tag names a commit whose zips are not
+          # there yet; and every later rebuild fetches whatever is there then. The
+          # script waits for MPF's run to succeed, checks that each zip was
+          # uploaded while that run ran and matches the digest GitHub lists, and
+          # measures the glibc the bundled libGrindCore needs against the EL8
+          # guard in the wrappers (grind_glibc in ubuntu/mpf/debian/mpf-wrapper.in).
+          # 0 pinned · 3 pinned, but the guard asks for more than MPF now needs
+          # (red at the end of the job) · 75 MPF's run is still going, or the tag
+          # moved while reading: a later run takes it · anything else: refused,
+          # nothing written, mpf stays at ${LOCAL_SHA:0:8}.
+          command -v readelf >/dev/null || sudo apt-get install -y -qq binutils >/dev/null
+          rc=0
+          python3 scripts/mpf-pins.py take "$UPSTREAM_SHA_FULL" "$NET" "$CFG" "$RUNNER_TEMP/mpf-zips" || rc=$?
+          case $rc in
+            0)  ;;
+            3)  echo "grind_obsolete=1" >> "$GITHUB_OUTPUT" ;;
+            75) exit 0 ;;
+            *)  exit 1 ;;
+          esac
+          # Other zips under the same version would make a second, different
+          # package with the same name and version. A new commit always brings a
+          # new snapshot; MPF re-uploading for the same commit normally does too
+          # (its release gets a new publish time). If it did not, stop here.
+          # full-automation-exception: mpf/repin-same-version — other zips for the commit we ship under an unchanged publish time would need a Release bump in all three lanes at once; a session does that (scripts/mpf-pins.py take, then scripts/build-tool.sh mpf). Not seen yet: MPF re-uploading has so far always come with a new commit
+          if [ "$(sed -nE 's/^%global mpfsnap[[:space:]]+//p' "$SPEC")" = "${UPSTREAM_TS}.${UPSTREAM_SHA}" ]; then
+            echo "::error::MPF uploaded other zips for ${UPSTREAM_SHA} but its rolling release kept the publish time ${UPSTREAM_TS}, so the version would not change. Not packaged: other zips under the same version break every client that already has the old ones (same NEVRA, other checksum). Take them by hand: commit the new pins (scripts/mpf-pins.py take) with a Release bump, then scripts/build-tool.sh mpf."
+            exit 1
+          fi
+
           echo "$UPSTREAM_SHA_FULL" > "$MARKER"
 
           # Tilde-style rolling snapshot lives in two %global lines in the
@@ -190,7 +233,7 @@ jobs:
           command -v rpmspec >/dev/null || sudo apt-get install -y -qq rpm >/dev/null
           bash scripts/obs/gen-deb.sh mpf
           git add opensuse/mpf/mpf.dsc opensuse/mpf/debian.tar.gz opensuse/mpf/_service
-          git add "$SPEC" "$MARKER" "$UB/debian/changelog" "$UB/debian/control" opensuse/mpf/mpf.spec
+          git add "$SPEC" "$MARKER" "$UB/debian/changelog" "$UB/debian/control" "$UB/debian/rules" opensuse/mpf/mpf.spec
           if git diff --cached --quiet; then
             echo "Spec and marker unchanged after rewrite — exiting clean"
             exit 0
@@ -245,6 +288,20 @@ jobs:
         if: steps.sync.outputs.trigger_failed == '1'
         run: |
           echo "::warning::A COPR trigger branch could not be pushed after retries (see the step above). The version is on main and OBS was asked to refresh; copr-reconcile.yml re-pushes the trigger within six hours."
+
+      # MPF-GLIBC-GUARD expiry. Below glibc 2.<grind_glibc> the wrappers keep log
+      # compression off and refuse MPF's log archives, because the libGrindCore
+      # MPF bundles needs that glibc (EL8: 0-byte logs, measured 2026-11-17).
+      # The sync step measures the need in every MPF build it takes: a HIGHER
+      # need is refused there (the guard would miss systems that lose logs); a
+      # LOWER one is packaged, since the guard only refuses more than it must,
+      # and turns red here, so the guard does not outlive its reason.
+      # full-automation-exception: mpf/glibc-guard — raising or lowering grind_glibc in ubuntu/mpf/debian/mpf-wrapper.in (or removing the guard) is done by a session, because the texts that name the glibc floor (docs/how-it-works.md, the COPR instructions) change with it and must be published; the watcher only measures that it is due (user decision 2026-11-17: keep EL8, with wrapper guards)
+      - name: Is the wrappers' glibc guard still what MPF needs?
+        if: steps.sync.outputs.grind_obsolete == '1'
+        run: |
+          echo "::error::The libGrindCore in the MPF build just packaged needs less glibc than grind_glibc in ubuntu/mpf/debian/mpf-wrapper.in assumes (numbers in the sync step above). A session lowers it, or removes the MPF-GLIBC-GUARD blocks if MPF now runs on glibc 2.28, then runs scripts/mpf-wrapper-sync.py write and updates the texts that name the floor."
+          exit 1
 
       # MPF-DREAMDUMP-PATH-WORKAROUND guard (2026-10-13; both directions since the
       # workaround came out the same evening). MPF's CLI stored the resolved

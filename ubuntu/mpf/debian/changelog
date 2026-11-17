@@ -1,3 +1,9 @@
+mpf (3.11.1~20261116200713.fa305478-4) UNRELEASED; urgency=medium
+
+  * Check each of the six upstream zips against its sha256, taken from MPF's own build of this commit, before unpacking: MPF moves its rolling tag before it uploads, and a rebuild after MPF moved on would package newer zips under this version.
+
+ -- gmipf <gmipf64@gmail.com>  Tue, 17 Nov 2026 02:29:30 +0000
+
 mpf (3.11.1~20261116200713.fa305478-3) UNRELEASED; urgency=medium
 
   * Wrappers: below glibc 2.34 keep log compression off and refuse to run MPF on a log archive (*_logs.zip), named or lying next to the input; the libGrindCore MPF bundles for them needs glibc 2.34. The config is now always $HOME/.config/mpf, the one MPF reads.

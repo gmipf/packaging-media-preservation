@@ -34,7 +34,34 @@ MPF_RID := $(if $(filter arm64,$(DEB_HOST_ARCH)),arm64,x64)
 MPF_ZIP = $(firstword $(wildcard MPF.$(1)_*_linux-$(MPF_RID)_*.zip))
 MPF_ZIPS = $(wildcard MPF.$(1)_*_linux-$(MPF_RID)_*.zip)
 
+# The sha256 of each upstream file, the same values as the mpfsha_* macros of
+# both RPM specs: taken from MPF's own "Build and Test" run for this version's
+# commit. The rolling URLs serve whatever MPF uploaded last, so a rebuild after
+# MPF moved on would get newer zips under this version; the build fails on any
+# other file instead. Written by watch-mpf-rolling.yml through
+# scripts/mpf-pins.py; lint.sh fails when the three recipes differ.
+# MPF.Check for linux-x64 is the .orig tarball here: dpkg-source has unpacked
+# it before this file runs, so its binary is pinned instead of its zip.
+MPF_SHA256_Check_x64_binary := b56037ff025ab06592adbc778c3878adf0db58fe7a35d611ce6ba10485c7eab6
+MPF_SHA256_CLI_x64          := 4eab1e008ca148273f2c01bbfb53a0b959baa73f8cd18d4761c8ff7cace10b43
+MPF_SHA256_Avalonia_x64     := 042c08279833ecc645bafaa13d9bd9974a8bcaa8addf6cbaa2a5ce0b04b9730e
+MPF_SHA256_Check_arm64      := 7c38a8820cd747aa912bb871aaf6f80b5ac4135cd8230e12143557e3fc6cf353
+MPF_SHA256_CLI_arm64        := 5bc816c1149876e211a7e8d6b5bceeb87d46a0c726093ed31f3232739a6a1aef
+MPF_SHA256_Avalonia_arm64   := 68e44d3d47c162e8ed6edcd9ff0603f9296e70c27770ef191e68806000a80c09
+MPF_ZIP_FOR = $(wildcard MPF.$(1)_*_linux-$(2)_*.zip)
+
 execute_before_dh_auto_build:
+	# Every upstream file must be the pinned one, checked before anything is
+	# unpacked over the tree (the arm64 Check zip lands on top of MPF.Check).
+	# A missing zip, or two of one kind, leave a line sha256sum rejects.
+	printf '%s  %s\n' \
+	    '$(MPF_SHA256_Check_x64_binary)' MPF.Check \
+	    '$(MPF_SHA256_CLI_x64)' '$(call MPF_ZIP_FOR,CLI,x64)' \
+	    '$(MPF_SHA256_Avalonia_x64)' '$(call MPF_ZIP_FOR,Avalonia,x64)' \
+	    '$(MPF_SHA256_Check_arm64)' '$(call MPF_ZIP_FOR,Check,arm64)' \
+	    '$(MPF_SHA256_CLI_arm64)' '$(call MPF_ZIP_FOR,CLI,arm64)' \
+	    '$(MPF_SHA256_Avalonia_arm64)' '$(call MPF_ZIP_FOR,Avalonia,arm64)' \
+	  | sha256sum --check --strict --quiet -
 	mkdir -p cli gui
 	test "$(words $(call MPF_ZIPS,CLI))" = 1 && test "$(words $(call MPF_ZIPS,Avalonia))" = 1 \
 	    || { echo "expected exactly one CLI and one Avalonia zip for linux-$(MPF_RID): '$(call MPF_ZIPS,CLI)' '$(call MPF_ZIPS,Avalonia)'" >&2; exit 1; }

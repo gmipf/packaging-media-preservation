@@ -44,7 +44,8 @@ mkdir -p "$config_dir" 2>/dev/null
 # file from it as 0 bytes, over the logs already in the folder, and still
 # reports SUCCESS. Below that glibc the
 # wrapper keeps log compression off in the config and refuses to run MPF on an
-# archive.
+# archive. watch-mpf-rolling.yml measures the glibc libGrindCore needs in every
+# MPF build it takes (scripts/mpf-pins.py) and goes red when it is not this one.
 grind_glibc=34
 glibc=$(getconf GNU_LIBC_VERSION 2>/dev/null)
 glibc=${glibc#glibc }

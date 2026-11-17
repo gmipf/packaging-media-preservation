@@ -9,6 +9,18 @@
 # moves the version, and rewrites these two when upstream renames them.
 %global mpfnet         net11.0
 %global mpfcfg         debug
+# The sha256 of each of the six zips, taken from MPF's own "Build and Test" run
+# for the commit in mpfsnap. The rolling URLs serve whatever MPF uploaded last:
+# MPF moves the tag before it uploads, and a rebuild after MPF moved on would
+# fetch newer zips under this version. %%prep fails on any other zip. Written by
+# watch-mpf-rolling.yml through scripts/mpf-pins.py, together with the openSUSE
+# spec and debian/rules; lint.sh fails when the three differ.
+%global mpfsha_check_x64    6fc61d1a56f32f043aa055483ffdf4a8a410bbb6142b49e3668ab43be0772728
+%global mpfsha_cli_x64      4eab1e008ca148273f2c01bbfb53a0b959baa73f8cd18d4761c8ff7cace10b43
+%global mpfsha_gui_x64      042c08279833ecc645bafaa13d9bd9974a8bcaa8addf6cbaa2a5ce0b04b9730e
+%global mpfsha_check_arm64  7c38a8820cd747aa912bb871aaf6f80b5ac4135cd8230e12143557e3fc6cf353
+%global mpfsha_cli_arm64    5bc816c1149876e211a7e8d6b5bceeb87d46a0c726093ed31f3232739a6a1aef
+%global mpfsha_gui_arm64    68e44d3d47c162e8ed6edcd9ff0603f9296e70c27770ef191e68806000a80c09
 
 %global debug_package      %{nil}
 %global __strip            /bin/true
@@ -25,7 +37,7 @@ Version:        %{mpfver}~%{mpfsnap}
 # lives in the changelog. (Stuck at 5 here from pre-fix manual bumps of
 # the 71dafe3d snapshot — already shipped as -5, so left as-is to avoid
 # a downgrade; the next snapshot resets it.)
-Release:        3%{?dist}
+Release:        4%{?dist}
 Summary:        Media Preservation Frontend suite (mpf-check, mpf-cli, mpf-gui)
 
 License:        MIT
@@ -239,6 +251,17 @@ from the upstream rolling release.
 %prep
 %setup -q -c -T
 
+# Each zip must be the one pinned at the top (mpfsha_*), before anything is
+# unpacked. Both trios are checked: the SRPM carries both.
+sha256sum --check --strict --quiet - <<'PINS'
+%{mpfsha_check_x64}  %{SOURCE0}
+%{mpfsha_cli_x64}  %{SOURCE1}
+%{mpfsha_gui_x64}  %{SOURCE2}
+%{mpfsha_check_arm64}  %{SOURCE15}
+%{mpfsha_cli_arm64}  %{SOURCE16}
+%{mpfsha_gui_arm64}  %{SOURCE17}
+PINS
+
 # Unpack the arch-matching trio (see the Source15-17 block above).
 %ifarch aarch64
 unzip -q %{SOURCE15}
@@ -382,7 +405,8 @@ mkdir -p "\$config_dir" 2>/dev/null
 # file from it as 0 bytes, over the logs already in the folder, and still
 # reports SUCCESS. Below that glibc the
 # wrapper keeps log compression off in the config and refuses to run MPF on an
-# archive.
+# archive. watch-mpf-rolling.yml measures the glibc libGrindCore needs in every
+# MPF build it takes (scripts/mpf-pins.py) and goes red when it is not this one.
 grind_glibc=34
 glibc=\$(getconf GNU_LIBC_VERSION 2>/dev/null)
 glibc=\${glibc#glibc }
@@ -604,6 +628,12 @@ install -m 0644 %{SOURCE6} %{buildroot}%{_mandir}/man1/mpf-gui.1
 %{_datadir}/icons/hicolor/*/apps/mpf.png
 
 %changelog
+* Tue Nov 17 2026 gmipf <gmipf64@gmail.com> - 3.11.1~20261116200713.fa305478-4
+- Check each of the six upstream zips against its sha256, taken from
+  MPF's own build of this commit, before unpacking: MPF moves its
+  rolling tag before it uploads, and a rebuild after MPF moved on would
+  package newer zips under this version.
+
 * Tue Nov 17 2026 gmipf <gmipf64@gmail.com> - 3.11.1~20261116200713.fa305478-3
 - Wrappers: below glibc 2.34 (Enterprise Linux 8) keep log compression off
   and refuse to run MPF on a log archive (*_logs.zip), named or lying next
