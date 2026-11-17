@@ -126,7 +126,7 @@ outright. That is a property of the container, not a bug in the package — see 
 | `aaru5` | one release tarball | all |
 | `aaru` | binary tarball + source tarball (icons, `.desktop`, MIME xml) | all |
 | `discimagecreator` | DIC + EccEdc + DVDAuth + unscrambler, built from source | all |
-| `mpf` | three release zips (Check, CLI, Avalonia) | all |
+| `mpf` | three zips from the rolling release (Check, CLI, Avalonia) | all |
 | `dreamdump` | upstream source tarball as the `.orig` (read at build for the manpage and the opcode guard) + the amd64/arm64 release binaries as extras | all |
 | `redumper-gui` | vendored source tarball (crates travel with the source: no build root has network) | **Ubuntu 26.04 + Debian 13** |
 

@@ -5,7 +5,7 @@ Maintainer: gmipf <gmipf64@gmail.com>
 # imagemagick: renders the hicolor icon sizes from the single 512x512 master in
 # debian/ (see debian/rules). The package name is the same on every series; only
 # the CLI name differs (IM6 `convert` vs IM7 `magick`), which rules resolves.
-# unzip: debian/rules unpacks the CLI and GUI release zips upstream publishes.
+# unzip: debian/rules unpacks the CLI and GUI zips upstream publishes.
 # They reach the source tree through the .dsc's Debtransform-Files instead of a
 # merged tarball we would have to assemble and host, so the unpacking is ours.
 Build-Depends: debhelper-compat (= 13),
@@ -59,8 +59,8 @@ Description: Validator that generates Redump !submissionInfo.txt from dump logs
  the files on the mounted medium and needs no privileges beyond read access to
  them.
  .
- Self-contained .NET binary, repackaged unchanged from the upstream rolling
- release.
+ Self-contained .NET binary (net11.0 debug build), repackaged unchanged from
+ the upstream rolling release.
 
 Package: mpf-cli
 Architecture: amd64 arm64
@@ -86,7 +86,8 @@ Description: Headless dump orchestrator (drives redumper, aaru, discimagecreator
  build time in favour of the system-installed dumpers; mpf-cli resolves the
  backend binary via PATH (seeded into ~/.config/mpf/config.json by the wrapper).
  .
- Self-contained .NET binary, repackaged from the upstream rolling release.
+ Self-contained .NET binary (net11.0 debug build), repackaged from the
+ upstream rolling release.
 
 Package: mpf-gui
 Architecture: amd64 arm64
@@ -121,4 +122,5 @@ Description: Avalonia desktop frontend for the MPF disc-dumping workflow
  through Xwayland. The X11 runtime libraries are weak dependencies so headless
  installs of the other subpackages stay lean.
  .
- Self-contained .NET binary, repackaged from the upstream rolling release.
+ Self-contained .NET binary (net11.0 debug build), repackaged from the
+ upstream rolling release.

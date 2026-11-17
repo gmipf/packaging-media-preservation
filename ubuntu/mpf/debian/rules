@@ -10,7 +10,7 @@
 
 # %prep, in Debian's clothes.
 #
-# The three upstream release archives arrive in the source tree exactly as
+# The three upstream archives arrive in the source tree exactly as
 # upstream publishes them: MPF.Check is the .orig tarball, the CLI and GUI zips
 # come in through the .dsc's Debtransform-Files (which is what Source1:/Source2:
 # are to an RPM spec). Unpacking them HERE is what lets this lane build straight
@@ -23,16 +23,28 @@
 # the tree -- the arm64 Check zip (a Debtransform-Files extra, like the other
 # two) is unzipped OVER it. The CLI and GUI come from their arm64 zips directly.
 # arm64 ships UNTESTED (no hardware drive-access proof).
+#
+# The zips are found by their FORM, MPF.<tool>_<net>_linux-<rid>_<config>.zip,
+# not by a literal name: the .NET version and the build configuration in the
+# name are macros of the RPM specs, which the watcher rewrites when upstream
+# renames its assets (net10.0 release became net11.0 debug on 2026-11-13). The
+# .dsc is generated from those specs, so the tree holds exactly one zip per tool
+# and arch; zero or two is a broken source package and fails the build here.
+MPF_RID := $(if $(filter arm64,$(DEB_HOST_ARCH)),arm64,x64)
+MPF_ZIP = $(firstword $(wildcard MPF.$(1)_*_linux-$(MPF_RID)_*.zip))
+MPF_ZIPS = $(wildcard MPF.$(1)_*_linux-$(MPF_RID)_*.zip)
+
 execute_before_dh_auto_build:
 	mkdir -p cli gui
+	test "$(words $(call MPF_ZIPS,CLI))" = 1 && test "$(words $(call MPF_ZIPS,Avalonia))" = 1 \
+	    || { echo "expected exactly one CLI and one Avalonia zip for linux-$(MPF_RID): '$(call MPF_ZIPS,CLI)' '$(call MPF_ZIPS,Avalonia)'" >&2; exit 1; }
 ifeq ($(DEB_HOST_ARCH),arm64)
-	unzip -q -o MPF.Check_net10.0_linux-arm64_release.zip
-	unzip -q -o MPF.CLI_net10.0_linux-arm64_release.zip -d cli
-	unzip -q -o MPF.Avalonia_net10.0_linux-arm64_release.zip -d gui
-else
-	unzip -q -o MPF.CLI_net10.0_linux-x64_release.zip -d cli
-	unzip -q -o MPF.Avalonia_net10.0_linux-x64_release.zip -d gui
+	test "$(words $(call MPF_ZIPS,Check))" = 1 \
+	    || { echo "expected exactly one Check zip for linux-arm64: '$(call MPF_ZIPS,Check)'" >&2; exit 1; }
+	unzip -q -o $(call MPF_ZIP,Check)
 endif
+	unzip -q -o $(call MPF_ZIP,CLI) -d cli
+	unzip -q -o $(call MPF_ZIP,Avalonia) -d gui
 	# Upstream bundles its own dumpers under Programs/. They go: these packages
 	# point MPF at the system-installed ones (see the Recommends in control), and
 	# shipping a second, unmanaged copy is exactly what we are here to avoid.

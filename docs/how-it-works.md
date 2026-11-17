@@ -110,11 +110,18 @@ rewrites the spec on a new release and lets Packit handle the rebuild:
   `Version:` line. Older `build_<N>` tags from the pre-convention era
   are ignored by the filter.
 - **mpf** rolls — upstream force-pushes its `rolling` tag on every
-  release. `watch-mpf-rolling.yml` polls hourly, rewrites the
+  build. `watch-mpf-rolling.yml` polls hourly, rewrites the
   spec's `%global mpfver` + `%global mpfsnap` lines and stores the new
   upstream SHA when something has changed. All three subpackages
   (mpf-check, mpf-cli, mpf-gui) ship synchronously since they share one
-  upstream `<VersionPrefix>`.
+  upstream `<VersionPrefix>`. Rolling is the only source: MPF's tagged
+  releases carry no Linux GUI. Since 2026-11-13 rolling publishes only
+  .NET 11 debug builds, so that is what the packages contain. The asset
+  names are two spec macros (`mpfnet`, `mpfcfg`); on every run the
+  watcher checks that all six zips (three tools, x64 and arm64) exist,
+  and on a new SHA it picks the complete set with the highest .NET,
+  preferring a release build over a debug one. No complete set: the
+  watcher fails and the version stays where it is.
 - **discimagecreator** is packaged from a pinned master commit rather
   than the release tag: master carries the accumulated Linux fixes --
   notably the fd (floppy) SIGSEGV fix (#328) -- that the last release tag

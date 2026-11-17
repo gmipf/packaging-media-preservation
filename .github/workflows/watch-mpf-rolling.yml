@@ -28,8 +28,37 @@ jobs:
           UPSTREAM_SHA_FULL=$(gh api repos/SabreTools/MPF/git/refs/tags/rolling --jq '.object.sha')
           LOCAL_SHA=$(cat "$MARKER" 2>/dev/null || echo none)
 
+          # The Linux zips on the rolling release, asked on EVERY run: the zips
+          # are what every build downloads, not the tag. On 2026-11-13 MPF made
+          # rolling .NET 11 DEBUG only (207dedba, e7a01086); our recipes still
+          # named the net10.0 release zips, every COPR and OBS build failed on
+          # the download, and this watcher kept bumping green for four days
+          # because it only ever read the tag. Only fully uploaded assets count
+          # (state "uploaded"). The names come from two spec macros, mpfnet and
+          # mpfcfg; debian/rules and the .packit.yaml archive line match the
+          # form, so these two lines are the only copy of the names.
+          ASSETS=$(gh api repos/SabreTools/MPF/releases/tags/rolling \
+                     --jq '.assets[] | select(.state == "uploaded") | .name')
+          spec_net=$(sed -nE 's/^%global mpfnet[[:space:]]+//p' "$SPEC")
+          spec_cfg=$(sed -nE 's/^%global mpfcfg[[:space:]]+//p' "$SPEC")
+          [ -n "$spec_net" ] && [ -n "$spec_cfg" ] \
+            || { echo "::error::$SPEC has no %global mpfnet / mpfcfg line -- cannot tell which zips it downloads."; exit 1; }
+          # has_set <net> <cfg>: all six zips of that build are on the release.
+          has_set() {
+            local t r
+            for t in Check CLI Avalonia; do
+              for r in x64 arm64; do
+                grep -qxF "MPF.${t}_${1}_linux-${r}_${2}.zip" <<<"$ASSETS" || return 1
+              done
+            done
+          }
+
           if [ "$UPSTREAM_SHA_FULL" = "$LOCAL_SHA" ]; then
-            echo "Rolling SHA unchanged ($LOCAL_SHA) — no rebuild needed"
+            if ! has_set "$spec_net" "$spec_cfg"; then
+              echo "::error::The rolling release no longer carries all six MPF.{Check,CLI,Avalonia}_${spec_net}_linux-{x64,arm64}_${spec_cfg}.zip our recipes download, although its tag did not move (${LOCAL_SHA:0:8}). Every rebuild of mpf fails on the download until upstream moves the tag again; this watcher then picks the new set. Assets seen: $(tr '\n' ' ' <<<"$ASSETS")"
+              exit 1
+            fi
+            echo "Rolling SHA unchanged ($LOCAL_SHA), all six ${spec_net}/${spec_cfg} zips present — no rebuild needed"
             exit 0
           fi
 
@@ -81,6 +110,27 @@ jobs:
             exit 1
           fi
 
+          # Which build to package: the complete Linux set (all three tools for
+          # x64 AND arm64 under one <net>/<config>) with the highest .NET, and
+          # within it a release build over a debug one. Since 2026-11-13 that is
+          # net11.0 debug: tagged releases carry no Linux GUI at all, so rolling
+          # is the only source of all three (user decision 2026-11-17). No
+          # complete set: red, and the version does NOT move -- a version whose
+          # zips do not exist only turns every farm red later.
+          BEST=$(sed -nE 's/^MPF\.(Check|CLI|Avalonia)_(net[0-9]+\.[0-9]+)_linux-(x64|arm64)_(debug|release)\.zip$/\2 \4/p' <<<"$ASSETS" \
+                 | sort -u \
+                 | while read -r n c; do if has_set "$n" "$c"; then printf '%s %s\n' "$n" "$c"; fi; done \
+                 | awk '{split(substr($1,4),v,"."); printf "%05d %05d %d %s %s\n", v[1], v[2], ($2=="release"), $1, $2}' \
+                 | sort -r | awk 'NR==1 {print $4, $5}')
+          if [ -z "$BEST" ]; then
+            echo "::error::MPF's rolling release (${UPSTREAM_SHA}) has no complete Linux set: no <net>/<config> with all six MPF.{Check,CLI,Avalonia}_<net>_linux-{x64,arm64}_<config>.zip uploaded. Not packaged; mpf stays at ${LOCAL_SHA:0:8} and moves by itself once upstream publishes one. Assets seen: $(tr '\n' ' ' <<<"$ASSETS")"
+            exit 1
+          fi
+          read -r NET CFG <<<"$BEST"
+          if [ "$NET/$CFG" != "$spec_net/$spec_cfg" ]; then
+            echo "MPF's Linux zips moved from ${spec_net}/${spec_cfg} to ${NET}/${CFG}"
+          fi
+
           echo "$UPSTREAM_SHA_FULL" > "$MARKER"
 
           # Tilde-style rolling snapshot lives in two %global lines in the
@@ -92,6 +142,11 @@ jobs:
           sed -i "s/^%global mpfver .*/%global mpfver         ${UPSTREAM_VERSION}/"           "$SPEC"
           sed -i "s/^%global mpfsnap .*/%global mpfsnap        ${UPSTREAM_TS}.${UPSTREAM_SHA}/" "$SPEC"
           sed -i "s/^Release:.*/Release:        1%{?dist}/"                                     "$SPEC"
+          sed -i "s/^%global mpfnet .*/%global mpfnet         ${NET}/"                         "$SPEC"
+          sed -i "s/^%global mpfcfg .*/%global mpfcfg         ${CFG}/"                         "$SPEC"
+          if ! grep -qx "%global mpfnet         ${NET}" "$SPEC" || ! grep -qx "%global mpfcfg         ${CFG}" "$SPEC"; then
+            echo "::error::could not set mpfnet=${NET} / mpfcfg=${CFG} in $SPEC"; exit 1
+          fi
 
           # Prepend a %changelog entry for the new snapshot. EVR is written
           # without %{?dist} to match the existing hand-written entries.
@@ -109,6 +164,11 @@ jobs:
           # --- Debian/Ubuntu recipe: advance it in lockstep. It is built on OBS,
           # from the same upstream Source: URLs the spec names. ---
           UB=ubuntu/mpf
+          # The three Debian descriptions name the build "(<net> <config> build)";
+          # the RPM descriptions take it from the two macros above.
+          sed -i -E "s/\(net[0-9]+\.[0-9]+ (debug|release) build\)/(${NET} ${CFG} build)/" "$UB/debian/control"
+          [ "$(grep -cF "(${NET} ${CFG} build)" "$UB/debian/control")" = 3 ] \
+            || { echo "::error::$UB/debian/control does not name (${NET} ${CFG} build) in all three descriptions"; exit 1; }
           bash scripts/deb/bump-changelog.sh "$UB" "${UPSTREAM_VERSION}~${UPSTREAM_TS}.${UPSTREAM_SHA}" \
             "Automated rolling-snapshot sync to upstream MPF commit ${UPSTREAM_SHA} (published ${UPSTREAM_TS} UTC)."
 
@@ -120,7 +180,7 @@ jobs:
           # below just asks it to re-run its source services. ---
           bash scripts/opensuse-bump.sh mpf "${UPSTREAM_VERSION}~${UPSTREAM_TS}.${UPSTREAM_SHA}" - \
             "Automated rolling-snapshot sync to upstream MPF commit ${UPSTREAM_SHA} (published ${UPSTREAM_TS} UTC)." \
-            mpfver="$UPSTREAM_VERSION" mpfsnap="${UPSTREAM_TS}.${UPSTREAM_SHA}"
+            mpfver="$UPSTREAM_VERSION" mpfsnap="${UPSTREAM_TS}.${UPSTREAM_SHA}" mpfnet="$NET" mpfcfg="$CFG"
 
           # The .dsc carries the version AND the upstream archive names
           # (redumper-b732-... becomes -b733-...). Regenerate it here or OBS
@@ -130,7 +190,7 @@ jobs:
           command -v rpmspec >/dev/null || sudo apt-get install -y -qq rpm >/dev/null
           bash scripts/obs/gen-deb.sh mpf
           git add opensuse/mpf/mpf.dsc opensuse/mpf/debian.tar.gz opensuse/mpf/_service
-          git add "$SPEC" "$MARKER" "$UB/debian/changelog" opensuse/mpf/mpf.spec
+          git add "$SPEC" "$MARKER" "$UB/debian/changelog" "$UB/debian/control" opensuse/mpf/mpf.spec
           if git diff --cached --quiet; then
             echo "Spec and marker unchanged after rewrite — exiting clean"
             exit 0

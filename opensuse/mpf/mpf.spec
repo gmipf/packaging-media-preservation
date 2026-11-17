@@ -1,6 +1,14 @@
 %global mpfver         3.11.1
 %global mpfsnap        20261116200713.fa305478
 %global rolltag        rolling
+# Which build of the rolling release we repackage, as it appears in the asset
+# names (MPF.Check_<mpfnet>_linux-x64_<mpfcfg>.zip). Since MPF 207dedba
+# (2026-11-13) rolling carries only .NET 11 DEBUG builds; tagged releases have
+# no Linux GUI at all, so rolling is the only source of all three tools (user,
+# 2026-11-17). watch-mpf-rolling.yml checks that all six zips exist before it
+# moves the version, and rewrites these two when upstream renames them.
+%global mpfnet         net11.0
+%global mpfcfg         debug
 
 %global debug_package      %{nil}
 %global __strip            /bin/true
@@ -15,12 +23,12 @@ Summary:        Media Preservation Frontend suite (mpf-check, mpf-cli, mpf-gui)
 License:        MIT
 URL:            https://github.com/SabreTools/MPF
 
-# The three self-contained .NET release ZIPs. OBS build roots are hermetic
+# The three self-contained .NET ZIPs. OBS build roots are hermetic
 # (no network), so these are fetched by the _service (download_files) from
 # the constant `rolling` tag and committed as package sources.
-Source0:        %{url}/releases/download/%{rolltag}/MPF.Check_net10.0_linux-x64_release.zip
-Source1:        %{url}/releases/download/%{rolltag}/MPF.CLI_net10.0_linux-x64_release.zip
-Source2:        %{url}/releases/download/%{rolltag}/MPF.Avalonia_net10.0_linux-x64_release.zip
+Source0:        %{url}/releases/download/%{rolltag}/MPF.Check_%{mpfnet}_linux-x64_%{mpfcfg}.zip
+Source1:        %{url}/releases/download/%{rolltag}/MPF.CLI_%{mpfnet}_linux-x64_%{mpfcfg}.zip
+Source2:        %{url}/releases/download/%{rolltag}/MPF.Avalonia_%{mpfnet}_linux-x64_%{mpfcfg}.zip
 
 # arm64 counterparts of Source0-2. OBS builds ONE package source across every
 # enabled arch, so an arch-conditional Source: would commit only one arch's
@@ -28,9 +36,9 @@ Source2:        %{url}/releases/download/%{rolltag}/MPF.Avalonia_net10.0_linux-x
 # is unzipped in %%prep via %%ifarch. Same %%{rolltag} as the x64 set, so the
 # _service fetches and the rolling watcher bumps both together. On the Debian
 # lane they travel as Debtransform-Files extras swapped by debian/rules.
-Source15:       %{url}/releases/download/%{rolltag}/MPF.Check_net10.0_linux-arm64_release.zip
-Source16:       %{url}/releases/download/%{rolltag}/MPF.CLI_net10.0_linux-arm64_release.zip
-Source17:       %{url}/releases/download/%{rolltag}/MPF.Avalonia_net10.0_linux-arm64_release.zip
+Source15:       %{url}/releases/download/%{rolltag}/MPF.Check_%{mpfnet}_linux-arm64_%{mpfcfg}.zip
+Source16:       %{url}/releases/download/%{rolltag}/MPF.CLI_%{mpfnet}_linux-arm64_%{mpfcfg}.zip
+Source17:       %{url}/releases/download/%{rolltag}/MPF.Avalonia_%{mpfnet}_linux-arm64_%{mpfcfg}.zip
 
 # The recipe files below carry a URL for the same reason the upstream sources do:
 # download_files fetches whatever a Source: names, and that is what keeps them OUT
@@ -110,8 +118,8 @@ Optional copy-protection scanning is available via --path/--scan; it
 inspects the files on the mounted medium and needs no privileges beyond
 read access to them.
 
-Self-contained .NET 10 binary, repackaged unmodified from the upstream
-rolling release.
+Self-contained .NET binary (%{mpfnet} %{mpfcfg} build), repackaged
+unmodified from the upstream rolling release.
 
 # ------------------------------------------------------------------ cli
 
@@ -149,8 +157,8 @@ The bundled Programs/Creator/ folder from the upstream ZIP is dropped at
 package build time in favor of the system-installed dumpers; mpf-cli
 resolves the backend binary via PATH.
 
-Self-contained .NET 10 binary, repackaged from the upstream rolling
-release.
+Self-contained .NET binary (%{mpfnet} %{mpfcfg} build), repackaged
+from the upstream rolling release.
 
 # ------------------------------------------------------------------ gui
 
@@ -216,8 +224,8 @@ via PATH.
 On Wayland sessions the GUI runs through Xwayland (Avalonia 11.x has no
 native Wayland backend yet); on X11 sessions it runs natively.
 
-Self-contained .NET 10 binary, repackaged from the upstream rolling
-release.
+Self-contained .NET binary (%{mpfnet} %{mpfcfg} build), repackaged
+from the upstream rolling release.
 
 # =====================================================================
 
@@ -471,6 +479,9 @@ install -m 0644 %{SOURCE6} %{buildroot}%{_mandir}/man1/mpf-gui.1
 %{_datadir}/icons/hicolor/*/apps/mpf.png
 
 %changelog
+* Tue Nov 17 2026 gmipf <gmipf64@gmail.com> - 3.11.1~20261116200713.fa305478-0
+- Repackage the net11.0 debug zips: since 2026-11-13 MPF rolling carries no other Linux build, and the net10.0 release zips are gone.
+
 * Mon Nov 16 2026 gmipf <gmipf64@gmail.com> - 3.11.1~20261116200713.fa305478-0
 - Automated rolling-snapshot sync to upstream MPF commit fa305478 (published 20261116200713 UTC).
 

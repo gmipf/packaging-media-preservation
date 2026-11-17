@@ -51,7 +51,11 @@ packages:
         - bash -c "rpmspec -q --queryformat '%{version}\n' mpf.spec | head -1"
       create-archive:
         - bash -c "spectool -g mpf.spec 1>&2"
-        - bash -c "ls -1 MPF.Check_net10.0_linux-x64_release.zip"
+        # Matched on the FORM, not the name: the .NET version and the build
+        # configuration in it are spec macros the watcher rewrites (net10.0
+        # release became net11.0 debug on 2026-11-13). A literal name here is
+        # a second copy of those macros that nothing would update.
+        - bash -c "ls -1 MPF.Check_*_linux-x64_*.zip | head -1"
 
   discimagecreator:
     paths:
