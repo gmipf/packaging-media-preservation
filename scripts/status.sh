@@ -3,8 +3,8 @@
 # status.sh — one look at both delivery lanes, plus the things that go wrong
 # QUIETLY.
 #
-#   COPR                       -> copr-cli        (Fedora, EPEL)
-#   OBS                        -> osc results     (openSUSE, Debian, Ubuntu)
+#   COPR  -> copr-cli monitor + scripts/copr-reconcile.py      (Fedora, EPEL)
+#   OBS   -> scripts/obs-health.py, anonymous /public reads    (openSUSE, Debian, Ubuntu)
 #
 # There used to be a third: a Launchpad PPA for Ubuntu. It is gone, and the way it
 # failed is why the checks below exist at all. Launchpad dropped roughly 3% of its
@@ -72,6 +72,27 @@ copr-cli monitor "$COPR_PROJECT" \
     --output-format text-row --fields name,chroot,state,build_id 2>/dev/null \
   | awk -F'\t' '{printf "  %-16s %-22s %s\n", $1, $2, $3}' \
   | sort
+
+# Versionen, nicht nur Zustaende: `copr-cli monitor` zeigt je Chroot den LETZTEN
+# Build, und der ist auch dann „succeeded", wenn main laengst weiter ist. Am
+# 2026-11-17 stand hier alles gruen, waehrend COPR drei Pakete hinter main lag
+# (ein zweitaegiger Packit-Ausfall hatte ihre Trigger verschluckt). Darum hier
+# dieselbe Pruefung, die copr-reconcile.yml alle 6 h faehrt, nur ohne --heal:
+# main-NEVRA gegen die Builds, die COPR hat. Antwort = summary-Zeile, wie unten.
+COPRR=$(python3 "$REPO/scripts/copr-reconcile.py" 2>&1)
+while IFS= read -r l; do
+    case $l in
+        ERROR*)      printf '  \033[31m%s\033[0m\n' "$l" ;;
+        would-heal*) printf '  \033[33m%s\033[0m\n' "$l" ;;
+        ok*)         printf '  \033[32m%s\033[0m\n' "$l" ;;
+        *)           printf '  %s\n' "$l" ;;
+    esac
+done <<<"$COPRR"
+if ! grep -q '^summary ' <<<"$COPRR"; then
+    printf '  \033[33mUNKLAR\033[0m copr-reconcile.py lieferte kein Ergebnis — keine Messung, keine Entwarnung\n'
+elif grep -qE '^(ERROR|would-heal)' <<<"$COPRR"; then
+    echo "  -> Nachholen: gh workflow run copr-reconcile.yml -R $GH_REPO (drueckt fehlende Trigger neu)"
+fi
 
 hr "OBS — ${OBS_PROJECT}: Ziele und Aktualitaet"
 # Seit 2026-10-13 dieselbe Pruefung, die obs-health.yml alle 6 h in CI faehrt:

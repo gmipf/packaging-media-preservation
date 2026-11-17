@@ -225,7 +225,9 @@ def main():
     ap.add_argument("--heal", action="store_true", help="re-push trigger branches that COPR never built")
     args = ap.parse_args()
 
-    root = git("rev-parse", "--show-toplevel")
+    # The clone this script lives in, not the caller's CWD: status.sh runs it
+    # from anywhere, and from outside a clone this failed before measuring.
+    root = git("-C", os.path.dirname(os.path.abspath(__file__)), "rev-parse", "--show-toplevel")
     os.chdir(root)
     # Tracked changes only: heal() checks out other trees, which untracked files
     # do not get in the way of (and CI leaves some, e.g. a __pycache__).
@@ -234,7 +236,7 @@ def main():
     git("fetch", "-q", "--prune", "origin")
 
     now = int(time.time())
-    bad = 0
+    tally = {}
     with tempfile.TemporaryDirectory() as tmp:
         for pkg, branch, pkgdir, spec in jobs(root):
             try:
@@ -242,12 +244,14 @@ def main():
             except Exception as e:  # any failure to measure is a finding, not a pass
                 state, detail = "ERROR", f"could not measure: {type(e).__name__}: {e}"
             state, detail = act(state, detail, branch, args.heal, functools.partial(heal, pkg, branch, want))
-            if state == "ERROR":
-                bad += 1
-                if os.environ.get("GITHUB_ACTIONS"):
-                    print(f"::error::{pkg}: {detail}")
+            tally[state] = tally.get(state, 0) + 1
+            if state == "ERROR" and os.environ.get("GITHUB_ACTIONS"):
+                print(f"::error::{pkg}: {detail}")
             print(f"{state:<11} {pkg:<15} {detail}")
-    sys.exit(1 if bad else 0)
+    # The last line says an answer came (status.sh reads it: a crash exits 1
+    # just like a finding).
+    print("summary     " + " · ".join(f"{v}x {k}" for k, v in sorted(tally.items())))
+    sys.exit(1 if tally.get("ERROR") else 0)
 
 
 if __name__ == "__main__":
