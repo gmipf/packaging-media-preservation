@@ -217,11 +217,11 @@ resolved from the build root at build time rather than from a table of series.
 **macOS:** redumper is upstream's own macOS build, repackaged; DiscImageCreator is
 built from source at the same commit as the Linux packages (upstream publishes no
 macOS build, and the one MPF bundles is linked against MacPorts). On Intel Macs
-Homebrew no longer builds bottles (Tier 3 since September 2026), so dependencies
-compile from source. DiscImageCreator builds with its own makefile: besides
-libarchive and openssl@3 (and what they depend on) it needs only pkgconf -- not
-meson, whose Python pulls in openssl@4 (that build failed on an Intel Mac in
-October 2026). Not available on macOS: Aaru (its device layer does not support
+Homebrew no longer builds bottles (Tier 3 since September 2026), so every
+dependency would compile from source. DiscImageCreator needs none: it builds
+with its own makefile, from the part of libarchive it carries, against macOS's
+own zlib and frameworks -- not with meson, whose Python pulls in openssl@4 (that
+build failed on an Intel Mac in October 2026). Not available on macOS: Aaru (its device layer does not support
 macOS), dreamdump (Linux and Windows only), and floppy dumping (no tool reaches a
 floppy there). MPF may follow.
 

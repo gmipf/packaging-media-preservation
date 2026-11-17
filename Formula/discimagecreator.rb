@@ -14,10 +14,7 @@ class Discimagecreator < Formula
   sha256 "1b1239436ed8eaa40ea362a870f55967ce3ff9dadc5b895b7c55d2026faa662e"
   license all_of: ["Apache-2.0", "GPL-3.0-or-later", "GPL-2.0-or-later"]
 
-  depends_on "pkgconf" => :build
-  depends_on "libarchive"
   depends_on :macos
-  depends_on "openssl@3"
 
   uses_from_macos "zlib"
 
@@ -48,8 +45,10 @@ class Discimagecreator < Formula
     end
     # DIC's own makefile, not meson.build: both list the same sources
     # (compared 2026-10-13; a file the makefile lacks fails the link here),
-    # and the makefile's Darwin branch finds libarchive, zlib and openssl
-    # through pkg-config. meson runs on Homebrew's Python, which needs
+    # and the makefile's Darwin branch needs nothing from Homebrew: it
+    # compiles the part of libarchive DIC carries in _external/ and links
+    # macOS's zlib and CommonCrypto (measured at 29886483 with Homebrew out
+    # of reach, 2026-11-17). meson runs on Homebrew's Python, which needs
     # openssl@4, and on Intel Macs Homebrew 7 ships no bottles, so a build
     # tool would compile a second OpenSSL that DIC never links (on test-macos
     # that build failed, 2026-10-13). The makefile's GCC-only warning flags
