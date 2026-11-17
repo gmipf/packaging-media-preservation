@@ -35,7 +35,7 @@
 
 Name:           discimagecreator
 Version:        %{dicsnap}
-Release:        2%{?dist}
+Release:        3%{?dist}
 Summary:        Low-level disc dumper plus EccEdc / DVDAuth / unscrambler helpers
 License:        Apache-2.0 AND GPL-3.0-or-later AND GPL-2.0-or-later
 URL:            https://github.com/saramibreak/DiscImageCreator
@@ -112,17 +112,6 @@ sed -i \
     -e 's|/usr/share/DiscImageCreator/|/usr/share/discimagecreator/|g' \
     DiscImageCreator/get.cpp \
     DiscImageCreator/xml.cpp
-
-# Upstream meson.build stages the Release_ANSI data files into the build
-# dir "for easier testing" via fs.copyfile(), which needs meson >= 0.64.
-# EL9's EPEL ships meson 0.63.x, so those calls abort configure there.
-# They are pure build-tree convenience -- redundant with the install_data()
-# right below them and with our own install-step copies of the same files --
-# so drop them. The installed package is byte-identical on every distro
-# (Fedora's newer meson doesn't need them either). grep-guard first so the
-# build fails loudly if upstream ever restructures this block.
-grep -q 'fs\.copyfile(' meson.build
-sed -i '/fs\.copyfile(/d' meson.build
 
 # Upstream's meson.build looks up zlib and OpenSSL with method: 'system' since
 # 2026-11-16 (29886483), so its macOS build needs no pkg-config. Old meson cannot
@@ -293,6 +282,11 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
 %{_udevrulesdir}/70-discimagecreator-floppy.rules
 
 %changelog
+* Tue Nov 17 2026 gmipf <gmipf64@gmail.com> - 20261116162423.29886483-3
+- Stop deleting meson.build's fs.copyfile() lines: upstream calls them only
+  on meson >= 0.64 since 29886483 and uses configure_file() below that, so
+  EL8 (0.58), EL9 (0.63) and jammy (0.61) configure as shipped.
+
 * Tue Nov 17 2026 gmipf <gmipf64@gmail.com> - 20261116162423.29886483-2
 - Build against the libarchive CAB reader DIC bundles since 2026-11-16:
   BuildRequires the ext2fs headers its config_linux.h includes, instead of

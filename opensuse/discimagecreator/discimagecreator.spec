@@ -124,15 +124,6 @@ sed -i \
     DiscImageCreator/get.cpp \
     DiscImageCreator/xml.cpp
 
-# Upstream meson.build stages the Release_ANSI data files into the build
-# dir "for easier testing" via fs.copyfile(), which needs meson >= 0.64.
-# Older meson (e.g. EPEL 0.63.x) aborts configure there. They are pure
-# build-tree convenience -- redundant with the install_data() below them
-# and with our own install-step copies -- so drop them. grep-guard first so
-# the build fails loudly if upstream ever restructures this block.
-grep -q 'fs\.copyfile(' meson.build
-sed -i '/fs\.copyfile(/d' meson.build
-
 # Upstream's meson.build looks up zlib and OpenSSL with method: 'system' since
 # 2026-11-16 (29886483), so its macOS build needs no pkg-config. Old meson cannot
 # do that on Linux: EL8's meson 0.58 found no zlib that way and jammy's 0.61 no

@@ -91,9 +91,10 @@ openSUSE is built on the [openSUSE Build Service](https://build.opensuse.org/)
 (When this lane started in July 2026, COPR had no Leap 16.0 chroot.)
 
 `discimagecreator`, built from source, carries small spec patches so it
-compiles everywhere. For the older EL toolchains it drops upstream meson's
-`fs.copyfile` (EPEL 9 ships meson 0.63) and renames a doc file with an `&` in
-its name (rpm 4.16 does not quote it); both apply on every distribution and
+compiles everywhere. For the older toolchains it drops upstream meson's
+`method: 'system'` lookups of zlib and OpenSSL (EL8's meson 0.58 and jammy's
+0.61 cannot do them on Linux) and renames a doc file with an `&` in its name
+(rpm 4.16 does not quote it); both apply on every distribution and
 leave the installed files alike (on EL8 it links the vendor-maintained system
 openssl 1.1.1k). It also
 keeps `%if 0%{?suse_version}` portability, which the openSUSE (OBS) lane builds on —
