@@ -12,11 +12,11 @@
 # MPF's pin: .github/workflows/watch-consumer-pins.yml bumps this macro hourly.
 # Should the two ever drift apart for good, this name becomes the rolling one
 # and a dreamdump-mpf pin appears -- versions only go up, so nobody strands.
-%global ddver 0.6.0
+%global ddver 0.6.2
 
 Name:           dreamdump
 Version:        %{ddver}
-Release:        2%{?dist}
+Release:        1%{?dist}
 Summary:        Dump the high-density area of Sega Dreamcast GD-ROMs
 
 License:        EPL-2.0
@@ -86,6 +86,9 @@ sh %{SOURCE3} selftest %{buildroot}%{_bindir}/dreamdump
 %{_mandir}/man1/dreamdump.1*
 
 %changelog
+* Tue Nov 17 2026 gmipf <gmipf64@gmail.com> - 0.6.2-1
+- Automated: consumer moved its bundled dreamdump release 0.6.2; the pin follows. Release reset to 1.
+
 * Mon Oct 12 2026 gmipf <gmipf64@gmail.com> - 0.6.0-2
 - %%check runs the packaged binary (dreamdump-build.sh selftest): on the
   aarch64 chroots the first execution of the arm64 binary before a user's.

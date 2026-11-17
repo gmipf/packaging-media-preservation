@@ -1,3 +1,9 @@
+dreamdump (0.6.2-1) UNRELEASED; urgency=medium
+
+  * Automated: consumer moved its bundled dreamdump release 0.6.2; the pin follows.
+
+ -- gmipf <gmipf64@gmail.com>  Tue, 17 Nov 2026 01:01:27 +0000
+
 dreamdump (0.6.0-1) UNRELEASED; urgency=medium
 
   * Initial package: upstream's static release binaries for amd64 and arm64,
