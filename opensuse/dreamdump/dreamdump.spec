@@ -28,7 +28,8 @@ URL:            https://codeberg.org/MoriGM/dreamdump
 # for LICENSE/README/DRIVES.csv, for the manpage, and to check that the binaries
 # below were built from exactly this commit (dreamdump-build.sh verify).
 Source0:        %{url}/archive/%{ddver}.tar.gz#/dreamdump-%{ddver}.tar.gz
-# Upstream's statically linked release binaries (CGO_ENABLED=0). Both arches are
+# Upstream's statically linked release binaries (checked: no ELF interpreter,
+# no dynamic section -- dreamdump-build.sh verify). Both arches are
 # carried and the matching one picked per build arch: packit and OBS build ONE
 # source package across every arch chroot, so an arch-conditional Source: would
 # ship the x86 binary on aarch64. Same %%{ddver} => bumped in lockstep.

@@ -76,6 +76,33 @@ check_opcodes() {
     done
 }
 
+# SELF-CONTAINED (verify). The package declares no library dependency (Debian:
+# no ${shlibs:Depends}), so the binary must need none: no program header of
+# type PT_DYNAMIC (2) or PT_INTERP (3), i.e. no loader and no shared library
+# from the target. Asked of the ELF, not of the build flag that usually causes
+# it: 0.6.2's amd64 asset says CGO_ENABLED=1 and is as static as 0.6.0 (no
+# package that uses cgo is linked). od, not readelf: coreutils is in every
+# build root, binutils is not.
+elf_u() {  # elf_u <file> <offset> <bytes> -> little-endian unsigned integer
+    od -A n -t "u$3" --endian=little -j "$2" -N "$3" "$1" | tr -d ' \n'
+}
+check_static() {
+    [ "$(od -A n -t x1 -N 6 "$1" | tr -d ' \n')" = 7f454c460201 ] \
+        || fail "$1 is not a 64-bit little-endian ELF"
+    phoff=$(elf_u "$1" 32 8)
+    phentsize=$(elf_u "$1" 54 2)
+    phnum=$(elf_u "$1" 56 2)
+    [ "${phnum:-0}" -gt 0 ] && [ "${phentsize:-0}" -gt 0 ] || fail "$1 has no program headers"
+    i=0
+    while [ "$i" -lt "$phnum" ]; do
+        case $(elf_u "$1" $((phoff + i * phentsize)) 4) in
+            2|3) fail "$1 is dynamically linked (ELF interpreter or dynamic section). The package declares no library dependency, so it would need one now: see readelf -d, and check it runs on the oldest target (EL8, glibc 2.28)." ;;
+            '') fail "$1: program header $i is unreadable" ;;
+        esac
+        i=$((i + 1))
+    done
+}
+
 cmd=${1:-}
 case $cmd in
 verify)
@@ -88,7 +115,7 @@ verify)
     [ -n "$src_rev" ] || fail "no commit id in the pax header of $TARBALL"
     [ -n "$bin_rev" ] || fail "no vcs.revision stamped in $BIN"
     [ "$src_rev" = "$bin_rev" ] || fail "binary built from $bin_rev, source tarball is $src_rev"
-    grep -aq 'CGO_ENABLED=0' "$BIN" || fail "$BIN not built with CGO_ENABLED=0 -- no longer self-contained?"
+    check_static "$BIN"
     echo "provenance ok: $(basename "$BIN") and the source tarball are both $src_rev" >&2
     check_opcodes
     ;;

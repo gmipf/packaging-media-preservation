@@ -14,8 +14,8 @@ Package: dreamdump
 # binaries travel next to it as Debtransform-Files extras, and debian/rules
 # installs the one matching the build arch. arm64 ships build-tested only.
 Architecture: amd64 arm64
-# No ${shlibs:Depends}: upstream builds with CGO_ENABLED=0, the binary is
-# statically linked and dh_shlibdeps finds nothing.
+# No ${shlibs:Depends}: upstream's binary is statically linked (the RPM
+# builds check the ELF, dreamdump-build.sh verify), dh_shlibdeps finds nothing.
 Depends: ${misc:Depends}
 Description: dump the high-density area of Sega Dreamcast GD-ROMs
  dreamdump reads the high-density area of a Sega Dreamcast GD-ROM through raw
