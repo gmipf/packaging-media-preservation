@@ -63,7 +63,8 @@ enable:
 
 | Distribution        | OBS repository name    | Why |
 |---------------------|------------------------|-----|
-| openSUSE Leap 16.0  | `16.0`                 | current stable Leap; the target every spec was validated against |
+| openSUSE Leap 16.0  | `16.0`                 | stable Leap; the target every spec was validated against |
+| openSUSE Leap 16.1  | `16.1`                 | stable Leap as well; added 2026-11-17 with `scripts/obs/add-repo.sh` |
 | openSUSE Tumbleweed | `openSUSE_Tumbleweed`  | rolling; stricter second check (newer GCC, newest permissions framework) |
 
 Then use **Edit repository** on each to set the architectures: **`x86_64`** and
@@ -73,7 +74,9 @@ repository; README → *Account setup* has the second repository and why.
 
 > **The repository name matters.** Leap repositories on OBS are named after the
 > bare version — `16.0`, not `openSUSE_Leap_16.0`. That string is what you pass
-> to `osc build`. (Leap `16.1` is also offered and can be added later.)
+> to `osc build`. A Leap release added later goes in with
+> `scripts/obs/add-repo.sh`, which writes the project meta and the
+> `rust-targets.tsv` row (that is how `16.1` came in).
 
 ## 4. Configure `osc` locally
 

@@ -141,8 +141,12 @@ dumped). Confirmed:
 - `cap_sys_rawio=ep` lands on exactly the **dumping tools** after `%post`
   (measured with `/usr/sbin/getcap` on the installed package): `redumper`,
   `redumper-rgui`, `redumper-mpf`, `aaru`, `aaru5`, and DIC's `DiscImageCreator.out`
-  + `DVDAuth.out` — seven binaries, matching the seven `permctl` entries.
+  — six binaries, matching the six `permctl` entries.
   DIC's `EccEdc`/`unscrambler` are pure file tools and correctly get none.
+  `DVDAuth.out` had the capability as well until 2026-11-17 and lost it: what it
+  sends is allowed to anyone who can open the drive
+  ([drive-access.md](../docs/drive-access.md)). That state is read from the
+  sources, not yet measured on hardware.
 - **`dreamdump` gets none because it needs none**: it sends only INQUIRY, SET CD
   SPEED and READ CD, all on the kernel's unprivileged list (measured 2026-10-12,
   `proofs/dreamdump-optical-access-MEASURED-x86_64.md`); its build fails if a new
@@ -374,7 +378,9 @@ what shipping `cap_sys_rawio` on `MPF.Avalonia` did to `mpf-gui`.
 Ninja names to openSUSE under the `%if 0%{?suse_version}` branches already present
 in the Fedora specs; those branches' BuildRequires were confirmed to resolve on
 Leap 16.0 (`aaru`'s `libicu` / `krb5` / `libopenssl3` / `libz1` /
-`libunwind.so.8`, `dic`'s `ninja` / `pkgconfig(libarchive|openssl|zlib)`) and
+`libunwind.so.8`, `dic`'s `ninja` / `pkgconfig(ext2fs|openssl|zlib)` — ext2fs
+instead of libarchive since 2026-11-17, when DIC started to carry its own CAB
+reader) and
 every spec was built with `rpmbuild -ba` on both targets before being pushed.
 
 `discimagecreator` was the first **source build** through the hermetic-build
