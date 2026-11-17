@@ -12,8 +12,8 @@
 # SIGSEGV fix (#328) -- that the tag lacks. watch-dic-releases.yml rewrites
 # dicsnap / diccommit on every new master commit; diccommit is the full SHA
 # used for the source archive.
-%global dicsnap      20261116162423.29886483
-%global diccommit    298864834e104cef3658e075388ee7292ff0846a
+%global dicsnap      20261117150901.e2ba9095
+%global diccommit    e2ba9095b212c8b2585456fd099d278f9ac3ef19
 # The three helpers track master as well (their release tags lagged behind:
 # EccEdc 20240901 lacked two fixes master has). The watcher re-pins them; the
 # same pins stand in the other spec and in debian/rules, and
@@ -35,7 +35,7 @@
 
 Name:           discimagecreator
 Version:        %{dicsnap}
-Release:        3%{?dist}
+Release:        1%{?dist}
 Summary:        Low-level disc dumper plus EccEdc / DVDAuth / unscrambler helpers
 License:        Apache-2.0 AND GPL-3.0-or-later AND GPL-2.0-or-later
 URL:            https://github.com/saramibreak/DiscImageCreator
@@ -282,6 +282,10 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
 %{_udevrulesdir}/70-discimagecreator-floppy.rules
 
 %changelog
+* Tue Nov 17 2026 gmipf <gmipf64@gmail.com> - 20261117150901.e2ba9095-1
+- Automated master-snapshot sync to upstream DiscImageCreator commit
+  e2ba9095 (committed 20261117150901 UTC); Release reset to 1.
+
 * Tue Nov 17 2026 gmipf <gmipf64@gmail.com> - 20261116162423.29886483-3
 - Stop deleting meson.build's fs.copyfile() lines: upstream calls them only
   on meson >= 0.64 since 29886483 and uses configure_file() below that, so

@@ -6,8 +6,8 @@
 # plus short SHA: dicsnap = <YYYYMMDDHHMMSS>.<short-SHA>. watch-dic-releases
 # rewrites dicsnap / diccommit on every new master commit; diccommit is the
 # full SHA used for the source archive.
-%global dicsnap      20261116162423.29886483
-%global diccommit    298864834e104cef3658e075388ee7292ff0846a
+%global dicsnap      20261117150901.e2ba9095
+%global diccommit    e2ba9095b212c8b2585456fd099d278f9ac3ef19
 # The three helpers track master as well (their release tags lagged behind:
 # EccEdc 20240901 lacked two fixes master has). The watcher re-pins them; the
 # same pins stand in the other spec and in debian/rules, and
@@ -296,6 +296,9 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
 %{_datadir}/permissions/permissions.d/discimagecreator
 
 %changelog
+* Tue Nov 17 2026 gmipf <gmipf64@gmail.com> - 20261117150901.e2ba9095-0
+- Automated master-snapshot sync to upstream DiscImageCreator commit e2ba9095 (committed 20261117150901 UTC).
+
 * Tue Nov 17 2026 gmipf <gmipf64@gmail.com> - 20261116162423.29886483-0
 - Build against the libarchive CAB reader DIC bundles since 2026-11-16: BuildRequires the ext2fs headers its config_linux.h includes, instead of the system libarchive, and drop meson's method: 'system' for zlib and OpenSSL, which EL8 and jammy meson cannot do on Linux. Drop cap_sys_rawio from DVDAuth.out: it opens the drive read-only and sends only READ(12), READ DVD STRUCTURE, REPORT KEY, SEND KEY and the DVD_AUTH ioctl, which the kernel allows to anyone who can open the drive (read from the kernel and DVDAuth sources, not yet measured on a drive).
 
