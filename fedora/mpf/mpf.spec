@@ -1,5 +1,5 @@
 %global mpfver         3.11.1
-%global mpfsnap        20261117144819.737d4bce
+%global mpfsnap        20261118014430.05fdb761
 %global rolltag        rolling
 # Which build of the rolling release we repackage, as it appears in the asset
 # names (MPF.Check_<mpfnet>_linux-x64_<mpfcfg>.zip). Since MPF 207dedba
@@ -15,12 +15,12 @@
 # fetch newer zips under this version. %%prep fails on any other zip. Written by
 # watch-mpf-rolling.yml through scripts/mpf-pins.py, together with the openSUSE
 # spec and debian/rules; lint.sh fails when the three differ.
-%global mpfsha_check_x64    eb18226291deeb6f0d0125fa1669b18ac5380dd4b3f8b28d77231eb6c0f8aa74
-%global mpfsha_cli_x64      65bf8e63d5baa7fd260434b0cfb28e8314de0c58a3ff8564ec6adbe064f542cc
-%global mpfsha_gui_x64      8b460aabfa0abf3e29cf863d8f00f1fe5098f2359eecb25b5fe3c42f7acd54a5
-%global mpfsha_check_arm64  9d017c6a23ce04a0c76acdef7bade5733021c52d99865bfa3c73027781f9694a
-%global mpfsha_cli_arm64    3c384867f61b4b969a70f47aac1bb70df8d0efe0a68c701988a38b376a9d3857
-%global mpfsha_gui_arm64    9a320aba4fe3e9fe88577b6cd66c50be12758afc1560f461cf55b2d56b73c7be
+%global mpfsha_check_x64    68570bb701870da49eb1af204703c453b79ed641939026e5db4613293627160f
+%global mpfsha_cli_x64      b63a049d1373fbd40f367beca0a0df3167bc4ed4ba86b6e0153fed3d1aca54ba
+%global mpfsha_gui_x64      08027fd1140c44bafd2e879b0b288b86e643f1f4dd534f783215a23b5431ae46
+%global mpfsha_check_arm64  efcfd2f1ca4c1eec36b19b7195b71b0b01bf4bc11caf27b79797af7110aacac4
+%global mpfsha_cli_arm64    85aa4ec148be1b150a7d3be75588b422fed6393c0b23e02661ee948a21f8c201
+%global mpfsha_gui_arm64    4d997ed81dde2a02824275b22519be17a8ca7137e208eeb259837812c201b011
 
 %global debug_package      %{nil}
 %global __strip            /bin/true
@@ -628,6 +628,10 @@ install -m 0644 %{SOURCE6} %{buildroot}%{_mandir}/man1/mpf-gui.1
 %{_datadir}/icons/hicolor/*/apps/mpf.png
 
 %changelog
+* Wed Nov 18 2026 gmipf <gmipf64@gmail.com> - 3.11.1~20261118014430.05fdb761-1
+- Automated rolling-snapshot sync to upstream MPF commit 05fdb761
+  (rolling tag, published 20261118014430 UTC); Release reset to 1.
+
 * Tue Nov 17 2026 gmipf <gmipf64@gmail.com> - 3.11.1~20261117144819.737d4bce-1
 - Automated rolling-snapshot sync to upstream MPF commit 737d4bce
   (rolling tag, published 20261117144819 UTC); Release reset to 1.
