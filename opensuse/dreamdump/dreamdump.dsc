@@ -2,7 +2,7 @@ Format: 3.0 (quilt)
 Source: dreamdump
 Binary: dreamdump
 Architecture: amd64 arm64
-Version: 0.6.2-1
+Version: 0.6.2-2
 Maintainer: gmipf <gmipf64@gmail.com>
 Homepage: https://codeberg.org/MoriGM/dreamdump
 Standards-Version: 4.6.2

@@ -12,7 +12,7 @@
 
 Name:           redumper
 Version:        773
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        A low-level byte-perfect CD disc dumper
 
 License:        GPL-3.0-only
@@ -52,6 +52,14 @@ Source2:        https://raw.githubusercontent.com/superg/redumper/b%{version}/RE
 # examples guidance that help2man would strip out.
 Source3:        redumper.1
 
+# Bash completion, generated from the upstream source at the revision this
+# spec builds (scripts/completions/gen.py; the watchers regenerate it on
+# every bump). It also offers what `redumper --help` does not list.
+Source5:        redumper.bash-completion
+# Older rpm configs (EL8) do not define %%{bash_completions_dir}; this is the
+# path it stands for everywhere it does.
+%{!?bash_completions_dir:%global bash_completions_dir %{_datadir}/bash-completion/completions}
+
 ExclusiveArch:  x86_64 aarch64
 BuildRequires:  unzip
 
@@ -89,13 +97,21 @@ install -p -m 0644 %{SOURCE2} README.md
 
 install -D -m 0644 %{SOURCE3} %{buildroot}%{_mandir}/man1/redumper.1
 
+install -D -p -m 0644 %{SOURCE5} %{buildroot}%{bash_completions_dir}/redumper
+
 %files
 %license LICENSE
 %doc README.md
 %caps(cap_sys_rawio=ep) %{_bindir}/redumper
 %{_mandir}/man1/redumper.1*
+%{bash_completions_dir}/redumper
 
 %changelog
+* Wed Nov 18 2026 gmipf <gmipf64@gmail.com> - 773-2
+- Ship a bash completion for redumper, generated from the b773 source by
+  scripts/completions/gen.py. It also offers the commands and options
+  that --help does not list.
+
 * Sat Nov 14 2026 gmipf <gmipf64@gmail.com> - 773-1
 - Automated sync to upstream redumper release b773; Release reset to 1.
 

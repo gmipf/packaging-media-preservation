@@ -1,1 +1,2 @@
 bin/redumper-rgui usr/bin/
+debian/completions/redumper-rgui usr/share/bash-completion/completions/

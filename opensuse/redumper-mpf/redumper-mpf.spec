@@ -75,6 +75,13 @@ Source2:        https://raw.githubusercontent.com/superg/redumper/b%{rdbuild}/RE
 # recipe file must be listed in _service had been derived from it.
 Source99:       https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/redumper-mpf/redumper-mpf-rpmlintrc
 
+# Bash completion, generated from the upstream source at the revision this
+# spec builds (scripts/completions/gen.py). A recipe file like the ones above.
+Source5:        https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/redumper-mpf/redumper-mpf.bash-completion
+# Older rpm configs (EL8) do not define %%{bash_completions_dir}; this is the
+# path it stands for everywhere it does.
+%{!?bash_completions_dir:%global bash_completions_dir %{_datadir}/bash-completion/completions}
+
 ExclusiveArch:  x86_64 aarch64
 BuildRequires:  unzip
 
@@ -150,6 +157,8 @@ cat > %{buildroot}%{_datadir}/permissions/permissions.d/redumper-mpf <<'EOF'
  +capabilities cap_sys_rawio=ep
 EOF
 
+install -D -p -m 0644 %{SOURCE5} %{buildroot}%{bash_completions_dir}/redumper-mpf
+
 %post
 %set_permissions %{_bindir}/redumper-mpf
 
@@ -161,8 +170,14 @@ EOF
 %doc README.md
 %{_bindir}/redumper-mpf
 %{_datadir}/permissions/permissions.d/redumper-mpf
+%dir %{_datadir}/bash-completion
+%dir %{bash_completions_dir}
+%{bash_completions_dir}/redumper-mpf
 
 %changelog
+* Wed Nov 18 2026 gmipf <gmipf64@gmail.com> - 772-0
+- Ship a bash completion for redumper-mpf, generated from the b772 source by scripts/completions/gen.py. It also offers the commands and options that --help does not list.
+
 * Thu Nov 12 2026 gmipf <gmipf64@gmail.com> - 772-0
 - Automated: consumer moved its bundled redumper build b772; the pin follows.
 

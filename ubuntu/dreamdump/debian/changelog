@@ -1,3 +1,9 @@
+dreamdump (0.6.2-2) UNRELEASED; urgency=medium
+
+  * Ship a bash completion for dreamdump, generated from the 0.6.2 source by scripts/completions/gen.py. It also offers the options its usage line does not list.
+
+ -- gmipf <gmipf64@gmail.com>  Wed, 18 Nov 2026 20:23:55 +0000
+
 dreamdump (0.6.2-1) UNRELEASED; urgency=medium
 
   * Automated: consumer moved its bundled dreamdump release 0.6.2; the pin follows.

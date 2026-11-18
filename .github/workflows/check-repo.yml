@@ -74,6 +74,13 @@ jobs:
       - name: docs-gate decision tests
         run: python3 scripts/test-docs-gate.py
 
+      # lint.sh checks the completions offline (copies, pins, recipes, smoke).
+      # This half needs the upstream source: regenerate every completion from the
+      # revision its spec pins and fail if a committed copy differs -- a
+      # generator change that was never run, or a hand edit to all three copies.
+      - name: Bash completions are what the generator makes
+        run: python3 scripts/completions/gen.py check
+
       # A generator the Debian lane must carry as a COPY (it cannot fetch by URL)
       # has to stay byte-identical to the Fedora one, or one lane quietly runs an
       # older guard. Only the generator SCRIPTS: the manpage templates (*.1.in)
@@ -154,7 +161,7 @@ jobs:
           dnf -y -q --setopt=install_weak_deps=False --disablerepo=fedora-cisco-openh264
           install git-core tar gzip /usr/bin/dpkg-parsechangelog /usr/bin/shellcheck
           /usr/bin/xmllint /usr/bin/desktop-file-validate /usr/bin/yamllint /usr/bin/packit
-          /usr/bin/rpmlint /usr/bin/groff rpm-build systemd-rpm-macros python3
+          /usr/bin/rpmlint /usr/bin/groff rpm-build systemd-rpm-macros python3 bash-completion
 
       # Not packaged for Fedora. The release binary, pinned by version AND by
       # checksum -- the hash below was read from a download verified against the

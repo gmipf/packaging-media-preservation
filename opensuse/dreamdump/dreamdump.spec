@@ -45,6 +45,13 @@ Source2:        %{url}/releases/download/%{ddver}/dreamdump-_linux_arm64
 # The .deb is built from the same downloaded files.
 Source3:        https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/fedora/dreamdump/dreamdump-build.sh
 
+# Bash completion, generated from the upstream source at the revision this
+# spec builds (scripts/completions/gen.py). A recipe file like the ones above.
+Source4:        https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/dreamdump/dreamdump.bash-completion
+# Older rpm configs (EL8) do not define %%{bash_completions_dir}; this is the
+# path it stands for everywhere it does.
+%{!?bash_completions_dir:%global bash_completions_dir %{_datadir}/bash-completion/completions}
+
 ExclusiveArch:  x86_64 aarch64
 
 %description
@@ -80,6 +87,8 @@ install -D -p -m 0755 %{SOURCE1} %{buildroot}%{_bindir}/dreamdump
 %endif
 install -D -p -m 0644 dreamdump.1 %{buildroot}%{_mandir}/man1/dreamdump.1
 
+install -D -p -m 0644 %{SOURCE4} %{buildroot}%{bash_completions_dir}/dreamdump
+
 %check
 # Run the binary just installed, on this builder's CPU: on aarch64 the only
 # run of the arm64 binary before a user's (selftest in dreamdump-build.sh).
@@ -90,8 +99,14 @@ sh %{SOURCE3} selftest %{buildroot}%{_bindir}/dreamdump
 %doc README.md DRIVES.csv
 %{_bindir}/dreamdump
 %{_mandir}/man1/dreamdump.1*
+%dir %{_datadir}/bash-completion
+%dir %{bash_completions_dir}
+%{bash_completions_dir}/dreamdump
 
 %changelog
+* Wed Nov 18 2026 gmipf <gmipf64@gmail.com> - 0.6.2-0
+- Ship a bash completion for dreamdump, generated from the 0.6.2 source by scripts/completions/gen.py. It also offers the options its usage line does not list.
+
 * Tue Nov 17 2026 gmipf <gmipf64@gmail.com> - 0.6.2-0
 - Automated: consumer moved its bundled dreamdump release 0.6.2; the pin follows.
 

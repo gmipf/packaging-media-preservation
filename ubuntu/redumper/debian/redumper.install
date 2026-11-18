@@ -1,1 +1,2 @@
 bin/redumper usr/bin/
+debian/completions/redumper usr/share/bash-completion/completions/

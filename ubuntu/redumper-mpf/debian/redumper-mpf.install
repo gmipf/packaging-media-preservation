@@ -1,1 +1,2 @@
 bin/redumper-mpf usr/bin/
+debian/completions/redumper-mpf usr/share/bash-completion/completions/

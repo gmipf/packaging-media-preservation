@@ -97,6 +97,13 @@ jobs:
           # rpmspec: gen-deb.sh reads the upstream Source: URLs out of the spec,
           # so the .dsc names exactly what download_files fetches.
           command -v rpmspec >/dev/null || sudo apt-get install -y -qq rpm >/dev/null
+          # The bash completion, from the source of the new release. The Debian
+          # copy travels in debian.tar.gz, so it is written BEFORE gen-deb.sh. A
+          # parser that changed shape upstream fails this run, every hour, until
+          # scripts/completions/redumper.py is fixed -- never a stale list.
+          python3 scripts/completions/gen.py write redumper
+          git add fedora/redumper/redumper.bash-completion opensuse/redumper/redumper.bash-completion \
+                  ubuntu/redumper/debian/completions/redumper
           bash scripts/obs/gen-deb.sh redumper
           git add opensuse/redumper/redumper.dsc opensuse/redumper/debian.tar.gz opensuse/redumper/_service
 

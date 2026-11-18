@@ -42,6 +42,11 @@
 #   texts           every package named in each text of its lanes, every lane
 #                   and formula in the README, every workflow in how-it-works
 #                   (texts-check.py offline; the live half runs in check-repo.yml)
+#   completions     the generated bash completions: three identical copies per
+#                   command, at the revision the spec pins, installed by every
+#                   recipe, and each answers its smoke lines in a real bash
+#                   (completions/gen.py lint + smoke; whether they are still what
+#                   the generator makes needs the source: check-repo.yml)
 set -uo pipefail
 
 ROOT=$(git rev-parse --show-toplevel) || exit 2
@@ -85,7 +90,9 @@ if [ -n "$missing" ]; then bad "no newline at end of:$missing"; else ok "final n
 # --- shellcheck -------------------------------------------------------------
 if have shellcheck; then
     shebang=$(git grep -I -n -E '^#!(/usr)?/bin/(env +)?(ba|da|k)?sh\b' -- ':!*.sh' | sed -n 's/:1:#!.*//p')
-    mapfile -t sh < <({ git ls-files '*.sh'; printf '%s\n' "$shebang"; } | sed '/^$/d' | sort -u)
+    # the completions carry `# shellcheck shell=bash` instead of a shebang; the
+    # Debian copies are byte-identical to these (completions/gen.py lint)
+    mapfile -t sh < <({ git ls-files '*.sh' '*.bash-completion'; printf '%s\n' "$shebang"; } | sed '/^$/d' | sort -u)
     if [ "${#sh[@]}" -lt 10 ]; then
         bad "shellcheck: only ${#sh[@]} scripts found -- the layout moved"
     elif shellcheck -S warning -f gcc "${sh[@]}"; then
@@ -236,6 +243,20 @@ if have python3; then
     if out=$(python3 scripts/texts-check.py offline 2>&1); then ok "$out"
     else bad "texts:"; printf '%s\n' "$out" >&2; fi
 fi
+# --- bash completions ---------------------------------------------------------
+# Generated from each upstream source at the revision its spec pins, in three
+# copies per command. A copy edited by hand, a spec bumped without regenerating,
+# or a recipe that never installs the file would all build green.
+if have python3; then
+    if out=$(python3 scripts/completions/gen.py lint 2>&1); then ok "$out"
+    else bad "completions:"; printf '%s\n' "$out" >&2; fi
+    if [ -f /usr/share/bash-completion/bash_completion ]; then
+        if out=$(python3 scripts/completions/gen.py smoke 2>&1); then ok "$out"
+        else bad "completions smoke:"; printf '%s\n' "$out" >&2; fi
+    elif [ "$HOOK" = 1 ]; then skipped="$skipped bash-completion"
+    else bad "bash-completion is not installed -- not measured is not clean"; fi
+fi
+
 # debian/rules travels in debian.tar.gz WITH its mode -- the reason it travels as
 # a tarball at all (gen-deb.sh's header): a 0644 rules is a malformed source
 # package that builds only because older dpkg-source chmods it. Two of nine had

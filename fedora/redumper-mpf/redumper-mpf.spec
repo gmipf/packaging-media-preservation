@@ -31,7 +31,7 @@
 
 Name:           redumper-mpf
 Version:        %{rdbuild}
-Release:        1%{?dist}
+Release:        2%{?dist}
 Obsoletes:      redumper732 < 733
 Summary:        redumper b%{rdbuild}, the build pinned by MPF
 
@@ -51,6 +51,14 @@ Source0:        %{url}/releases/download/b%{rdbuild}/redumper-b%{rdbuild}-linux-
 Source4:        %{url}/releases/download/b%{rdbuild}/redumper-b%{rdbuild}-linux-arm64.zip
 Source1:        https://raw.githubusercontent.com/superg/redumper/b%{rdbuild}/LICENSE
 Source2:        https://raw.githubusercontent.com/superg/redumper/b%{rdbuild}/README.md
+
+# Bash completion, generated from the upstream source at the revision this
+# spec builds (scripts/completions/gen.py; the watchers regenerate it on
+# every bump). It also offers what `redumper-mpf --help` does not list.
+Source5:        redumper-mpf.bash-completion
+# Older rpm configs (EL8) do not define %%{bash_completions_dir}; this is the
+# path it stands for everywhere it does.
+%{!?bash_completions_dir:%global bash_completions_dir %{_datadir}/bash-completion/completions}
 
 ExclusiveArch:  x86_64 aarch64
 BuildRequires:  unzip
@@ -102,12 +110,20 @@ install -m 0755 redumper-b%{rdbuild}-linux-x64/bin/redumper \
 install -p -m 0644 %{SOURCE1} LICENSE
 install -p -m 0644 %{SOURCE2} README.md
 
+install -D -p -m 0644 %{SOURCE5} %{buildroot}%{bash_completions_dir}/redumper-mpf
+
 %files
 %license LICENSE
 %doc README.md
 %caps(cap_sys_rawio=ep) %{_bindir}/redumper-mpf
+%{bash_completions_dir}/redumper-mpf
 
 %changelog
+* Wed Nov 18 2026 gmipf <gmipf64@gmail.com> - 772-2
+- Ship a bash completion for redumper-mpf, generated from the b772 source by
+  scripts/completions/gen.py. It also offers the commands and options
+  that --help does not list.
+
 * Thu Nov 12 2026 gmipf <gmipf64@gmail.com> - 772-1
 - Automated: consumer moved its bundled redumper build b772; the pin follows. Release reset to 1.
 

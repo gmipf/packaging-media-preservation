@@ -64,6 +64,13 @@ Source2:        https://raw.githubusercontent.com/superg/redumper/b%{rdbuild}/RE
 # opensuse/redumper-mpf/redumper-mpf.spec for the measurement behind this.
 Source99:       https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/redumper-rgui/redumper-rgui-rpmlintrc
 
+# Bash completion, generated from the upstream source at the revision this
+# spec builds (scripts/completions/gen.py). A recipe file like the ones above.
+Source5:        https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/redumper-rgui/redumper-rgui.bash-completion
+# Older rpm configs (EL8) do not define %%{bash_completions_dir}; this is the
+# path it stands for everywhere it does.
+%{!?bash_completions_dir:%global bash_completions_dir %{_datadir}/bash-completion/completions}
+
 ExclusiveArch:  x86_64 aarch64
 BuildRequires:  unzip
 
@@ -139,6 +146,8 @@ cat > %{buildroot}%{_datadir}/permissions/permissions.d/redumper-rgui <<'EOF'
  +capabilities cap_sys_rawio=ep
 EOF
 
+install -D -p -m 0644 %{SOURCE5} %{buildroot}%{bash_completions_dir}/redumper-rgui
+
 %post
 %set_permissions %{_bindir}/redumper-rgui
 
@@ -150,8 +159,14 @@ EOF
 %doc README.md
 %{_bindir}/redumper-rgui
 %{_datadir}/permissions/permissions.d/redumper-rgui
+%dir %{_datadir}/bash-completion
+%dir %{bash_completions_dir}
+%{bash_completions_dir}/redumper-rgui
 
 %changelog
+* Wed Nov 18 2026 gmipf <gmipf64@gmail.com> - 773-0
+- Ship a bash completion for redumper-rgui, generated from the b773 source by scripts/completions/gen.py. It also offers the commands and options that --help does not list.
+
 * Mon Nov 16 2026 gmipf <gmipf64@gmail.com> - 773-0
 - Automated: consumer moved its bundled redumper build b773; the pin follows.
 

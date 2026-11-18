@@ -2,7 +2,7 @@ Format: 3.0 (quilt)
 Source: redumper-mpf
 Binary: redumper-mpf
 Architecture: amd64 arm64
-Version: 772-1
+Version: 772-2
 Maintainer: gmipf <gmipf64@gmail.com>
 Homepage: https://github.com/superg/redumper
 Standards-Version: 4.6.2

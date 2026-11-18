@@ -89,6 +89,16 @@ bash scripts/deb/bump-changelog.sh "ubuntu/$PIN" "$NEW" "$MSG"
 # the three lanes against each other, which is what makes this line testable.
 printf '%s\n' "$TAG" > "ubuntu/$PIN/.upstream-tag"
 
+# ---- the bash completion, from the upstream source at the new pin. It travels
+#      in debian.tar.gz, so it is written BEFORE gen-deb.sh packs that. A parser
+#      that changed shape upstream stops the bump here, loudly. ----
+has=$(python3 scripts/completions/gen.py has "$PIN")
+case "$has" in
+    yes) python3 scripts/completions/gen.py write "$PIN" ;;
+    no) ;;
+    *) echo "scripts/completions/gen.py has $PIN answered '$has'" >&2; exit 1 ;;
+esac
+
 # ---- regenerate the openSUSE deb artifacts (the .dsc names the upstream archive) ----
 command -v rpmspec >/dev/null || { echo "rpmspec required" >&2; exit 1; }
 bash scripts/obs/gen-deb.sh "$PIN"

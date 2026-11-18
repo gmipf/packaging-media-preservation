@@ -58,6 +58,13 @@ Source3:        https://raw.githubusercontent.com/gmipf/packaging-media-preserva
 
 Source99:       https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/redumper/redumper-rpmlintrc
 
+# Bash completion, generated from the upstream source at the revision this
+# spec builds (scripts/completions/gen.py). A recipe file like the ones above.
+Source5:        https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/redumper/redumper.bash-completion
+# Older rpm configs (EL8) do not define %%{bash_completions_dir}; this is the
+# path it stands for everywhere it does.
+%{!?bash_completions_dir:%global bash_completions_dir %{_datadir}/bash-completion/completions}
+
 ExclusiveArch:  x86_64 aarch64
 BuildRequires:  unzip
 
@@ -114,6 +121,8 @@ cat > %{buildroot}%{_datadir}/permissions/permissions.d/redumper <<'EOF'
  +capabilities cap_sys_rawio=ep
 EOF
 
+install -D -p -m 0644 %{SOURCE5} %{buildroot}%{bash_completions_dir}/redumper
+
 %post
 %set_permissions %{_bindir}/redumper
 
@@ -126,8 +135,14 @@ EOF
 %{_bindir}/redumper
 %{_datadir}/permissions/permissions.d/redumper
 %{_mandir}/man1/redumper.1*
+%dir %{_datadir}/bash-completion
+%dir %{bash_completions_dir}
+%{bash_completions_dir}/redumper
 
 %changelog
+* Wed Nov 18 2026 gmipf <gmipf64@gmail.com> - 773-0
+- Ship a bash completion for redumper, generated from the b773 source by scripts/completions/gen.py. It also offers the commands and options that --help does not list.
+
 * Sat Nov 14 2026 gmipf <gmipf64@gmail.com> - 773-0
 - Automated sync to upstream redumper release b773.
 
