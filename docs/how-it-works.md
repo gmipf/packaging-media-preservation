@@ -202,6 +202,25 @@ checks do:
   and architecture COPR and OBS build for is named in `CHANGELOG.md` (on every
   push, and in `scripts/status.sh`).
 
+### Bash completion
+
+The completions are generated, not written by hand. `scripts/completions/gen.py`
+reads each tool's argument parser in its source, at the revision the Fedora spec
+pins (one module per parser in `scripts/completions/`), and writes the same file
+to all three lanes: `fedora/<tool>/`, `opensuse/<tool>/` (fetched by raw URL like
+the other recipe files) and `ubuntu/<tool>/debian/completions/`, which travels in
+`debian.tar.gz`. The watchers and `scripts/bump-pin.sh` regenerate it in the
+commit that bumps the version, before `gen-deb.sh` runs. A source the generator
+does not recognise stops it with an error instead of a smaller completion; what
+the source cannot tell (which text option takes a file name, which values exist
+only at run time) is a table in the module. Each file's header says what it
+leaves out and why.
+
+`scripts/lint.sh` checks that the three copies are identical, name the revision
+their spec pins and are installed by every recipe, and loads each one into a
+real bash to answer its smoke lines. `check-repo.yml` regenerates them from the
+source and fails when a committed file differs.
+
 ## Build notes per lane
 
 **Tumbleweed on ARM** comes from a second repository,
