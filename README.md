@@ -27,10 +27,11 @@ re-hosted.
 
 ¹ optical drives only; no tool reaches a floppy drive on macOS.
 
-On Linux, redumper, `redumper-mpf`, `redumper-rgui`, dreamdump and DiscImageCreator
-(with `eccedc`, `unscrambler` and `dvdauth`) come with bash completion. It is
-generated from each tool's source at the packaged version, so it also offers what
-the help text leaves out, such as redumper's `drive::test`.
+On Linux, redumper, `redumper-mpf`, `redumper-rgui`, dreamdump, DiscImageCreator
+(with `eccedc`, `unscrambler` and `dvdauth`), `mpf-cli` and `mpf-check` come with
+bash completion. It is generated from each tool's source at the packaged version,
+so it also offers what the help text leaves out, such as redumper's `drive::test`,
+and the system and media-type codes MPF knows.
 
 Watchers check every upstream several times a day, and new upstream versions
 are packaged for all lanes automatically (`aaru5` is bumped by hand on

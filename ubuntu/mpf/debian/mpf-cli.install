@@ -1,1 +1,2 @@
 cli/MPF.CLI usr/lib/mpf-cli/
+debian/completions/mpf-cli usr/share/bash-completion/completions/

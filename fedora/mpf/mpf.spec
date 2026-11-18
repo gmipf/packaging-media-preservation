@@ -37,7 +37,7 @@ Version:        %{mpfver}~%{mpfsnap}
 # lives in the changelog. (Stuck at 5 here from pre-fix manual bumps of
 # the 71dafe3d snapshot — already shipped as -5, so left as-is to avoid
 # a downgrade; the next snapshot resets it.)
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        Media Preservation Frontend suite (mpf-check, mpf-cli, mpf-gui)
 
 License:        MIT
@@ -61,6 +61,14 @@ Source3:        mpf-gui.desktop
 Source4:        mpf-check.1
 Source5:        mpf-cli.1
 Source6:        mpf-gui.1
+
+# Bash completions, generated from the MPF source at %%{mpfsnap}'s commit
+# (scripts/completions/gen.py); the watcher regenerates them on every snapshot.
+Source7:        mpf-check.bash-completion
+Source8:        mpf-cli.bash-completion
+# Older rpm configs (EL8) do not define %%{bash_completions_dir}; this is the
+# path it stands for everywhere it does.
+%{!?bash_completions_dir:%global bash_completions_dir %{_datadir}/bash-completion/completions}
 
 # ONE icon master. The smaller hicolor sizes are rendered from it at build time
 # (see %%install) instead of being committed here as pre-rendered copies: five
@@ -582,6 +590,10 @@ install -m 0644 %{SOURCE4} %{buildroot}%{_mandir}/man1/mpf-check.1
 install -m 0644 %{SOURCE5} %{buildroot}%{_mandir}/man1/mpf-cli.1
 install -m 0644 %{SOURCE6} %{buildroot}%{_mandir}/man1/mpf-gui.1
 
+# --- bash completions (mpf-gui takes no arguments) ---
+install -D -p -m 0644 %{SOURCE7} %{buildroot}%{bash_completions_dir}/mpf-check
+install -D -p -m 0644 %{SOURCE8} %{buildroot}%{bash_completions_dir}/mpf-cli
+
 # =====================================================================
 
 %files
@@ -612,12 +624,14 @@ install -m 0644 %{SOURCE6} %{buildroot}%{_mandir}/man1/mpf-gui.1
 %attr(0755,root,root) %{_libdir}/mpf-check/MPF.Check
 %dir %{_libdir}/mpf-check
 %{_mandir}/man1/mpf-check.1*
+%{bash_completions_dir}/mpf-check
 
 %files cli
 %{_bindir}/mpf-cli
 %attr(0755,root,root) %{_libdir}/mpf-cli/MPF.CLI
 %dir %{_libdir}/mpf-cli
 %{_mandir}/man1/mpf-cli.1*
+%{bash_completions_dir}/mpf-cli
 
 %files gui
 %{_bindir}/mpf-gui
@@ -628,6 +642,12 @@ install -m 0644 %{SOURCE6} %{buildroot}%{_mandir}/man1/mpf-gui.1
 %{_datadir}/icons/hicolor/*/apps/mpf.png
 
 %changelog
+* Wed Nov 18 2026 gmipf <gmipf64@gmail.com> - 3.11.1~20261118181857.6eaa9511-2
+- Ship bash completions for mpf-cli and mpf-check, generated from the MPF
+  source at 6eaa9511 by scripts/completions/gen.py: the system and media-type
+  codes, the dumping programs and the options, also those the help text does
+  not list.
+
 * Wed Nov 18 2026 gmipf <gmipf64@gmail.com> - 3.11.1~20261118181857.6eaa9511-1
 - Automated rolling-snapshot sync to upstream MPF commit 6eaa9511
   (rolling tag, published 20261118181857 UTC); Release reset to 1.

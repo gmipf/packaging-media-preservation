@@ -1,1 +1,2 @@
 MPF.Check usr/lib/mpf-check/
+debian/completions/mpf-check usr/share/bash-completion/completions/

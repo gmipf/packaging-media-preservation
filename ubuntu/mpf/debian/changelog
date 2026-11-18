@@ -1,3 +1,9 @@
+mpf (3.11.1~20261118181857.6eaa9511-2) UNRELEASED; urgency=medium
+
+  * Ship bash completions for mpf-cli and mpf-check, generated from the MPF source at 6eaa9511 by scripts/completions/gen.py: the system and media-type codes, the dumping programs and the options, also those the help text does not list.
+
+ -- gmipf <gmipf64@gmail.com>  Wed, 18 Nov 2026 22:48:41 +0000
+
 mpf (3.11.1~20261118181857.6eaa9511-1) UNRELEASED; urgency=medium
 
   * Automated rolling-snapshot sync to upstream MPF commit 6eaa9511 (published 20261118181857 UTC).
