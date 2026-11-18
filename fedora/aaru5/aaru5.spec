@@ -17,7 +17,7 @@
 
 Name:           aaru5
 Version:        %{aaruver}
-Release:        8%{?dist}
+Release:        9%{?dist}
 Summary:        Aaru 5.x stable data-preservation CLI (MPF-compatible)
 
 License:        GPL-3.0-or-later AND LGPL-2.1-or-later AND MIT
@@ -54,6 +54,14 @@ Source3:        aaru5-manpage.sh
 # root. Package-unique filename so it never collides with the same rule shipped
 # by `aaru` (v6) or `discimagecreator`, keeping all three co-installable.
 Source2:        70-aaru5-floppy.rules
+
+# Bash completion, generated from the upstream source at the tag this spec
+# builds (scripts/completions/gen.py; scripts/bump-pin.sh regenerates it on
+# every bump). It leaves out the options aaru5 parses but never acts on.
+Source5:       aaru5.bash-completion
+# Older rpm configs (EL8) do not define %%{bash_completions_dir}; this is the
+# path it stands for everywhere it does.
+%{!?bash_completions_dir:%global bash_completions_dir %{_datadir}/bash-completion/completions}
 
 ExclusiveArch:  x86_64 aarch64
 BuildRequires:  tar
@@ -172,6 +180,8 @@ install -D -m 0644 %{SOURCE2} \
 install -d %{buildroot}%{_bindir}
 ln -sf %{aarudir}/aaru %{buildroot}%{_bindir}/aaru5
 
+install -D -p -m 0644 %{SOURCE5} %{buildroot}%{bash_completions_dir}/aaru5
+
 %post
 # Make the udev rule take effect on drives that are ALREADY connected. The file
 # trigger in systemd-udev only reloads the rule set, and it runs at the very end
@@ -203,8 +213,15 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
 %{_bindir}/aaru5
 %{_mandir}/man1/aaru5.1*
 %{_udevrulesdir}/70-aaru5-floppy.rules
+%{bash_completions_dir}/aaru5
 
 %changelog
+* Thu Nov 19 2026 gmipf <gmipf64@gmail.com> - 5.4.2-9
+- Ship a bash completion for aaru5, generated from the Aaru 5.4.2 source by
+  scripts/completions/gen.py. It leaves out the six options aaru5 parses but
+  never passes to the command, and offers false after the flags that are on
+  by default.
+
 * Sat Jul 18 2026 gmipf <gmipf64@gmail.com> - 5.4.2-8
 - Add aarch64 (arm64) support. Bundle the upstream linux_arm64 tarball (NativeAOT
   binary + its libe_sqlite3.so sidecar) alongside linux_amd64 and extract the

@@ -57,6 +57,13 @@ Source2:        https://raw.githubusercontent.com/gmipf/packaging-media-preserva
 
 Source99:       https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/aaru5/aaru5-rpmlintrc
 
+# Bash completion, generated from the upstream source at the tag this spec
+# builds (scripts/completions/gen.py). A recipe file like the ones above.
+Source5:       https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/aaru5/aaru5.bash-completion
+# Older rpm configs (EL8) do not define %%{bash_completions_dir}; this is the
+# path it stands for everywhere it does.
+%{!?bash_completions_dir:%global bash_completions_dir %{_datadir}/bash-completion/completions}
+
 ExclusiveArch:  x86_64 aarch64
 BuildRequires:  tar
 BuildRequires:  xz
@@ -174,6 +181,8 @@ cat > %{buildroot}%{_datadir}/permissions/permissions.d/aaru5 <<EOF
  +capabilities cap_sys_rawio=ep
 EOF
 
+install -D -p -m 0644 %{SOURCE5} %{buildroot}%{bash_completions_dir}/aaru5
+
 %post
 %set_permissions %{aarudir}/aaru
 # Make the udev rule take effect on drives that are ALREADY connected. The file
@@ -210,8 +219,14 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
 %{_mandir}/man1/aaru5.1*
 %{_udevrulesdir}/70-aaru5-floppy.rules
 %{_datadir}/permissions/permissions.d/aaru5
+%dir %{_datadir}/bash-completion
+%dir %{bash_completions_dir}
+%{bash_completions_dir}/aaru5
 
 %changelog
+* Thu Nov 19 2026 gmipf <gmipf64@gmail.com> - 5.4.2-0
+- Ship a bash completion for aaru5, generated from the Aaru 5.4.2 source by scripts/completions/gen.py. It leaves out the six options aaru5 parses but never passes to the command, and offers false after the flags that are on by default.
+
 * Sat Jul 18 2026 gmipf <gmipf64@gmail.com> - 5.4.2-0
 - Add aarch64 (arm64) support: bundle the upstream linux_arm64 tarball (NativeAOT
   binary + its libe_sqlite3.so sidecar) alongside linux_amd64 and extract the

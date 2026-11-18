@@ -1,2 +1,3 @@
 aaru            usr/lib/aaru5/
 libe_sqlite3.so usr/lib/aaru5/
+debian/completions/aaru5 usr/share/bash-completion/completions/

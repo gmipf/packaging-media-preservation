@@ -76,6 +76,7 @@ COMPLETIONS = [
     dict(pkg="discimagecreator", cmd="dvdauth", gen="dvdauth", host="github",
          repo="saramibreak/DVDAuth", ref="%{dvdauthcommit}"),
     dict(pkg="aaru", cmd="aaru", gen="aaru", host="github", repo="aaru-dps/Aaru", ref="%{aarutag}"),
+    dict(pkg="aaru5", cmd="aaru5", gen="aaru5", host="github", repo="aaru-dps/Aaru", ref="%{aarutag}"),
     dict(pkg="mpf", sub="cli", cmd="mpf-cli", gen="mpf_cli", host="github", repo="SabreTools/MPF",
          ref="%{mpfsnap}", ref_pick=r"[0-9]{14}\.([0-9a-f]{8,40})"),
     dict(pkg="mpf", sub="check", cmd="mpf-check", gen="mpf_check", host="github", repo="SabreTools/MPF",
