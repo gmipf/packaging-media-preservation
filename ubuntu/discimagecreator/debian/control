@@ -5,15 +5,13 @@ Maintainer: gmipf <gmipf64@gmail.com>
 # Unlike the other tools in this PPA, discimagecreator is a real source build
 # (meson for the main dumper, three bundled makefiles for the helper tools),
 # not a repackage — so it carries a genuine compile toolchain here.
-# libext2fs-dev: DIC bundles libarchive's CAB reader since 2026-11-16, and its
-# pregenerated config_linux.h makes archive_entry.c include ext2fs/ext2_fs.h
-# (header only, nothing links against it). The system libarchive is no longer
-# used; its -dev package had pulled the ext2fs headers in on bookworm-and-later.
+# DIC bundles libarchive's CAB reader since 2026-11-16, so the system libarchive
+# is not used. Its config_linux.h no longer asks for the ext2fs headers
+# (upstream #336): the file flags come from <linux/fs.h>.
 Build-Depends: debhelper-compat (= 13),
                meson,
                ninja-build,
                pkg-config,
-               libext2fs-dev,
                libssl-dev,
                zlib1g-dev
 Standards-Version: 4.6.2

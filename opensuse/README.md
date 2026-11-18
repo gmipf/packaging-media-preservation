@@ -378,9 +378,10 @@ what shipping `cap_sys_rawio` on `MPF.Avalonia` did to `mpf-gui`.
 Ninja names to openSUSE under the `%if 0%{?suse_version}` branches already present
 in the Fedora specs; those branches' BuildRequires were confirmed to resolve on
 Leap 16.0 (`aaru`'s `libicu` / `krb5` / `libopenssl3` / `libz1` /
-`libunwind.so.8`, `dic`'s `ninja` / `pkgconfig(ext2fs|openssl|zlib)` — ext2fs
-instead of libarchive since 2026-11-17, when DIC started to carry its own CAB
-reader) and
+`libunwind.so.8`, `dic`'s `ninja` / `pkgconfig(openssl|zlib)` — no libarchive
+since 2026-11-17, when DIC started to carry its own CAB reader, and no ext2fs
+since 2026-11-18, after DiscImageCreator's #336 stopped that reader asking for
+it) and
 every spec was built with `rpmbuild -ba` on both targets before being pushed.
 
 `discimagecreator` was the first **source build** through the hermetic-build

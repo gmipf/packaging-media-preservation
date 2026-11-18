@@ -72,10 +72,8 @@ BuildRequires:  ninja
 BuildRequires:  ninja-build
 %endif
 # DIC bundles libarchive's CAB reader since 2026-11-16 (c154591b), so the system
-# libarchive is gone. Its pregenerated config_linux.h defines
-# HAVE_EXT2FS_EXT2_FS_H, and archive_entry.c then includes ext2fs/ext2_fs.h for
-# the file-flag constants: the header only, nothing links against libext2fs.
-BuildRequires:  pkgconfig(ext2fs)
+# libarchive is gone. Its config_linux.h no longer asks for the ext2fs headers
+# (upstream #336, 31641cf7): the file flags come from <linux/fs.h>.
 BuildRequires:  pkgconfig(openssl)
 BuildRequires:  pkgconfig(zlib)
 # openSUSE grants file capabilities through the permissions framework
@@ -296,6 +294,9 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
 %{_datadir}/permissions/permissions.d/discimagecreator
 
 %changelog
+* Wed Nov 18 2026 gmipf <gmipf64@gmail.com> - 20261117150901.e2ba9095-0
+- Drop the ext2fs BuildRequires: upstream #336 (31641cf7) stopped the bundled libarchive's config_linux.h from including ext2fs/ext2_fs.h.
+
 * Tue Nov 17 2026 gmipf <gmipf64@gmail.com> - 20261117150901.e2ba9095-0
 - Automated master-snapshot sync to upstream DiscImageCreator commit e2ba9095 (committed 20261117150901 UTC).
 
