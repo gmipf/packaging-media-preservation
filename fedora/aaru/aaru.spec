@@ -29,7 +29,7 @@ Name:           aaru
 # before this build, so nothing previously published needs to be
 # sort-overridden.
 Version:        %{aaruver}~%{aaruprerel}
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        Data preservation suite for optical, magnetic and solid-state media
 
 License:        GPL-3.0-or-later AND LGPL-2.1-or-later AND MIT
@@ -59,6 +59,14 @@ Source3:        aaru-manpage.sh
 # root. Package-unique filename so it never collides with the same rule shipped
 # by `aaru5` (stable) or `discimagecreator`, keeping all three co-installable.
 Source4:        70-aaru-floppy.rules
+
+# Bash completion, generated from the upstream source at the revision this
+# spec builds (scripts/completions/gen.py; the watchers regenerate it on
+# every bump). It also offers what `aaru --help` does not list.
+Source6:       aaru.bash-completion
+# Older rpm configs (EL8) do not define %%{bash_completions_dir}; this is the
+# path it stands for everywhere it does.
+%{!?bash_completions_dir:%global bash_completions_dir %{_datadir}/bash-completion/completions}
 
 ExclusiveArch:  x86_64 aarch64
 BuildRequires:  tar
@@ -252,6 +260,8 @@ install -D -m 0644 %{SOURCE4} \
 install -d %{buildroot}%{_bindir}
 ln -sf %{aarudir}/aaru %{buildroot}%{_bindir}/aaru
 
+install -D -p -m 0644 %{SOURCE6} %{buildroot}%{bash_completions_dir}/aaru
+
 %post
 # Make the udev rule take effect on drives that are ALREADY connected. The file
 # trigger in systemd-udev only reloads the rule set, and it runs at the very end
@@ -286,8 +296,15 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
 %{_datadir}/icons/hicolor/*/apps/aaru.png
 %{_mandir}/man1/aaru.1*
 %{_udevrulesdir}/70-aaru-floppy.rules
+%{bash_completions_dir}/aaru
 
 %changelog
+* Thu Nov 19 2026 gmipf <gmipf64@gmail.com> - 6.0.0~beta.2-2
+- Ship a bash completion for aaru, generated from the Aaru source by
+  scripts/completions/gen.py. It also offers what --help does not list:
+  the gui command, the cli branch, and false after the flags that are on
+  by default.
+
 * Fri Oct 09 2026 gmipf <gmipf64@gmail.com> - 6.0.0~beta.2-1
 - Automated sync to upstream Aaru v6.0.0-beta.2; Release reset to 1.
 

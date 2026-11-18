@@ -2,7 +2,7 @@ Format: 3.0 (quilt)
 Source: aaru
 Binary: aaru
 Architecture: amd64 arm64
-Version: 6.0.0~beta.2-1
+Version: 6.0.0~beta.2-2
 Maintainer: gmipf <gmipf64@gmail.com>
 Homepage: https://github.com/aaru-dps/Aaru
 Standards-Version: 4.6.2

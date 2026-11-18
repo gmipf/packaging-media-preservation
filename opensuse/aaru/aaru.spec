@@ -57,6 +57,13 @@ Source4:        https://raw.githubusercontent.com/gmipf/packaging-media-preserva
 
 Source99:       https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/aaru/aaru-rpmlintrc
 
+# Bash completion, generated from the upstream source at the revision this
+# spec builds (scripts/completions/gen.py). A recipe file like the ones above.
+Source6:       https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/aaru/aaru.bash-completion
+# Older rpm configs (EL8) do not define %%{bash_completions_dir}; this is the
+# path it stands for everywhere it does.
+%{!?bash_completions_dir:%global bash_completions_dir %{_datadir}/bash-completion/completions}
+
 ExclusiveArch:  x86_64 aarch64
 BuildRequires:  tar
 BuildRequires:  xz
@@ -269,6 +276,8 @@ cat > %{buildroot}%{_datadir}/permissions/permissions.d/aaru <<EOF
  +capabilities cap_sys_rawio=ep
 EOF
 
+install -D -p -m 0644 %{SOURCE6} %{buildroot}%{bash_completions_dir}/aaru
+
 %post
 %set_permissions %{aarudir}/aaru
 # Make the udev rule take effect on drives that are ALREADY connected. The file
@@ -308,8 +317,14 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
 %{_mandir}/man1/aaru.1*
 %{_udevrulesdir}/70-aaru-floppy.rules
 %{_datadir}/permissions/permissions.d/aaru
+%dir %{_datadir}/bash-completion
+%dir %{bash_completions_dir}
+%{bash_completions_dir}/aaru
 
 %changelog
+* Thu Nov 19 2026 gmipf <gmipf64@gmail.com> - 6.0.0~beta.2-0
+- Ship a bash completion for aaru, generated from the Aaru source by scripts/completions/gen.py. It also offers what --help does not list: the gui command, the cli branch, and false after the flags that are on by default.
+
 * Fri Oct 09 2026 gmipf <gmipf64@gmail.com> - 6.0.0~beta.2-0
 - Automated sync to upstream Aaru v6.0.0-beta.2.
 

@@ -140,6 +140,12 @@ jobs:
           # rpmspec: gen-deb.sh reads the upstream Source: URLs out of the spec,
           # so the .dsc names exactly what download_files fetches.
           command -v rpmspec >/dev/null || sudo apt-get install -y -qq rpm >/dev/null
+          # Bash completion from the new tag's source, before gen-deb.sh: the
+          # Debian copy travels in debian.tar.gz. A parser that changed shape,
+          # or a Spectre.Console.Cli version nobody looked at, fails this run
+          # instead of shipping a short list.
+          python3 scripts/completions/gen.py write aaru
+          git add fedora/aaru/aaru.bash-completion opensuse/aaru/aaru.bash-completion ubuntu/aaru/debian/completions
           bash scripts/obs/gen-deb.sh aaru
           git add opensuse/aaru/aaru.dsc opensuse/aaru/debian.tar.gz opensuse/aaru/_service
           git add "$SPEC" "$MARKER" "$UB/.upstream-tag" "$UB/debian/changelog" \

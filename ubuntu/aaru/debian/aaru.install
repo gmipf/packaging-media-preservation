@@ -6,3 +6,4 @@ src/icons/64x64/aaru.png   usr/share/icons/hicolor/64x64/apps/
 src/icons/128x128/aaru.png usr/share/icons/hicolor/128x128/apps/
 src/icons/256x256/aaru.png usr/share/icons/hicolor/256x256/apps/
 src/icons/512x512/aaru.png usr/share/icons/hicolor/512x512/apps/
+debian/completions/aaru usr/share/bash-completion/completions/
