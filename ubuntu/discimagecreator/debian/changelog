@@ -1,3 +1,9 @@
+discimagecreator (20261117150901.e2ba9095-3) UNRELEASED; urgency=medium
+
+  * Ship bash completions for discimagecreator (also under dic and DiscImageCreator.out), eccedc, unscrambler and dvdauth, generated from their sources by scripts/completions/gen.py. They also offer the modes and options the usage texts do not list.
+
+ -- gmipf <gmipf64@gmail.com>  Wed, 18 Nov 2026 20:43:30 +0000
+
 discimagecreator (20261117150901.e2ba9095-2) UNRELEASED; urgency=medium
 
   * Drop libext2fs-dev from Build-Depends: upstream #336 (31641cf7) stopped the bundled libarchive's config_linux.h from including ext2fs/ext2_fs.h.

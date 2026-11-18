@@ -133,6 +133,12 @@ jobs:
           # rpmspec: gen-deb.sh reads the upstream Source: URLs out of the spec,
           # so the .dsc names exactly what download_files fetches.
           command -v rpmspec >/dev/null || sudo apt-get install -y -qq rpm >/dev/null
+          # Bash completions from the new revisions (DIC's and the helpers'), before
+          # gen-deb.sh: the Debian copies travel in debian.tar.gz. A parser that
+          # changed shape fails this run instead of shipping a short list.
+          python3 scripts/completions/gen.py write discimagecreator
+          git add fedora/discimagecreator/*.bash-completion opensuse/discimagecreator/*.bash-completion \
+                  ubuntu/discimagecreator/debian/completions
           bash scripts/obs/gen-deb.sh discimagecreator
           git add opensuse/discimagecreator/discimagecreator.dsc opensuse/discimagecreator/debian.tar.gz opensuse/discimagecreator/_service
 

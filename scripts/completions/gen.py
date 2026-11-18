@@ -21,6 +21,10 @@ byte-identical (lint), because each lane builds from its own directory:
     opensuse/<pkg>/<cmd>.bash-completion      OBS: fetched by its raw URL
     ubuntu/<pkg>/debian/completions/<cmd>     travels in debian.tar.gz
 
+A command installed under more names (dic for discimagecreator) gets a symlink
+per alias next to the completion: bash-completion loads a completion by the
+name typed, and the file registers all of them.
+
 Why committed and not generated at build time: the build would need python and
 the upstream source in every lane (EL8's python 3.6, the Debian lane's
 DEBTRANSFORM step), and nobody would ever read the result. Here every change is
@@ -49,18 +53,28 @@ ROOT = HERE.parent.parent
 sys.dont_write_bytecode = True  # no __pycache__ next to the generators in a checkout
 sys.path.insert(0, str(HERE))
 
-# package -> generator module, the commands it installs, where its source lives,
-# and the revision as an expression over the Fedora spec's macros.
-PACKAGES = {
-    "redumper": dict(gen="redumper", cmds=["redumper"], host="github",
-                     repo="superg/redumper", ref="b%{version}"),
-    "redumper-mpf": dict(gen="redumper", cmds=["redumper-mpf"], host="github",
-                         repo="superg/redumper", ref="b%{rdbuild}"),
-    "redumper-rgui": dict(gen="redumper", cmds=["redumper-rgui"], host="github",
-                          repo="superg/redumper", ref="b%{rdbuild}"),
-    "dreamdump": dict(gen="dreamdump", cmds=["dreamdump"], host="codeberg",
-                      repo="MoriGM/dreamdump", ref="%{ddver}"),
-}
+# One entry per completion file: the package that installs it, the command (and
+# the other names it is installed as), the generator module, where the source
+# lives, and the revision as an expression over the Fedora spec's macros.
+COMPLETIONS = [
+    dict(pkg="redumper", cmd="redumper", gen="redumper", host="github",
+         repo="superg/redumper", ref="b%{version}"),
+    dict(pkg="redumper-mpf", cmd="redumper-mpf", gen="redumper", host="github",
+         repo="superg/redumper", ref="b%{rdbuild}"),
+    dict(pkg="redumper-rgui", cmd="redumper-rgui", gen="redumper", host="github",
+         repo="superg/redumper", ref="b%{rdbuild}"),
+    dict(pkg="dreamdump", cmd="dreamdump", gen="dreamdump", host="codeberg",
+         repo="MoriGM/dreamdump", ref="%{ddver}"),
+    dict(pkg="discimagecreator", cmd="discimagecreator", aliases=["dic", "DiscImageCreator.out"],
+         gen="dic", host="github", repo="saramibreak/DiscImageCreator", ref="%{diccommit}"),
+    dict(pkg="discimagecreator", cmd="eccedc", gen="eccedc", host="github",
+         repo="saramibreak/EccEdc", ref="%{eccedccommit}"),
+    dict(pkg="discimagecreator", cmd="unscrambler", gen="unscrambler", host="github",
+         repo="saramibreak/unscrambler", ref="%{unscramblcommit}"),
+    dict(pkg="discimagecreator", cmd="dvdauth", gen="dvdauth", host="github",
+         repo="saramibreak/DVDAuth", ref="%{dvdauthcommit}"),
+]
+PACKAGES = list(dict.fromkeys(c["pkg"] for c in COMPLETIONS))
 
 RAW = {
     "github": "https://raw.githubusercontent.com/{repo}/{ref}/{path}",
@@ -75,9 +89,9 @@ def die(msg):
     sys.exit(f"gen.py: {msg}")
 
 
-def spec_ref(pkg):
-    """The upstream revision the Fedora spec builds, from PACKAGES[pkg]['ref']."""
-    path = ROOT / "fedora" / pkg / f"{pkg}.spec"
+def spec_ref(c):
+    """The upstream revision the Fedora spec builds, from the entry's 'ref'."""
+    path = ROOT / "fedora" / c["pkg"] / f"{c['pkg']}.spec"
     text = path.read_text(encoding="utf-8")
     macros = dict(re.findall(r"^%global\s+(\w+)\s+(\S+)\s*$", text, re.M))
     m = re.search(r"^Version:\s*(\S+)\s*$", text, re.M)
@@ -95,14 +109,14 @@ def spec_ref(pkg):
             return macros[mm.group(1)]
         out = re.sub(r"%\{\??(\w+)\}", one, s)
         return expand(out, depth + 1) if "%" in out else out
-    ref = expand(PACKAGES[pkg]["ref"])
+    ref = expand(c["ref"])
     if not re.fullmatch(r"[A-Za-z0-9._-]+", ref):
         die(f"{path}: odd revision {ref!r}")
     return ref
 
 
-def origin(pkg, ref):
-    return f"{PACKAGES[pkg]['repo']} at {ref}"
+def origin(c, ref):
+    return f"{c['repo']} at {ref}"
 
 
 def targets(pkg, cmd):
@@ -115,7 +129,7 @@ def fetch(url):
     cache = os.environ.get("MEDIAPRES_COMPLETION_CACHE")
     hit = Path(cache) / hashlib.sha256(url.encode()).hexdigest() if cache else None
     if hit and hit.is_file():
-        return hit.read_bytes().decode("utf-8")
+        return hit.read_bytes().decode("utf-8", errors="replace")
     req = urllib.request.Request(url, headers={"User-Agent": "packaging-media-preservation"})
     for attempt in range(4):
         time.sleep(5 * attempt)
@@ -130,61 +144,63 @@ def fetch(url):
     if hit:
         hit.parent.mkdir(parents=True, exist_ok=True)
         hit.write_bytes(data)
-    return data.decode("utf-8")
+    # some upstream files are Latin-1 (unscrambler.c); only ASCII is parsed
+    return data.decode("utf-8", errors="replace")
 
 
-def generate(pkg):
-    """{cmd: text} for one package, from the revision its spec pins."""
-    cfg = PACKAGES[pkg]
-    mod = importlib.import_module(cfg["gen"])
-    ref = spec_ref(pkg)
-    src = {f: fetch(RAW[cfg["host"]].format(repo=cfg["repo"], ref=ref, path=f)) for f in mod.FILES}
+def names(c):
+    return [c["cmd"], *c.get("aliases", [])]
+
+
+def generate(c):
+    """The completion text for one entry, from the revision its spec pins."""
+    mod = importlib.import_module(c["gen"])
+    ref = spec_ref(c)
+    src = {f: fetch(RAW[c["host"]].format(repo=c["repo"], ref=ref, path=f)) for f in mod.FILES}
     try:
         model = mod.extract(src)
     except mod.ParseError as e:
-        die(f"{pkg} at {ref}: {e} -- the upstream parser changed shape; fix scripts/completions/{cfg['gen']}.py")
-    out = {}
-    for cmd in cfg["cmds"]:
-        text = mod.render(model, cmd, origin(pkg, ref))
-        if ORIGIN_RE.findall(text) != [(cfg["repo"], ref)]:
-            die(f"{cfg['gen']}.py: the header does not name {origin(pkg, ref)} the way lint reads it")
-        out[cmd] = text
-    return out
+        die(f"{c['cmd']} at {ref}: {e} -- the upstream parser changed shape; fix scripts/completions/{c['gen']}.py")
+    text = mod.render(model, c["cmd"], origin(c, ref), names(c))
+    if ORIGIN_RE.findall(text) != [(c["repo"], ref)]:
+        die(f"{c['gen']}.py: the header does not name {origin(c, ref)} the way lint reads it")
+    return text
 
 
-def packages(args):
+def selected(args):
+    """The entries of the packages named (all without arguments)."""
     if not args or args == ["all"]:
-        return list(PACKAGES)
+        return COMPLETIONS
     for a in args:
         if a not in PACKAGES:
             die(f"unknown package {a!r} (known: {' '.join(PACKAGES)})")
-    return args
+    return [c for c in COMPLETIONS if c["pkg"] in args]
 
 
 def cmd_write(args):
-    for pkg in packages(args):
-        for cmd, text in generate(pkg).items():
-            for t in targets(pkg, cmd):
-                t.parent.mkdir(parents=True, exist_ok=True)
-                old = t.read_text(encoding="utf-8") if t.exists() else None
-                if old != text:
-                    t.write_text(text, encoding="utf-8")
-                    print(f"wrote {t.relative_to(ROOT)}")
+    for c in selected(args):
+        text = generate(c)
+        for t in targets(c["pkg"], c["cmd"]):
+            t.parent.mkdir(parents=True, exist_ok=True)
+            old = t.read_text(encoding="utf-8") if t.exists() else None
+            if old != text:
+                t.write_text(text, encoding="utf-8")
+                print(f"wrote {t.relative_to(ROOT)}")
     return 0
 
 
 def cmd_check(args):
     rc, n = 0, 0
-    for pkg in packages(args):
-        for cmd, text in generate(pkg).items():
-            for t in targets(pkg, cmd):
-                n += 1
-                old = t.read_text(encoding="utf-8") if t.exists() else ""
-                if old != text:
-                    rc = 1
-                    print(f"{t.relative_to(ROOT)}: not what the generator makes -- run scripts/completions/gen.py write {pkg}")
-                    sys.stdout.writelines(difflib.unified_diff(
-                        old.splitlines(True), text.splitlines(True), "committed", "generated", n=1))
+    for c in selected(args):
+        text = generate(c)
+        for t in targets(c["pkg"], c["cmd"]):
+            n += 1
+            old = t.read_text(encoding="utf-8") if t.exists() else ""
+            if old != text:
+                rc = 1
+                print(f"{t.relative_to(ROOT)}: not what the generator makes -- run scripts/completions/gen.py write {c['pkg']}")
+                sys.stdout.writelines(difflib.unified_diff(
+                    old.splitlines(True), text.splitlines(True), "committed", "generated", n=1))
     if rc == 0:
         print(f"completions: {n} files are what the generator makes from the pinned source")
     return rc
@@ -194,49 +210,62 @@ def cmd_lint(_args):
     bad = []
     expected = set()
     n = 0
-    for pkg, cfg in PACKAGES.items():
-        ref = spec_ref(pkg)
+    for c in COMPLETIONS:
+        pkg, cmd = c["pkg"], c["cmd"]
+        ref = spec_ref(c)
         fspec = (ROOT / "fedora" / pkg / f"{pkg}.spec").read_text(encoding="utf-8")
         ospec = (ROOT / "opensuse" / pkg / f"{pkg}.spec").read_text(encoding="utf-8")
         inst = ROOT / "ubuntu" / pkg / "debian" / f"{pkg}.install"
         dinst = inst.read_text(encoding="utf-8") if inst.exists() else ""
-        for cmd in cfg["cmds"]:
-            copies = targets(pkg, cmd)
-            expected.update(str(c.relative_to(ROOT)) for c in copies)
-            texts = []
-            for c in copies:
-                if not c.is_file():
-                    bad.append(f"{c.relative_to(ROOT)}: missing -- run scripts/completions/gen.py write {pkg}")
-                    continue
-                texts.append((c, c.read_text(encoding="utf-8")))
-            for c, t in texts[1:]:
-                if t != texts[0][1]:
-                    bad.append(f"{c.relative_to(ROOT)}: differs from {texts[0][0].relative_to(ROOT)}")
-            for c, t in texts[:1]:
-                n += 1
-                got = ORIGIN_RE.findall(t)
-                if got != [(cfg["repo"], ref)]:
-                    bad.append(f"{c.relative_to(ROOT)}: generated from {got or 'nothing it names'}, "
-                               f"but the spec builds {cfg['repo']} at {ref} -- run scripts/completions/gen.py write {pkg}")
-            # every recipe installs it, under the command's name
-            src_re = re.compile(r"^Source\d+:\s*\S*/?" + re.escape(f"{cmd}.bash-completion") + r"\s*$", re.M)
+        links = ROOT / "ubuntu" / pkg / "debian" / f"{pkg}.links"
+        dlinks = links.read_text(encoding="utf-8").splitlines() if links.exists() else []
+        copies = targets(pkg, cmd)
+        expected.update(str(f.relative_to(ROOT)) for f in copies)
+        texts = []
+        for f in copies:
+            if not f.is_file():
+                bad.append(f"{f.relative_to(ROOT)}: missing -- run scripts/completions/gen.py write {pkg}")
+                continue
+            texts.append((f, f.read_text(encoding="utf-8")))
+        for f, t in texts[1:]:
+            if t != texts[0][1]:
+                bad.append(f"{f.relative_to(ROOT)}: differs from {texts[0][0].relative_to(ROOT)}")
+        for f, t in texts[:1]:
+            n += 1
+            got = ORIGIN_RE.findall(t)
+            if got != [(c["repo"], ref)]:
+                bad.append(f"{f.relative_to(ROOT)}: generated from {got or 'nothing it names'}, "
+                           f"but the spec builds {c['repo']} at {ref} -- run scripts/completions/gen.py write {pkg}")
+        # every recipe installs it, under the command's name
+        src_re = re.compile(r"^Source\d+:\s*\S*/?" + re.escape(f"{cmd}.bash-completion") + r"\s*$", re.M)
+        for lane, spec in (("fedora", fspec), ("opensuse", ospec)):
+            if not src_re.search(spec):
+                bad.append(f"{lane}/{pkg}/{pkg}.spec: no Source: line for {cmd}.bash-completion")
+            if f"/{cmd}\n" not in spec.replace("%{bash_completions_dir}", COMPLETIONS_DIR) + "\n" \
+                    and not re.search(r"bash_completions_dir\}/" + re.escape(cmd) + r"\s*$", spec, re.M):
+                bad.append(f"{lane}/{pkg}/{pkg}.spec: does not install the completion as .../completions/{cmd}")
+        want = f"debian/completions/{cmd} {COMPLETIONS_DIR.lstrip('/')}/"
+        if want not in dinst.splitlines():
+            bad.append(f"ubuntu/{pkg}/debian/{pkg}.install: missing the line '{want}'")
+        # every other name it is installed as: a symlink to it in every lane
+        for alias in c.get("aliases", []):
+            link_re = re.compile(r"^ln -s " + re.escape(cmd) + r" %\{buildroot\}%\{bash_completions_dir\}/"
+                                 + re.escape(alias) + r"\s*$", re.M)
             for lane, spec in (("fedora", fspec), ("opensuse", ospec)):
-                if not src_re.search(spec):
-                    bad.append(f"{lane}/{pkg}/{pkg}.spec: no Source: line for {cmd}.bash-completion")
-                if f"/{cmd}\n" not in spec.replace("%{bash_completions_dir}", COMPLETIONS_DIR) + "\n" \
-                        and not re.search(r"bash_completions_dir\}/" + re.escape(cmd) + r"\s*$", spec, re.M):
-                    bad.append(f"{lane}/{pkg}/{pkg}.spec: does not install the completion as .../completions/{cmd}")
-            want = f"debian/completions/{cmd} {COMPLETIONS_DIR.lstrip('/')}/"
-            if want not in dinst.splitlines():
-                bad.append(f"ubuntu/{pkg}/debian/{pkg}.install: missing the line '{want}'")
-    # and nothing completes a command no package declares
+                if not link_re.search(spec) or not re.search(
+                        r"^%\{bash_completions_dir\}/" + re.escape(alias) + r"\s*$", spec, re.M):
+                    bad.append(f"{lane}/{pkg}/{pkg}.spec: does not link and list .../completions/{alias} -> {cmd}")
+            want = f"{COMPLETIONS_DIR.lstrip('/')}/{cmd} {COMPLETIONS_DIR.lstrip('/')}/{alias}"
+            if want not in dlinks:
+                bad.append(f"ubuntu/{pkg}/debian/{pkg}.links: missing the line '{want}'")
+    # and nothing completes a command no entry declares
     tracked = subprocess.run(["git", "-C", str(ROOT), "ls-files", "*.bash-completion", "ubuntu/*/debian/completions/*"],
                              capture_output=True, text=True, check=True).stdout.split()
     for t in tracked:
         if t not in expected:
-            bad.append(f"{t}: no package in scripts/completions/gen.py PACKAGES declares it")
+            bad.append(f"{t}: no entry in scripts/completions/gen.py COMPLETIONS declares it")
     if n == 0:
-        bad.append("no completion checked -- PACKAGES is empty or the layout moved")
+        bad.append("no completion checked -- COMPLETIONS is empty or the layout moved")
     for b in bad:
         print(b)
     if bad:
@@ -273,41 +302,42 @@ def cmd_smoke(_args):
         print(f"smoke: {BASH_COMPLETION} is not installed -- not measured is not clean")
         return 2
     bad, n = [], 0
-    for pkg, cfg in PACKAGES.items():
-        mod = importlib.import_module(cfg["gen"])
-        for cmd in cfg["cmds"]:
-            f = targets(pkg, cmd)[0]
-            lines = [(line.format(cmd=cmd), inc, exc) for line, inc, exc in mod.SMOKE]
-            script = [f"source {shlex.quote(BASH_COMPLETION)} || exit 3",
-                      f"source {shlex.quote(str(f))} || exit 3",
-                      "compopt() { :; }",
-                      f"spec=$(complete -p {shlex.quote(cmd)}) || exit 4",
-                      'fn=${spec#*-F }; fn=${fn%% *}']
-            for line, _inc, _exc in lines:
-                w = readline_words(line)
-                script += [f"COMP_WORDS=({' '.join(shlex.quote(x) for x in w)})",
-                           f"COMP_CWORD={len(w) - 1}",
-                           f"COMP_LINE={shlex.quote(line)}",
-                           f"COMP_POINT={len(line)}",
-                           "COMPREPLY=()",
-                           '"$fn" "${COMP_WORDS[0]}" "${COMP_WORDS[COMP_CWORD]}" "${COMP_WORDS[COMP_CWORD-1]:-}"',
-                           "printf '%s\\n' \"${COMPREPLY[@]}\"",
-                           "echo '\x1e'"]
-            r = subprocess.run(["bash", "--norc", "--noprofile", "-c", "\n".join(script)],
-                               capture_output=True, text=True, cwd=ROOT, timeout=60)
-            outs = r.stdout.split("\x1e\n")
-            if r.returncode != 0 or r.stderr.strip() or len(outs) != len(lines) + 1:
-                bad.append(f"{f.relative_to(ROOT)}: bash rc={r.returncode} stderr={r.stderr.strip()[:500]!r}")
-                continue
-            for (line, inc, exc), out in zip(lines, outs[:-1], strict=True):
-                n += 1
-                got = set(x for x in out.split("\n") if x)
-                if not inc <= got:
-                    bad.append(f"{cmd}: {line!r} does not offer {sorted(inc - got)} (offered: {sorted(got)[:12]})")
-                if exc == "*" and got:
-                    bad.append(f"{cmd}: {line!r} must offer nothing, offered {sorted(got)[:12]}")
-                elif exc != "*" and got & exc:
-                    bad.append(f"{cmd}: {line!r} offers {sorted(got & exc)}")
+    for c in COMPLETIONS:
+        mod = importlib.import_module(c["gen"])
+        cmd = c["cmd"]
+        f = targets(c["pkg"], cmd)[0]
+        lines = [(line.format(cmd=cmd), inc, exc) for line, inc, exc in mod.SMOKE]
+        script = [f"source {shlex.quote(BASH_COMPLETION)} || exit 3",
+                  f"source {shlex.quote(str(f))} || exit 3",
+                  "compopt() { :; }",
+                  *[f"complete -p {shlex.quote(a)} >/dev/null || exit 4" for a in names(c)],
+                  f"spec=$(complete -p {shlex.quote(cmd)}) || exit 4",
+                  'fn=${spec#*-F }; fn=${fn%% *}']
+        for line, _inc, _exc in lines:
+            w = readline_words(line)
+            script += [f"COMP_WORDS=({' '.join(shlex.quote(x) for x in w)})",
+                       f"COMP_CWORD={len(w) - 1}",
+                       f"COMP_LINE={shlex.quote(line)}",
+                       f"COMP_POINT={len(line)}",
+                       "COMPREPLY=()",
+                       '"$fn" "${COMP_WORDS[0]}" "${COMP_WORDS[COMP_CWORD]}" "${COMP_WORDS[COMP_CWORD-1]:-}"',
+                       "printf '%s\\n' \"${COMPREPLY[@]}\"",
+                       "echo '\x1e'"]
+        r = subprocess.run(["bash", "--norc", "--noprofile", "-c", "\n".join(script)],
+                           capture_output=True, text=True, cwd=ROOT, timeout=60)
+        outs = r.stdout.split("\x1e\n")
+        if r.returncode != 0 or r.stderr.strip() or len(outs) != len(lines) + 1:
+            bad.append(f"{f.relative_to(ROOT)}: bash rc={r.returncode} stderr={r.stderr.strip()[:500]!r}")
+            continue
+        for (line, inc, exc), out in zip(lines, outs[:-1], strict=True):
+            n += 1
+            got = set(x for x in out.split("\n") if x)
+            if not inc <= got:
+                bad.append(f"{cmd}: {line!r} does not offer {sorted(inc - got)} (offered: {sorted(got)[:12]})")
+            if exc == "*" and got:
+                bad.append(f"{cmd}: {line!r} must offer nothing, offered {sorted(got)[:12]}")
+            elif exc != "*" and got & exc:
+                bad.append(f"{cmd}: {line!r} offers {sorted(got & exc)}")
     for b in bad:
         print(b)
     if bad:

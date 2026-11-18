@@ -56,6 +56,16 @@ Source4:        https://raw.githubusercontent.com/gmipf/packaging-media-preserva
 # co-installable.
 Source5:        https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/discimagecreator/70-discimagecreator-floppy.rules
 
+# Bash completions, generated from the upstream sources at the revisions this
+# spec builds (scripts/completions/gen.py). Recipe files like the ones above.
+Source6:        https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/discimagecreator/discimagecreator.bash-completion
+Source7:        https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/discimagecreator/eccedc.bash-completion
+Source8:        https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/discimagecreator/unscrambler.bash-completion
+Source9:        https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/discimagecreator/dvdauth.bash-completion
+# Older rpm configs (EL8) do not define %%{bash_completions_dir}; this is the
+# path it stands for everywhere it does.
+%{!?bash_completions_dir:%global bash_completions_dir %{_datadir}/bash-completion/completions}
+
 Source99:       https://raw.githubusercontent.com/gmipf/packaging-media-preservation/main/opensuse/discimagecreator/discimagecreator-rpmlintrc
 
 ExclusiveArch:  x86_64 aarch64
@@ -247,6 +257,13 @@ cat > %{buildroot}%{_datadir}/permissions/permissions.d/discimagecreator <<EOF
  +capabilities cap_sys_rawio=ep
 EOF
 
+install -D -p -m 0644 %{SOURCE6} %{buildroot}%{bash_completions_dir}/discimagecreator
+ln -s discimagecreator %{buildroot}%{bash_completions_dir}/dic
+ln -s discimagecreator %{buildroot}%{bash_completions_dir}/DiscImageCreator.out
+install -D -p -m 0644 %{SOURCE7} %{buildroot}%{bash_completions_dir}/eccedc
+install -D -p -m 0644 %{SOURCE8} %{buildroot}%{bash_completions_dir}/unscrambler
+install -D -p -m 0644 %{SOURCE9} %{buildroot}%{bash_completions_dir}/dvdauth
+
 %post
 %set_permissions %{dicdir}/DiscImageCreator.out
 # Make the udev rule take effect on drives that are ALREADY connected. The file
@@ -292,8 +309,19 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
 %{_mandir}/man1/unscrambler.1*
 %{_udevrulesdir}/70-discimagecreator-floppy.rules
 %{_datadir}/permissions/permissions.d/discimagecreator
+%dir %{_datadir}/bash-completion
+%dir %{bash_completions_dir}
+%{bash_completions_dir}/discimagecreator
+%{bash_completions_dir}/dic
+%{bash_completions_dir}/DiscImageCreator.out
+%{bash_completions_dir}/eccedc
+%{bash_completions_dir}/unscrambler
+%{bash_completions_dir}/dvdauth
 
 %changelog
+* Wed Nov 18 2026 gmipf <gmipf64@gmail.com> - 20261117150901.e2ba9095-0
+- Ship bash completions for discimagecreator (also under dic and DiscImageCreator.out), eccedc, unscrambler and dvdauth, generated from their sources by scripts/completions/gen.py. They also offer the modes and options the usage texts do not list.
+
 * Wed Nov 18 2026 gmipf <gmipf64@gmail.com> - 20261117150901.e2ba9095-0
 - Drop the ext2fs BuildRequires: upstream #336 (31641cf7) stopped the bundled libarchive's config_linux.h from including ext2fs/ext2_fs.h.
 

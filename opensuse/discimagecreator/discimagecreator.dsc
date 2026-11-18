@@ -2,7 +2,7 @@ Format: 3.0 (quilt)
 Source: discimagecreator
 Binary: discimagecreator
 Architecture: amd64 arm64
-Version: 20261117150901.e2ba9095-2
+Version: 20261117150901.e2ba9095-3
 Maintainer: gmipf <gmipf64@gmail.com>
 Homepage: https://github.com/saramibreak/DiscImageCreator
 Standards-Version: 4.6.2

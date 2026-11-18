@@ -1,0 +1,4 @@
+debian/completions/discimagecreator usr/share/bash-completion/completions/
+debian/completions/eccedc usr/share/bash-completion/completions/
+debian/completions/unscrambler usr/share/bash-completion/completions/
+debian/completions/dvdauth usr/share/bash-completion/completions/

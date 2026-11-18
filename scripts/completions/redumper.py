@@ -147,7 +147,7 @@ def extract(src):
     }
 
 
-def render(model, cmd, origin):
+def render(model, cmd, origin, names):
     fn = "_mediapres_" + re.sub(r"[^A-Za-z0-9]", "_", cmd)
     opts = model["options"]
     valopts = [o for o, a in opts.items() if a != "none"]
@@ -247,7 +247,7 @@ def render(model, cmd, origin):
     mapfile -t COMPREPLY < <(compgen -W '{' '.join(model['commands'])}' -- "$cur")
     __ltrim_colon_completions "$cur"
 }} &&
-    complete -F {fn} {cmd}
+    complete -F {fn} {" ".join(names)}
 
 # ex: filetype=sh
 """

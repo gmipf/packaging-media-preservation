@@ -52,7 +52,7 @@ def extract(src):
     return {"flags": flags, "values": values, "commands": commands, "orders": orders, "hidden": hidden}
 
 
-def render(model, cmd, origin):
+def render(model, cmd, origin, names):
     fn = "_mediapres_" + re.sub(r"[^A-Za-z0-9]", "_", cmd)
     words = " ".join(["--" + f for f in model["flags"]] + ["--" + v + "=" for v in model["values"]])
     return f"""# bash completion for {cmd}                                  -*- shell-script -*-
@@ -98,7 +98,7 @@ def render(model, cmd, origin):
     # the command must be the first argument
     ((cword == 1)) && mapfile -t COMPREPLY < <(compgen -W '{" ".join(model["commands"])}' -- "$cur")
 }} &&
-    complete -F {fn} {cmd}
+    complete -F {fn} {" ".join(names)}
 
 # ex: filetype=sh
 """
