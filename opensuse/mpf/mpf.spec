@@ -1,5 +1,5 @@
 %global mpfver         3.11.1
-%global mpfsnap        20261119040732.6daa0e50
+%global mpfsnap        20261119141659.1217ed66
 %global rolltag        rolling
 # Which build of the rolling release we repackage, as it appears in the asset
 # names (MPF.Check_<mpfnet>_linux-x64_<mpfcfg>.zip). Since MPF 207dedba
@@ -16,12 +16,12 @@
 # %%prep fails on any other zip. Written by watch-mpf-rolling.yml through
 # scripts/mpf-pins.py, together with the Fedora spec and debian/rules; lint.sh
 # fails when the three differ.
-%global mpfsha_check_x64    ec8ba81d91c905aeaf92064f81422ff319c8ab9fdf0446bcecceed74906e75e0
-%global mpfsha_cli_x64      b2686a159da25506958d0bb84cd50667cdaa57a5c4c68d6f50eb764da65ee1b2
-%global mpfsha_gui_x64      ed5e7d29645d4925eee79aecf7dd3e3a187577669b66e76b0d77dd25325433d5
-%global mpfsha_check_arm64  a558dbcc5b36f1940781f5b9dfdf4488c4d1b930947848189372cfb9a0a386f2
-%global mpfsha_cli_arm64    39118bd3d42831226732f8672bfc1c1efe522a40ef2dbd2c12487ecd551f97e4
-%global mpfsha_gui_arm64    f8a66895e941d15713a1435a1db22380ff47c0b72f6c684e60b63ce559e924e4
+%global mpfsha_check_x64    a74a940df84f366ad6986d59e149d64200ed034234cf43adfc3cdf3e9f3ad4cc
+%global mpfsha_cli_x64      77a1b6e0d375107f8e7041aa5f5f387e16b96e90f6506b8696140541d58a94e7
+%global mpfsha_gui_x64      1e2921d393569cbec9054e7ecfd6fb39913105f7853d2fcff257d27b0242f5f9
+%global mpfsha_check_arm64  de65a7428b22f449608d059c313a1c9b255882dc15c163dbb5b9de19e6b25c94
+%global mpfsha_cli_arm64    c574a90aff71ceafa1ae1c7d1145304374ff8a38a5fa03a068845fc36ae55459
+%global mpfsha_gui_arm64    745b44cb1a54a5a4c5ca86d74b953c832649cd44602397d346acedabef64bcb2
 
 %global debug_package      %{nil}
 %global __strip            /bin/true
@@ -639,6 +639,9 @@ install -D -p -m 0644 %{SOURCE8} %{buildroot}%{bash_completions_dir}/mpf-cli
 %{_datadir}/icons/hicolor/*/apps/mpf.png
 
 %changelog
+* Thu Nov 19 2026 gmipf <gmipf64@gmail.com> - 3.11.1~20261119141659.1217ed66-0
+- Automated rolling-snapshot sync to upstream MPF commit 1217ed66 (published 20261119141659 UTC).
+
 * Thu Nov 19 2026 gmipf <gmipf64@gmail.com> - 3.11.1~20261119040732.6daa0e50-0
 - Below glibc 2.34 the wrappers also refuse mpf-check -z=<x> and --zip=<x>: MPF takes a flag written as flag=anything as the flag, so even --zip=false turned log compression on. A later --no-zip now counts, as it does in MPF.
 - Rewrite mpf-cli(1), mpf-check(1) and mpf-gui(1) for this MPF: they still described MPF 3.8.3, with wrong synopses, options, dumper lists, config location and install commands. mpf-check(1) lists the options the program parses, which differ from its own help text.
