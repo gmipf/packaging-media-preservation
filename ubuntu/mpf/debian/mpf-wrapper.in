@@ -138,18 +138,16 @@ fi
 # compression fails (77 bytes on AlmaLinux 8: a file header, no entry), and
 # extracting it writes nothing. An archive whose last 22 bytes are not such an
 # end record (a comment, or no zip at all) counts as one with entries.
+# MPF.Check also takes a flag written as flag=anything (so --zip=false turns
+# compression ON), and the last of --zip and --no-zip wins.
 if [ "$grind_ok" = 0 ]; then
     me=${0##*/}
     mpf_target=@TARGET@
+    zip=0
     for a in "$@"; do
         case "$a" in
-            -z|--zip)
-                case "$mpf_target" in
-                    */MPF.Check)
-                        echo "$me: not running: -z/--zip makes MPF compress the logs, which needs glibc 2.$grind_glibc (this system has $glibc); MPF would leave an empty _logs.zip. Run it without -z." >&2
-                        exit 1 ;;
-                esac
-                continue ;;
+            -z|--zip|-z=*|--zip=*) zip=1; continue ;;
+            --no-zip|--no-zip=*) zip=0; continue ;;
             -*=*) a=${a#*=} ;;
             -*) continue ;;
         esac
@@ -178,6 +176,11 @@ $todo
 MSG
         exit 1
     done
+    case "$zip:$mpf_target" in
+        1:*/MPF.Check)
+            echo "$me: not running: -z/--zip makes MPF compress the logs, which needs glibc 2.$grind_glibc (this system has $glibc); MPF would leave an empty _logs.zip. Run it without -z." >&2
+            exit 1 ;;
+    esac
 fi
 
 exec @TARGET@ "$@"

@@ -1,3 +1,9 @@
+mpf (3.11.1~20261119040732.6daa0e50-2) UNRELEASED; urgency=medium
+
+  * Below glibc 2.34 the wrappers also refuse mpf-check -z=<x> and --zip=<x>: MPF takes a flag written as flag=anything as the flag, so even --zip=false turned log compression on. A later --no-zip now counts, as it does in MPF. Rewrite mpf-cli(1) for this MPF: it still described MPF 3.8.3, with a wrong synopsis, dumper list, config location and install command.
+
+ -- gmipf <gmipf64@gmail.com>  Thu, 19 Nov 2026 18:11:13 +0000
+
 mpf (3.11.1~20261119040732.6daa0e50-1) UNRELEASED; urgency=medium
 
   * Automated rolling-snapshot sync to upstream MPF commit 6daa0e50 (published 20261119040732 UTC).

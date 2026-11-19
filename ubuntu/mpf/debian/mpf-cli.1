@@ -1,127 +1,206 @@
-.TH MPF-CLI 1 "2026-07-12" "MPF 3.8.3" "User Commands"
+.TH MPF-CLI 1 "2026-11-19" "MPF 3.11.1 (6daa0e50)" "User Commands"
 .SH NAME
-mpf-cli \- headless orchestrator for redumper, aaru and discimagecreator disc dumps
+mpf-cli \- dump a disc with redumper, aaru, DiscImageCreator or dreamdump and write its submission info
 .SH SYNOPSIS
 .B mpf-cli
-.RI [ OPTIONS ]
-.IR DRIVE
-.IR OUTPUT-DIRECTORY
+.I system
+.RI [ options ]
+.br
+.B mpf-cli
+.I command
 .SH DESCRIPTION
 .B mpf-cli
-(upstream \fBMPF.CLI\fR) is the headless command-line driver of the
-Media Preservation Frontend (MPF) suite. It runs a complete dump
-session end-to-end: select a backend dumper, capture all relevant
-logs/metadata, post-process the output and write the submission info.
-
-Supported backend dumpers, selected via configuration:
-.RS
-.IP \(bu 2
-.BR redumper (1)
-.IP \(bu 2
-.BR aaru (1)
-.IP \(bu 2
-.BR discimagecreator (1)
-.RE
-.PP
-The companion validator
+(upstream \fBMPF.CLI\fR) is the command-line program of the Media
+Preservation Frontend (MPF). It runs one of the dumping programs
+on a drive and then, in the same process, reads the dump and its logs
+and writes the Redump submission information (\fI!submissionInfo.txt\fR)
+next to the output, the same step
 .BR mpf-check (1)
-is run automatically at the end of the session to produce
-\fI!submissionInfo.txt\fR.
-
-When run with no arguments
-.B mpf-cli
-prints its full help text.
+performs on its own.
+.PP
+.I system
+is a system code such as
+.B pc
+or
+.BR psx ;
+.B mpf-cli listsystems
+prints them all. All other settings come from the configuration file
+(see \fBCONFIGURATION\fR); the options below override them for one run.
+.SH COMMANDS
+.TP
+.BR ? ", " h ", " help
+Print the help text.
+.TP
+.B version
+Print the program version.
+.TP
+.BR lc ", " listcodes
+List the comment and content site codes.
+.TP
+.BR lo ", " listconfig
+List the current configuration values.
+.TP
+.BR lpm ", " listpath
+List the path macros (\fB%SYSTEM%\fR, \fB%DATE%\fR, ...).
+.TP
+.BR lm ", " listmedia
+List the media type codes.
+.TP
+.BR ls ", " listsystems
+List the system codes.
+.TP
+.BR lp ", " listprograms
+List the dumping programs whose output MPF reads.
+.TP
+.BR i ", " interactive
+Ask for every setting in a menu instead of taking options.
+.TP
+.B man
+Print a manual page generated from the program's own option list.
+.SH OPTIONS
+.TP
+.BR \-u ", " \-\-use " \fIprogram\fR"
+Use this dumping program instead of the configured one:
+.BR redumper ,
+.BR aaru ,
+.B dic
+or
+.BR dreamdump .
+.TP
+.BR \-t ", " \-\-mediatype " \fImediatype\fR"
+The media type (\fBmpf-cli listmedia\fR). Required for DiscImageCreator.
+.TP
+.BR \-d ", " \-\-device " \fIdevicepath\fR"
+The drive, for example
+.IR /dev/sr0 .
+Required unless \fB\-c\fR is given.
+.TP
+.BR \-m ", " \-\-mounted " \fIdirpath\fR"
+Where the disc's filesystem is mounted, for the additional checks that
+read files from it. Recommended on Linux, where the drive is a block device.
+.TP
+.BR \-f ", " \-\-file " \fIfilepath\fR"
+The output file path. Without it MPF writes
+.IR track_<date-time> / track_<date-time> .bin
+in the configured output directory.
+.TP
+.BR \-s ", " \-\-speed " \fIspeed\fR"
+Override the configured dumping speed.
+.TP
+.BR \-r ", " \-\-retries " \fIretries\fR"
+Override the configured retry count.
+.TP
+.BR \-c ", " \-\-custom " \fIparams\fR"
+Pass these parameters to the dumping program in place of the ones MPF
+builds. They replace all of them, so they must be complete.
 .SH CONFIGURATION
-.B mpf-cli
-loads its configuration from
-.IR config.json .
-Two locations are checked, in order:
-.RS
-.IP 1. 3
-.I ./config.json
-(next to the binary or in the current working directory)
-.IP 2. 3
+MPF reads
 .I ~/.config/mpf/config.json
-.RE
-.PP
-On a packaged install the binary lives in a system path that is not
-user-writable, so the second location is the canonical place to put
-your config. If neither path is readable, defaults are used.
-.SH SYSTEM-INSTALLED DUMPERS
-Unlike the upstream zip the package does
-.B not
-ship a bundled \fIPrograms/Creator/\fR folder; the system-installed
-.BR redumper (1),
-.BR aaru (1)
-and
-.BR discimagecreator (1)
-are resolved via
-.BR PATH .
-Make sure at least one of them is installed:
-.PP
-.RS
-.B sudo apt install redumper aaru5 discimagecreator
-.RE
-.SH DRIVE ACCESS
+when it exists, and only otherwise a
+.I config.json
+next to the binary. The
 .B mpf-cli
-runs unprivileged and carries no file capabilities: it never sends a SCSI
-command itself. The dump is performed by the backend dumper, and
-.BR redumper (1),
-.BR aaru5 (1)
-and
-.BR discimagecreator (1)
-each carry
-.B cap_sys_rawio
-on their own binary \(em the kernel grants file capabilities from the
-executed file, so the dumper is fully privileged no matter who starts it.
-Drive-node access on
-.I /dev/sr*
-is granted automatically via
-.B uaccess
-at a local desktop seat; for headless/SSH add yourself to the
-.B cdrom
-group:
+wrapper creates the file in your home before the first start, so that is
+the one in use. It sets the four dumping-program paths to the names of the
+packaged programs, which MPF finds on
+.BR PATH :
+.BR redumper-mpf ,
+.BR aaru5 ,
+.B DiscImageCreator.out
+(package \fBdiscimagecreator\fR) and
+.BR dreamdump .
+.B mpf-cli
+recommends these packages but does not require them; install the ones you
+want to dump with.
+The wrapper sets a path back to that name only when the configured one no
+longer resolves (this needs
+.BR jq ),
+so a path of your own stays as long as it exists.
 .PP
-.RS
-.B sudo usermod -aG cdrom $USER
-.RE
+.B redumper-mpf
+and
+.B aaru5
+are the builds this MPF build was made for. The rolling
+.B redumper
+and
+.B aaru
+packages may be newer, and MPF does not check the version of the program it
+starts.
 .SH OUTPUT PATH
 Upstream MPF defaults
 .B DefaultOutputPath
 to the relative directory
 .IR ISO ,
-which in the portable Windows bundle means "next to the executable". In a
-/usr-tree install there is no such place and a relative path resolves
-against the current working directory, so the packaged wrapper points the
-setting at
+which a relative path resolves against the directory
+.B mpf-cli
+was started from. The wrapper sets it to
 .I ~/ISO
-instead. Change it in
-.I ~/.config/mpf/config.json
-to any
-.B absolute
-path; the wrapper only rewrites the value when it is empty or relative.
+instead, and resets it whenever it is empty or relative. Any absolute path
+you set stays.
+.SH DRIVE ACCESS
+.B mpf-cli
+runs unprivileged and carries no file capabilities: it sends no drive
+commands itself. The dumping program does, and
+.BR redumper-mpf ,
+.B aaru5
+and
+.B DiscImageCreator.out
+are installed with the
+.B cap_sys_rawio
+file capability, which the kernel grants from the executed file no matter
+who starts it.
+.B dreamdump
+is installed without it.
+Read access to
+.I /dev/sr*
+comes from the
+.B uaccess
+rule at a local desktop seat; for a headless or SSH session add yourself to the
+.B cdrom
+group:
+.PP
+.RS
+.B sudo usermod \-aG cdrom $USER
+.RE
+.SH OLDER SYSTEMS
+MPF reads and writes its log archives (\fI*_logs.zip\fR) through a library
+that needs glibc 2.34 or newer. Below that (Enterprise Linux 8 has 2.28),
+compressing the logs fails and leaves an empty archive, and extracting an
+archive writes every file from it as 0 bytes. There the wrapper turns
+.B CompressLogFiles
+off in the configuration and refuses to start MPF on an output whose
+\fI_logs.zip\fR lists files. Leave log compression off on such a system.
+.SH EXAMPLES
+Dump a PC disc with redumper:
+.PP
+.RS
+.B mpf-cli pc \-u redumper \-d /dev/sr0 \-f ~/ISO/disc/disc.bin
+.RE
 .SH FILES
 .TP
-.I /usr/lib/mpf-cli/MPF.CLI
-The actual self-contained .NET binary.
-.TP
 .I /usr/bin/mpf-cli
-Shell wrapper that exec\(aqs the binary above.
+The wrapper described above; it starts the binary below.
+.TP
+.I /usr/lib/mpf-cli/MPF.CLI
+The self-contained .NET binary.
 .TP
 .I ~/.config/mpf/config.json
-User configuration.
+The configuration, shared with
+.BR mpf-check (1)
+and
+.BR mpf-gui (1).
 .SH NOTES
-This manpage is handwritten and tracks upstream MPF
-.BR 3.8.3 .
-If the upstream tool grows new flags or changes its syntax in a future
-release, this page may lag behind the binary; consult
-\fImpf-cli --help\fR for the authoritative current option set.
+This page is written by hand against MPF 3.11.1 commit 6daa0e50. MPF is
+packaged as a rolling build, so the installed binary may be newer;
+.B mpf-cli help
+prints the options it takes.
 .SH SEE ALSO
 .BR mpf-check (1),
 .BR mpf-gui (1),
 .BR redumper (1),
-.BR aaru (1),
-.BR discimagecreator (1)
+.BR aaru5 (1),
+.BR discimagecreator (1),
+.BR dreamdump (1)
 .PP
 Upstream project:
 .UR https://github.com/SabreTools/MPF

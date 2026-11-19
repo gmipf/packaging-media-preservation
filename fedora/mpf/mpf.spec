@@ -37,7 +37,7 @@ Version:        %{mpfver}~%{mpfsnap}
 # lives in the changelog. (Stuck at 5 here from pre-fix manual bumps of
 # the 71dafe3d snapshot — already shipped as -5, so left as-is to avoid
 # a downgrade; the next snapshot resets it.)
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        Media Preservation Frontend suite (mpf-check, mpf-cli, mpf-gui)
 
 License:        MIT
@@ -507,18 +507,16 @@ fi
 # compression fails (77 bytes on AlmaLinux 8: a file header, no entry), and
 # extracting it writes nothing. An archive whose last 22 bytes are not such an
 # end record (a comment, or no zip at all) counts as one with entries.
+# MPF.Check also takes a flag written as flag=anything (so --zip=false turns
+# compression ON), and the last of --zip and --no-zip wins.
 if [ "\$grind_ok" = 0 ]; then
     me=\${0##*/}
     mpf_target=$target
+    zip=0
     for a in "\$@"; do
         case "\$a" in
-            -z|--zip)
-                case "\$mpf_target" in
-                    */MPF.Check)
-                        echo "\$me: not running: -z/--zip makes MPF compress the logs, which needs glibc 2.\$grind_glibc (this system has \$glibc); MPF would leave an empty _logs.zip. Run it without -z." >&2
-                        exit 1 ;;
-                esac
-                continue ;;
+            -z|--zip|-z=*|--zip=*) zip=1; continue ;;
+            --no-zip|--no-zip=*) zip=0; continue ;;
             -*=*) a=\${a#*=} ;;
             -*) continue ;;
         esac
@@ -547,6 +545,11 @@ any copy already in the folder, and still report SUCCESS.
 MSG
         exit 1
     done
+    case "\$zip:\$mpf_target" in
+        1:*/MPF.Check)
+            echo "\$me: not running: -z/--zip makes MPF compress the logs, which needs glibc 2.\$grind_glibc (this system has \$glibc); MPF would leave an empty _logs.zip. Run it without -z." >&2
+            exit 1 ;;
+    esac
 fi
 
 exec $target "\$@"
@@ -642,6 +645,13 @@ install -D -p -m 0644 %{SOURCE8} %{buildroot}%{bash_completions_dir}/mpf-cli
 %{_datadir}/icons/hicolor/*/apps/mpf.png
 
 %changelog
+* Thu Nov 19 2026 gmipf <gmipf64@gmail.com> - 3.11.1~20261119040732.6daa0e50-2
+- Below glibc 2.34 the wrappers also refuse mpf-check -z=<x> and --zip=<x>:
+  MPF takes a flag written as flag=anything as the flag, so even --zip=false
+  turned log compression on. A later --no-zip now counts, as it does in MPF.
+- Rewrite mpf-cli(1) for this MPF: it still described MPF 3.8.3, with a
+  wrong synopsis, dumper list, config location and install command.
+
 * Thu Nov 19 2026 gmipf <gmipf64@gmail.com> - 3.11.1~20261119040732.6daa0e50-1
 - Automated rolling-snapshot sync to upstream MPF commit 6daa0e50
   (rolling tag, published 20261119040732 UTC); Release reset to 1.
