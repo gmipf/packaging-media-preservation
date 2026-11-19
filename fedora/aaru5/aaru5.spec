@@ -17,21 +17,21 @@
 
 Name:           aaru5
 Version:        %{aaruver}
-Release:        9%{?dist}
+Release:        10%{?dist}
 Summary:        Aaru 5.x stable data-preservation CLI (MPF-compatible)
 
 License:        GPL-3.0-or-later AND LGPL-2.1-or-later AND MIT
 URL:            https://github.com/aaru-dps/Aaru
 
 # Single-source repackage: the prebuilt linux_amd64 tarball carries the
-# self-identifying `aaru` NativeAOT binary, its libe_sqlite3.so sidecar,
+# self-identifying `aaru` single-file .NET binary, its libe_sqlite3.so sidecar,
 # and the LICENSE/README/Changelog. Building from source needs NuGet at
 # build time, which COPR's build chroot cannot reach — so we repackage
 # the upstream signed release binary instead. No source tarball is pulled
 # because this package ships no icons/desktop/MIME integration (it is a
 # headless CLI backend for MPF), unlike the rolling `aaru` (v6) package.
 Source0:        %{url}/releases/download/%{aarutag}/aaru-%{aaruver}_linux_amd64.tar.xz
-# arm64 counterpart of Source0 (the NativeAOT binary + its libe_sqlite3.so
+# arm64 counterpart of Source0 (the single-file binary + its libe_sqlite3.so
 # sidecar, both arch-specific). Bundled so the one SRPM builds on every arch
 # chroot; extracted whole in %%prep via %%ifarch so BOTH the binary and the
 # sidecar are swapped. Same version macro => the watcher bumps both in lockstep.
@@ -73,7 +73,7 @@ BuildRequires:  systemd-rpm-macros
 # shipped binary's `--help` (see %%build), so whatever the binary needs in order
 # to start must be in the build root -- not merely at install time.
 #
-# The NativeAOT ELF's DT_NEEDED lists nothing exotic (libc, libstdc++, libz), so
+# The single-file ELF's DT_NEEDED lists nothing exotic (libc, libstdc++, libz), so
 # rpm's automatic dependency generator sees no runtime deps to declare. But the
 # binary DLOPENS libicui18n/libicuuc (measured with `strings`), which no
 # dependency scanner can see -- the same trap as with the GUI packages. libicu
@@ -95,11 +95,12 @@ BuildRequires:  openssl-libs
 BuildRequires:  zlib
 %endif
 
-# Aaru 5.4.x is a NativeAOT executable dynamically linked only against the
-# standard C/C++ runtime (libc, libstdc++, libz, ...), so rpm's automatic
-# dependency generator resolves every runtime dependency straight from the
-# ELF — no hand-maintained Requires for a bundled .NET runtime are needed
-# (that is a v6 self-contained-single-file concern; this build has none).
+# Aaru 5.4.x is a self-contained single-file .NET 8 executable (not NativeAOT,
+# as this comment said until 2026-11-19): the runtime is linked into the host,
+# so the ELF is dynamically linked only against the standard C/C++ runtime
+# (libc, libstdc++, libz, ...) and rpm's automatic dependency generator
+# resolves those straight from it. What the runtime dlopens (libicu, see the
+# BuildRequires above) no generator sees.
 
 %description
 Aaru is a cross-platform data-preservation suite: it dumps optical and
@@ -138,8 +139,8 @@ tar -xJf %{SOURCE0}
 # the prose aged (see redumper.spec).
 #
 # The generator probes first whether the prebuilt binary runs in this build
-# root; if it does not (a newer distro can ship runtime SONAMEs this .NET 5
-# NativeAOT binary was never linked against), it emits the curated page with a
+# root; if it does not (a newer distro can ship runtime SONAMEs this .NET 8
+# single-file binary was never linked against), it emits the curated page with a
 # short note instead of the reference and passes %%{version} through, rather
 # than failing the build.
 sh %{SOURCE3} ./aaru %{SOURCE1} %{version} > aaru5.1
@@ -216,6 +217,10 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
 %{bash_completions_dir}/aaru5
 
 %changelog
+* Thu Nov 19 2026 gmipf <gmipf64@gmail.com> - 5.4.2-10
+- aaru5(1) called the binary NativeAOT. It is a self-contained single-file
+  .NET 8 executable; the page now says so. Nothing else changes.
+
 * Thu Nov 19 2026 gmipf <gmipf64@gmail.com> - 5.4.2-9
 - Ship a bash completion for aaru5, generated from the Aaru 5.4.2 source by
   scripts/completions/gen.py. It leaves out the six options aaru5 parses but

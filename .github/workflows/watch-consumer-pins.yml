@@ -21,7 +21,8 @@ name: watch-consumer-pins
 # auto-bumping would ship an untested combination. Checked against the recipes,
 # neither half held: aaru5's manpage is GENERATED at build time from
 # aaru5-manpage.sh, exactly like the rolling aaru package, and that one is a
-# NativeAOT tree too and has been auto-bumped all along. The untested-combination
+# tarball tree too (neither is NativeAOT: both are self-contained single-file
+# .NET) and has been auto-bumped all along. The untested-combination
 # argument is backwards as well -- the version MPF bundles is precisely the one
 # MPF tested. What actually differed was one macro name and a `Version:` line that
 # repeated the literal 5.4.2 instead of following %{aaruver}. A reason written

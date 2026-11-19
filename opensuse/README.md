@@ -352,7 +352,7 @@ has anything to do with `_service`.
 | redumper-mpf     | static binary, **pinned build**   | 4            | the build MPF bundles, as `/usr/bin/redumper-mpf`; no manpage, by design |
 | dreamdump        | static binary (Go), MPF's release | 5            | source tarball read at build: provenance check, opcode guard, generated manpage; **no capability**, none needed |
 | redumper-gui     | **source build** (Rust / egui)    | 5            | vendored crates; 9 icon sizes; **no capability**, by design |
-| aaru5            | NativeAOT binary + sidecar `.so`  | 7            | auto ELF deps; static manpage; udev |
+| aaru5            | single-file .NET + sidecar `.so`  | 7            | auto ELF deps; static manpage; udev |
 | aaru             | self-contained .NET (single-file) | 7            | two tarballs; manpage from `--help`; udev; icons/MIME/desktop |
 | mpf              | self-contained .NET × 3           | 9            | `mpf` meta + `mpf-check`/`mpf-cli`/`mpf-gui`; caps per subpackage; 5 icons |
 | discimagecreator | **source build** (meson)          | 6            | four archives via `#/rename`; helper makefiles; two caps binaries; udev |

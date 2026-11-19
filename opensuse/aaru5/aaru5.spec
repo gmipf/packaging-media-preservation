@@ -24,12 +24,12 @@ License:        GPL-3.0-or-later AND LGPL-2.1-or-later AND MIT
 URL:            https://github.com/aaru-dps/Aaru
 
 # Single-source repackage: the prebuilt linux_amd64 tarball carries the
-# self-identifying `aaru` NativeAOT binary, its libe_sqlite3.so sidecar,
+# self-identifying `aaru` single-file .NET binary, its libe_sqlite3.so sidecar,
 # and the LICENSE/README/Changelog. OBS build roots are hermetic (no
 # network), so this URL is fetched by the _service (download_files) and
 # committed as a package source, not pulled at build time.
 Source0:        %{url}/releases/download/%{aarutag}/aaru-%{aaruver}_linux_amd64.tar.xz
-# arm64 counterpart of Source0 (the NativeAOT binary + its libe_sqlite3.so
+# arm64 counterpart of Source0 (the single-file binary + its libe_sqlite3.so
 # sidecar, both arch-specific). Bundled so the one package source builds on every
 # enabled arch; extracted whole in %%prep via %%ifarch so BOTH the binary and the
 # sidecar are swapped. Same version macro => the _service fetches and the watcher
@@ -87,11 +87,12 @@ Requires:       permissions
 Requires(post): permissions
 Requires(verify): permissions
 
-# Aaru 5.4.x is a NativeAOT executable dynamically linked only against the
-# standard C/C++ runtime (libc, libstdc++, libz, ...), so rpm's automatic
-# dependency generator resolves every runtime dependency straight from the
-# ELF — no hand-maintained Requires for a bundled .NET runtime are needed
-# (that is a v6 self-contained-single-file concern; this build has none).
+# Aaru 5.4.x is a self-contained single-file .NET 8 executable (not NativeAOT,
+# as this comment said until 2026-11-19): the runtime is linked into the host,
+# so the ELF is dynamically linked only against the standard C/C++ runtime
+# (libc, libstdc++, libz, ...) and rpm's automatic dependency generator
+# resolves those straight from it. What the runtime dlopens (libicu, see the
+# BuildRequires above) no generator sees.
 
 %description
 Aaru is a cross-platform data-preservation suite: it dumps optical and
@@ -224,6 +225,9 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
 %{bash_completions_dir}/aaru5
 
 %changelog
+* Thu Nov 19 2026 gmipf <gmipf64@gmail.com> - 5.4.2-0
+- aaru5(1) called the binary NativeAOT. It is a self-contained single-file .NET 8 executable; the page now says so. Nothing else changes.
+
 * Thu Nov 19 2026 gmipf <gmipf64@gmail.com> - 5.4.2-0
 - Ship a bash completion for aaru5, generated from the Aaru 5.4.2 source by scripts/completions/gen.py. It leaves out the six options aaru5 parses but never passes to the command, and offers false after the flags that are on by default.
 

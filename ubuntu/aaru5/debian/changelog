@@ -1,3 +1,9 @@
+aaru5 (5.4.2-6) UNRELEASED; urgency=medium
+
+  * aaru5(1) and the package description called the binary NativeAOT. It is a self-contained single-file .NET 8 executable; both now say so. Nothing else changes.
+
+ -- gmipf <gmipf64@gmail.com>  Thu, 19 Nov 2026 20:29:14 +0000
+
 aaru5 (5.4.2-5) UNRELEASED; urgency=medium
 
   * Ship a bash completion for aaru5, generated from the Aaru 5.4.2 source by scripts/completions/gen.py. It leaves out the six options aaru5 parses but never passes to the command, and offers false after the flags that are on by default.

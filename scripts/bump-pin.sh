@@ -15,7 +15,8 @@
 # aaru5 was HAND-BUMPED until 2026-07-19, on the stated grounds that it is "a
 # NativeAOT tree with a static manpage, not a zip". Both halves were wrong: its
 # manpage is generated at build time from aaru5-manpage.sh, exactly like the
-# rolling aaru package, and the rolling one is a NativeAOT tree too and is bumped
+# rolling aaru package, and the rolling one is a tarball tree too (neither is
+# NativeAOT: both are self-contained single-file .NET) and is bumped
 # automatically. What actually differed was one macro name and one line -- `Version:`
 # repeated the literal 5.4.2 instead of following %{aaruver}. A reason written down
 # once and never re-checked kept a package on manual maintenance for weeks.

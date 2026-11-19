@@ -1,6 +1,6 @@
 #!/usr/bin/make -f
 #
-# aaru5 — repackage of the upstream prebuilt linux_amd64 NativeAOT binary.
+# aaru5 — repackage of the upstream prebuilt linux_amd64 single-file .NET binary.
 # Nothing is compiled here; the "build" step GENERATES the manpage.
 
 # Debian upstream version (e.g. 5.4.2), derived from the changelog by dropping
@@ -54,7 +54,7 @@ override_dh_auto_test:
 
 # Do not touch the upstream release binary / its libe_sqlite3.so sidecar: they
 # are shipped as-is by upstream; stripping / dwz would only risk corrupting the
-# NativeAOT ELF and would make the packaged files differ from the release.
+# single-file ELF and would make the packaged files differ from the release.
 override_dh_strip:
 
 override_dh_dwz:
