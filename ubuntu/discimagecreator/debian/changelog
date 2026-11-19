@@ -1,3 +1,9 @@
+discimagecreator (20261119133512.6b755f83-1) UNRELEASED; urgency=medium
+
+  * Automated master-snapshot sync to upstream DiscImageCreator commit 6b755f83 (committed 20261119133512 UTC).
+
+ -- gmipf <gmipf64@gmail.com>  Thu, 19 Nov 2026 21:24:27 +0000
+
 discimagecreator (20261117150901.e2ba9095-3) UNRELEASED; urgency=medium
 
   * Ship bash completions for discimagecreator (also under dic and DiscImageCreator.out), eccedc, unscrambler and dvdauth, generated from their sources by scripts/completions/gen.py. They also offer the modes and options the usage texts do not list.

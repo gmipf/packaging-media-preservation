@@ -6,8 +6,8 @@
 # plus short SHA: dicsnap = <YYYYMMDDHHMMSS>.<short-SHA>. watch-dic-releases
 # rewrites dicsnap / diccommit on every new master commit; diccommit is the
 # full SHA used for the source archive.
-%global dicsnap      20261117150901.e2ba9095
-%global diccommit    e2ba9095b212c8b2585456fd099d278f9ac3ef19
+%global dicsnap      20261119133512.6b755f83
+%global diccommit    6b755f831b5cd4c178e776b5dd6727ed2cacacef
 # The three helpers track master as well (their release tags lagged behind:
 # EccEdc 20240901 lacked two fixes master has). The watcher re-pins them; the
 # same pins stand in the other spec and in debian/rules, and
@@ -319,6 +319,9 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
 %{bash_completions_dir}/dvdauth
 
 %changelog
+* Thu Nov 19 2026 gmipf <gmipf64@gmail.com> - 20261119133512.6b755f83-0
+- Automated master-snapshot sync to upstream DiscImageCreator commit 6b755f83 (committed 20261119133512 UTC).
+
 * Wed Nov 18 2026 gmipf <gmipf64@gmail.com> - 20261117150901.e2ba9095-0
 - Ship bash completions for discimagecreator (also under dic and DiscImageCreator.out), eccedc, unscrambler and dvdauth, generated from their sources by scripts/completions/gen.py. They also offer the modes and options the usage texts do not list.
 
