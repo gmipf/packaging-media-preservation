@@ -173,6 +173,18 @@ builds MPF bundles (`redumper-mpf`, `aaru5`, `dreamdump`), and
 `watch-redumper-gui.yml` tracks Redumper-GUI releases together with its redumper
 pin (`redumper-rgui`).
 
+Before anything else, every watcher asks each repository it follows whether it
+is archived (`scripts/upstream-archived.sh`, GitHub and Codeberg). An archived
+project never releases or commits again, so a watcher that asked only for the
+newest release would stay green for ever. An archived upstream turns the watcher
+red until someone decides: keep the package (commit
+`fedora/<package>/.upstream-archived.<repository>` saying since when and why;
+only its presence counts), package a successor, or retire it. A marker for an
+upstream that is active again, and an answer that is neither yes nor no, are red
+too. `scripts/test-upstream-archived.py` (in `check-repo.yml`) tests those
+decisions and that each watcher asks for exactly its repositories, before any
+other upstream request.
+
 See `.packit.yaml` for the per-tool trigger configuration.
 
 ### macOS

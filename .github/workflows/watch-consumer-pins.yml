@@ -64,6 +64,10 @@ jobs:
         run: |
           set -euo pipefail
 
+          # dreamdump is the one pin here with no watcher of its own (the others are
+          # redumper and Aaru, asked by theirs); an archived upstream never moves again.
+          bash scripts/upstream-archived.sh codeberg MoriGM/dreamdump fedora/dreamdump
+
           NIX=$(curl -fsSL https://raw.githubusercontent.com/SabreTools/MPF/master/publish-nix.sh)
           MPF_RD=$(printf '%s' "$NIX" | grep -oE 'redumper/releases/download/b[0-9]+' | head -1 | grep -oE '[0-9]+$')
           MPF_AA=$(printf '%s' "$NIX" | grep -oE 'Aaru/releases/download/v[0-9.]+'    | head -1 | sed 's/.*v//')

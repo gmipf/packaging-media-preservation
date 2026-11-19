@@ -67,6 +67,9 @@ jobs:
           set -euo pipefail
           MARKER=fedora/redumper-gui/.upstream-tag
 
+          # An archived upstream never releases again; ask that first.
+          bash scripts/upstream-archived.sh github Deterous/Redumper-GUI fedora/redumper-gui
+
           # Stable releases only. A prerelease must not bump a package that
           # carries a hard Requires on a pinned dumper -- and `sort_by` on the
           # numeric triple, not on the string, so v1.0.10 sorts above v1.0.9.

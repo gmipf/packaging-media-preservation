@@ -41,6 +41,12 @@ jobs:
           SPEC=fedora/discimagecreator/discimagecreator.spec
           MARKER=fedora/discimagecreator/.upstream-tag
 
+          # An archived upstream never moves again; ask that first, for all four.
+          bash scripts/upstream-archived.sh github saramibreak/DiscImageCreator fedora/discimagecreator
+          bash scripts/upstream-archived.sh github saramibreak/EccEdc fedora/discimagecreator
+          bash scripts/upstream-archived.sh github saramibreak/unscrambler fedora/discimagecreator
+          bash scripts/upstream-archived.sh github saramibreak/DVDAuth fedora/discimagecreator
+
           UPSTREAM_SHA_FULL=$(gh api repos/saramibreak/DiscImageCreator/branches/master --jq '.commit.sha')
           LOCAL_SHA=$(cat "$MARKER" 2>/dev/null || echo none)
 

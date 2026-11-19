@@ -25,6 +25,9 @@ jobs:
           SPEC=fedora/mpf/mpf.spec
           MARKER=fedora/mpf/.rolling-sha
 
+          # An archived upstream never moves its rolling tag again; ask that first.
+          bash scripts/upstream-archived.sh github SabreTools/MPF fedora/mpf
+
           UPSTREAM_SHA_FULL=$(gh api repos/SabreTools/MPF/git/refs/tags/rolling --jq '.object.sha')
           LOCAL_SHA=$(cat "$MARKER" 2>/dev/null || echo none)
 

@@ -49,6 +49,9 @@ jobs:
           SPEC=fedora/aaru/aaru.spec
           MARKER=fedora/aaru/.upstream-tag
 
+          # An archived upstream never releases again; ask that first.
+          bash scripts/upstream-archived.sh github aaru-dps/Aaru fedora/aaru
+
           # Detect a tag that signals upstream has left the pre-release track
           # altogether (see the header: these reshape Version and the Source
           # URLs, so a human has to look).

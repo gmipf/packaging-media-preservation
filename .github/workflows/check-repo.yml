@@ -74,6 +74,11 @@ jobs:
       - name: docs-gate decision tests
         run: python3 scripts/test-docs-gate.py
 
+      # The check itself runs first in every watcher; this tests its decisions
+      # and that each watcher asks it for every repository it follows.
+      - name: upstream-archived decision and wiring tests
+        run: python3 scripts/test-upstream-archived.py
+
       # lint.sh checks the completions offline (copies, pins, recipes, smoke).
       # This half needs the upstream source: regenerate every completion from the
       # revision its spec pins and fail if a committed copy differs -- a

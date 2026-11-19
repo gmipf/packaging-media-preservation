@@ -34,6 +34,9 @@ jobs:
           SPEC=fedora/redumper/redumper.spec
           MARKER=fedora/redumper/.upstream-tag
 
+          # An archived upstream never releases again; ask that first.
+          bash scripts/upstream-archived.sh github superg/redumper fedora/redumper
+
           UPSTREAM_TAG=$(gh api 'repos/superg/redumper/releases?per_page=20' --jq '
             [.[] | select(.draft == false and (.tag_name | test("^b[0-9]+$"))) | .tag_name]
             | sort_by([. | sub("^b"; "") | tonumber])
