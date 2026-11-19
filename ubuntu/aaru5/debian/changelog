@@ -1,3 +1,9 @@
+aaru5 (5.4.2-7) UNRELEASED; urgency=medium
+
+  * Depend on the ICU runtime and libssl3. The binary loads both at run time, where no dependency scanner sees them: without ICU it does not start, without libssl it aborts at the first checksum.
+
+ -- gmipf <gmipf64@gmail.com>  Thu, 19 Nov 2026 20:46:08 +0000
+
 aaru5 (5.4.2-6) UNRELEASED; urgency=medium
 
   * aaru5(1) and the package description called the binary NativeAOT. It is a self-contained single-file .NET 8 executable; both now say so. Nothing else changes.

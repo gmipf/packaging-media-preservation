@@ -91,8 +91,18 @@ Requires(verify): permissions
 # as this comment said until 2026-11-19): the runtime is linked into the host,
 # so the ELF is dynamically linked only against the standard C/C++ runtime
 # (libc, libstdc++, libz, ...) and rpm's automatic dependency generator
-# resolves those straight from it. What the runtime dlopens (libicu, see the
-# BuildRequires above) no generator sees.
+# resolves those straight from it. What the runtime dlopens no generator sees,
+# so it is declared here. Measured on 5.4.2 (2026-11-19) by refusing each
+# dlopen: without libicu the binary aborts at start ("Couldn't find a valid ICU
+# package"), without libssl the first checksum aborts it ("No usable version
+# of libssl was found"), and every dump computes checksums. libicu is portable
+# (every openSUSE ICU runtime package provides the virtual libicu).
+Requires:       libicu
+%if 0%{?suse_version}
+Requires:       libopenssl3
+%else
+Requires:       openssl-libs
+%endif
 
 %description
 Aaru is a cross-platform data-preservation suite: it dumps optical and
@@ -225,6 +235,9 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
 %{bash_completions_dir}/aaru5
 
 %changelog
+* Thu Nov 19 2026 gmipf <gmipf64@gmail.com> - 5.4.2-0
+- Require libicu and the OpenSSL libraries. The binary loads both at run time, where no dependency generator sees them: without ICU it does not start, without OpenSSL it aborts at the first checksum.
+
 * Thu Nov 19 2026 gmipf <gmipf64@gmail.com> - 5.4.2-0
 - aaru5(1) called the binary NativeAOT. It is a self-contained single-file .NET 8 executable; the page now says so. Nothing else changes.
 

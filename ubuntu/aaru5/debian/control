@@ -29,11 +29,15 @@ Package: aaru5
 # extracts it over the tree (binary + libe_sqlite3.so sidecar) on an arm64 build.
 # arm64 ships UNTESTED (no hardware drive-access proof).
 Architecture: amd64 arm64
-# ${shlibs:Depends}: unlike redumper, the Aaru 5.4.x binary (self-contained
-# single-file .NET 8, the runtime linked in) is dynamically linked against the standard C/C++ runtime, so dh_shlibdeps
-# resolves its real runtime dependencies straight from the ELF (mirrors how
-# the RPM relies on rpm's automatic ELF dep generator).
-Depends: ${shlibs:Depends}, ${misc:Depends}, libcap2-bin
+# ${shlibs:Depends}: the Aaru 5.4.x binary (self-contained single-file .NET 8,
+# the runtime linked in) is dynamically linked against the standard C/C++
+# runtime, which dh_shlibdeps resolves straight from the ELF. What the runtime
+# dlopens it cannot see, so that is declared by hand (parity with the RPM's
+# Requires): without ICU the binary does not start, without libssl it aborts at
+# the first checksum (measured 2026-11-19). ${dep:icu} is filled in per series
+# at build (debian/rules), because the ICU runtime package carries its soname
+# in its name.
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${dep:icu}, libssl3, libcap2-bin
 Description: Aaru 5.x stable data-preservation CLI (MPF-compatible)
  Aaru is a cross-platform data-preservation suite: it dumps optical and
  removable media (CD, DVD, HD-DVD, Blu-ray, UMD, floppy, magneto-optical) to

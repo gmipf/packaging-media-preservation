@@ -50,6 +50,13 @@ endif
 	    echo "The build root could not run the binary; see its WARNINGs above."; \
 	    exit 1; }
 
+# The ICU runtime package carries its soname in the package name (libicu74 on
+# noble, libicu70 on jammy), so resolve it per series from what libicu-dev
+# pulled into the build root and feed it to control's ${dep:icu}.
+override_dh_gencontrol:
+	echo "dep:icu=$$(dpkg-query -W -f='$${Package}\n' 'libicu[0-9]*' 2>/dev/null | grep -E '^libicu[0-9]+$$' | sort -V | tail -n1)" >> debian/aaru5.substvars
+	dh_gencontrol
+
 override_dh_auto_test:
 
 # Do not touch the upstream release binary / its libe_sqlite3.so sidecar: they

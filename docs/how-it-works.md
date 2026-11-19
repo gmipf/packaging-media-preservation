@@ -99,7 +99,7 @@ leave the installed files alike (on EL8 it links the vendor-maintained system
 openssl 1.1.1k). It also
 keeps `%if 0%{?suse_version}` portability, which the openSUSE (OBS) lane builds on —
 BuildRequiring Ninja under its openSUSE name (`ninja` vs `ninja-build`) — and
-the self-contained .NET tools (`aaru`, `mpf`) map their runtime dependency names
+the self-contained .NET tools (`aaru`, `aaru5`, `mpf`) map their runtime dependency names
 under the same guard (`krb5-libs`→`krb5`, `openssl-libs`→`libopenssl3`,
 `zlib`→`libz1`, `libunwind` by soname; `libicu` and `jq` are portable as-is).
 These openSUSE branches are a verified no-op on Fedora/EL.
