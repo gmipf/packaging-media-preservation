@@ -1,5 +1,5 @@
 %global mpfver         3.11.1
-%global mpfsnap        20261118181857.6eaa9511
+%global mpfsnap        20261119021344.52ba0a19
 %global rolltag        rolling
 # Which build of the rolling release we repackage, as it appears in the asset
 # names (MPF.Check_<mpfnet>_linux-x64_<mpfcfg>.zip). Since MPF 207dedba
@@ -15,12 +15,12 @@
 # fetch newer zips under this version. %%prep fails on any other zip. Written by
 # watch-mpf-rolling.yml through scripts/mpf-pins.py, together with the openSUSE
 # spec and debian/rules; lint.sh fails when the three differ.
-%global mpfsha_check_x64    92201c1193dd0fb472c4dc0c5dbef6afdb22724a4120952a63ce29249c6cf94d
-%global mpfsha_cli_x64      496afaa59f711c8d684aaed058d2006793b1356d6a55030b919bd78030601027
-%global mpfsha_gui_x64      9dc28e6ea5a562fa8b534b043583de84074f27a7f55ed3021055d8fac1799a4c
-%global mpfsha_check_arm64  ebd9eaa9aaa27b4ce488b1ce7e03bffe2c44ec4909491512386bf5ca53316580
-%global mpfsha_cli_arm64    e5261a023b4f74407e3bc8f1671c0034dc1318d1576bdd056b868f6a16df3588
-%global mpfsha_gui_arm64    f1e4b94947bee730f2a63b5e9424cd297c4890ef1f660ac26e52a3e92d94bbd2
+%global mpfsha_check_x64    8909e88c60e27d7258416827ddd9de1d866b19e53e961b3e684de9f0d58b31ec
+%global mpfsha_cli_x64      ac44c59d34708bb77c1d96ceff4a03556e1efc54f5ae7ab4108868810c424f79
+%global mpfsha_gui_x64      efffdfd4b956a0900e6a9fa73d1befd25104daf2d5c9ad8c731404b9501e1910
+%global mpfsha_check_arm64  9c146f4a7ece5c5ff16c028451f7a9766d6c518c8ce9a05e75c651e7235e2670
+%global mpfsha_cli_arm64    b73b1d525adc8e39194ed13361f6eed7b46fe3b8ee849d2c2c1503f9e00526d1
+%global mpfsha_gui_arm64    8e43f7e36fbc7c26985af85555c4e5da096f1e1ad7d7c320f658445d8d6ac556
 
 %global debug_package      %{nil}
 %global __strip            /bin/true
@@ -37,7 +37,7 @@ Version:        %{mpfver}~%{mpfsnap}
 # lives in the changelog. (Stuck at 5 here from pre-fix manual bumps of
 # the 71dafe3d snapshot — already shipped as -5, so left as-is to avoid
 # a downgrade; the next snapshot resets it.)
-Release:        2%{?dist}
+Release:        1%{?dist}
 Summary:        Media Preservation Frontend suite (mpf-check, mpf-cli, mpf-gui)
 
 License:        MIT
@@ -642,6 +642,10 @@ install -D -p -m 0644 %{SOURCE8} %{buildroot}%{bash_completions_dir}/mpf-cli
 %{_datadir}/icons/hicolor/*/apps/mpf.png
 
 %changelog
+* Thu Nov 19 2026 gmipf <gmipf64@gmail.com> - 3.11.1~20261119021344.52ba0a19-1
+- Automated rolling-snapshot sync to upstream MPF commit 52ba0a19
+  (rolling tag, published 20261119021344 UTC); Release reset to 1.
+
 * Wed Nov 18 2026 gmipf <gmipf64@gmail.com> - 3.11.1~20261118181857.6eaa9511-2
 - Ship bash completions for mpf-cli and mpf-check, generated from the MPF
   source at 6eaa9511 by scripts/completions/gen.py: the system and media-type
