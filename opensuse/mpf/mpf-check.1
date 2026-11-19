@@ -1,4 +1,4 @@
-.TH MPF-CHECK 1 "2026-11-19" "MPF 3.11.1 (6daa0e50)" "User Commands"
+.TH MPF-CHECK 1 "2026-11-19" "MPF 3.11.1 (1217ed66)" "User Commands"
 .SH NAME
 mpf-check \- write the Redump submission info for a finished disc dump
 .SH SYNOPSIS
@@ -44,7 +44,7 @@ asking. Copy them away first if you need them.
 .SH COMMANDS
 .TP
 .BR ? ", " h ", " help
-Print the help text (but see \fBNOTES\fR).
+Print the help text.
 .TP
 .B version
 Print the program version.
@@ -239,15 +239,11 @@ The configuration, shared with
 and
 .BR mpf-gui (1).
 .SH NOTES
-This page is written by hand against MPF 3.11.1 commit 6daa0e50 and lists
-the options that build parses. Its help text is older: it shows
-\fB\-\-disable\-archives\fR, \fB\-\-enable\-debug\fR and
-\fB\-\-include\-artifacts\fR where the program takes \fB\-\-no\-archives\fR,
-\fB\-\-debug\-protection\fR and \fB\-\-artifacts\fR, names
-\fB\-\-username\fR and \fB\-\-password\fR, which the program does not
-take, and says that flags toggle the configured value. A word the program
-does not take as an option is checked as a path. MPF is packaged as a
-rolling build, so the installed binary may be newer than this page.
+This page is written by hand against MPF 3.11.1 commit 1217ed66 and lists
+the options that build parses; its help text lists the same ones. A word
+the program does not take as an option is checked as a path. MPF is
+packaged as a rolling build, so the installed binary may be newer than
+this page.
 .SH SEE ALSO
 .BR mpf-cli (1),
 .BR mpf-gui (1),
