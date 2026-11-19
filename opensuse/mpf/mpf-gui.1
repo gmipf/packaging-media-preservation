@@ -1,150 +1,160 @@
-.TH MPF-GUI 1 "2026-07-12" "MPF 3.8.3" "User Commands"
+.TH MPF-GUI 1 "2026-11-19" "MPF 3.11.1 (6daa0e50)" "User Commands"
 .SH NAME
-mpf-gui \- Avalonia desktop frontend for the MPF disc-dumping workflow
+mpf-gui \- dump a disc and write its submission info, from a desktop window
 .SH SYNOPSIS
 .B mpf-gui
-.RI [ OPTIONS ]
 .SH DESCRIPTION
 .B mpf-gui
-(upstream \fBMPF.Avalonia\fR) is the desktop GUI of the Media
-Preservation Frontend (MPF) suite. It drives a complete dump session
-graphically: pick a backend dumper, configure metadata, watch progress
-and review the generated submission info \(em all without leaving the
-window.
-
-Supported backend dumpers:
-.RS
-.IP \(bu 2
-.BR redumper (1)
-.IP \(bu 2
-.BR aaru (1)
-.IP \(bu 2
-.BR discimagecreator (1)
-.RE
-.PP
-The companion validator
+(upstream \fBMPF.Avalonia\fR) is the desktop program of the Media
+Preservation Frontend (MPF). You pick the drive, the system and the
+dumping program in its window; it starts that program, shows its output,
+and then, in the same process, reads the dump and its logs and writes the
+Redump submission information (\fI!submissionInfo.txt\fR) next to the
+output, the same step
 .BR mpf-check (1)
-is invoked automatically at the end of a session to produce
-\fI!submissionInfo.txt\fR.
-
-A
-.I mpf-gui.desktop
-launcher is installed at
-.IR /usr/share/applications/ ,
-so the program can also be started from the desktop application menu.
-.SH WAYLAND
-Avalonia 11.x ships only an X11 backend (Avalonia.X11) \(em there is
-no native Wayland backend yet. On Wayland sessions
+performs on its own.
+.PP
+The \fBTools\fR menu holds \fBCheck Dump\fR, which runs that step on a dump
+made earlier, \fBCreate PS3 IRD\fR, and \fBOptions\fR, where all settings
+live.
 .B mpf-gui
-therefore runs through
-.BR Xwayland .
-Fedora Workstation and KDE Plasma install
-.B xorg-x11-server-Xwayland
-by default, so no extra setup is normally required. On X11 sessions
-the program runs natively.
+takes no command-line options. The desktop entry starts it from the
+application menu.
+.SH DISPLAY
+MPF builds this program on Avalonia 11.3, which has an X11 backend only.
+On a Wayland session it runs through Xwayland, which the common desktops
+install; on an X11 session it runs directly. The X11 libraries it loads are
+recommended packages, not required ones, so that the other MPF packages
+stay small on machines without a display; install them if your system
+leaves recommended packages out.
 .SH CONFIGURATION
-.B mpf-gui
-loads its configuration from
-.IR config.json :
-.RS
-.IP 1. 3
-.I ./config.json
-(next to the binary or in the current working directory)
-.IP 2. 3
+MPF reads
 .I ~/.config/mpf/config.json
-.RE
-.PP
-On Fedora the second location is the canonical place to put your
-config since the installed binary path is not user-writable.
-.SH SYSTEM-INSTALLED DUMPERS
-Unlike the upstream zip, the Fedora package does
-.B not
-ship a bundled \fIPrograms/Creator/\fR folder. The system-installed
-.BR redumper (1),
-.BR aaru (1)
-and
-.BR discimagecreator (1)
-are resolved via
-.BR PATH :
-.PP
-.RS
-.B sudo dnf install redumper aaru discimagecreator
-.RE
-.SH DRIVE ACCESS
+when it exists, and only otherwise a
+.I config.json
+next to the binary. The
 .B mpf-gui
-runs unprivileged and carries no file capabilities: it never sends a SCSI
-command itself. The dump is performed by the backend dumper, and
-.BR redumper (1),
-.BR aaru5 (1)
+wrapper creates the file in your home before the first start, so that is
+the one in use. It sets the four dumping-program paths to the names of the
+packaged programs, which MPF finds on
+.BR PATH :
+.BR redumper-mpf ,
+.BR aaru5 ,
+.B DiscImageCreator.out
+(package \fBdiscimagecreator\fR) and
+.BR dreamdump .
+.B mpf-gui
+recommends these packages but does not require them; install the ones you
+want to dump with.
+The wrapper sets a path back to that name only when the configured one no
+longer resolves, so a path of your own stays as long as it exists.
+.PP
+On the first start MPF opens its options window; closing it writes the
+complete configuration. From then on
+.BR mpf-check (1)
+reads the file too, where before it used its own defaults.
+.PP
+.B redumper-mpf
 and
-.BR discimagecreator (1)
-each carry
-.B cap_sys_rawio
-on their own binary \(em the kernel grants file capabilities from the
-executed file, so the dumper is fully privileged no matter who starts it.
-Drive-node access on
-.I /dev/sr*
-is granted automatically via
-.B uaccess
-at a local desktop seat; for headless/SSH add yourself to the
-.B cdrom
-group:
-.PP
-.RS
-.B sudo usermod -aG cdrom $USER
-.RE
-.PP
-The GUI must
-.B not
-be given file capabilities, and this package deliberately does not. A
-process that inherits them runs non-dumpable, which turns
-.I /proc/<pid>/root
-root-owned;
-.B xdg-desktop-portal
-reads exactly that path to identify the calling application, fails, and
-refuses the request with "Portal operation not allowed". Every file
-dialog then dies with an unhandled DBus exception and takes the program
-with it.
+.B aaru5
+are the builds this MPF build was made for. The rolling
+.B redumper
+and
+.B aaru
+packages may be newer, and MPF does not check the version of the program it
+starts.
 .SH OUTPUT PATH
 Upstream MPF defaults
 .B DefaultOutputPath
 to the relative directory
 .IR ISO ,
-which in the portable Windows bundle means "next to the executable". In a
-/usr-tree install there is no such place and a relative path resolves
-against the current working directory, so the packaged wrapper points the
-setting at
+which resolves against the directory
+.B mpf-gui
+was started from. The wrapper sets it to
 .I ~/ISO
-instead. Change it under \fITools \(-> Options\fR, or in
-.IR ~/.config/mpf/config.json ,
-to any
-.B absolute
-path; the wrapper only rewrites the value when it is empty or relative.
+instead, and resets it whenever it is empty or relative. Any absolute path
+you set under \fBTools\fR \(-> \fBOptions\fR stays. The path may contain
+path macros such as \fB%SYSTEM%\fR or \fB%DATE%\fR;
+.B mpf-cli listpath
+lists them.
+.SH DRIVE ACCESS
+.B mpf-gui
+runs unprivileged and carries no file capabilities: it sends no drive
+commands itself. The dumping program does, and
+.BR redumper-mpf ,
+.B aaru5
+and
+.B DiscImageCreator.out
+are installed with the
+.B cap_sys_rawio
+file capability, which the kernel grants from the executed file no matter
+who starts it.
+.B dreamdump
+is installed without it.
+Read access to
+.I /dev/sr*
+comes from the
+.B uaccess
+rule at a local desktop seat; in a session without one add yourself to the
+.B cdrom
+group:
+.PP
+.RS
+.B sudo usermod \-aG cdrom $USER
+.RE
+.PP
+The GUI must
+.B not
+be given file capabilities, and this package deliberately does not. A
+process that has them runs non-dumpable, which makes
+.I /proc/<pid>/root
+root-owned;
+.B xdg-desktop-portal
+reads exactly that path to identify the calling application, fails, and
+refuses the request with "Portal operation not allowed". Every file
+dialog then dies with an unhandled D-Bus exception and takes the program
+with it.
+.SH OLDER SYSTEMS
+MPF reads and writes its log archives (\fI*_logs.zip\fR) through a library
+that needs glibc 2.34 or newer. Below that (Enterprise Linux 8 has 2.28),
+compressing the logs fails and leaves an empty archive, and extracting an
+archive writes every file from it as 0 bytes, over any copy already in the
+folder, while MPF still reports success. There the wrapper turns
+.B CompressLogFiles
+off in the configuration at every start. Leave "Compress Log Files" off
+under \fBTools\fR \(-> \fBOptions\fR: the wrapper turns it off again at the
+next start, but a dump in the same session would leave an empty archive.
+The wrapper cannot see the paths you pick in the window, so do not run
+\fBCheck Dump\fR on a dump with a \fI_logs.zip\fR next to it; extract the
+archive with
+.B unzip
+and move it out of the folder first.
 .SH FILES
 .TP
-.I /usr/lib64/mpf-gui/MPF.Avalonia
-The actual self-contained .NET binary.
-.TP
 .I /usr/bin/mpf-gui
-Shell wrapper that exec\(aqs the binary above.
+The wrapper described above; it starts the binary below.
+.TP
+.I /usr/lib64/mpf-gui/MPF.Avalonia
+The self-contained .NET binary.
 .TP
 .I /usr/share/applications/mpf-gui.desktop
-Desktop launcher (Exec=mpf-gui, Icon=mpf).
+The desktop entry.
 .TP
 .I ~/.config/mpf/config.json
-User configuration.
+The configuration, shared with
+.BR mpf-cli (1)
+and
+.BR mpf-check (1).
 .SH NOTES
-This manpage is handwritten and tracks upstream MPF
-.BR 3.8.3 .
-If the upstream tool grows new flags or changes its syntax in a future
-release, this page may lag behind the binary; consult
-\fImpf-gui --help\fR for the authoritative current option set.
+This page is written by hand against MPF 3.11.1 commit 6daa0e50. MPF is
+packaged as a rolling build, so the installed program may be newer.
 .SH SEE ALSO
-.BR mpf-check (1),
 .BR mpf-cli (1),
+.BR mpf-check (1),
 .BR redumper (1),
-.BR aaru (1),
-.BR discimagecreator (1)
+.BR aaru5 (1),
+.BR discimagecreator (1),
+.BR dreamdump (1)
 .PP
 Upstream project:
 .UR https://github.com/SabreTools/MPF

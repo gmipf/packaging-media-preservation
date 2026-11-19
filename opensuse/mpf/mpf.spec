@@ -641,7 +641,7 @@ install -D -p -m 0644 %{SOURCE8} %{buildroot}%{bash_completions_dir}/mpf-cli
 %changelog
 * Thu Nov 19 2026 gmipf <gmipf64@gmail.com> - 3.11.1~20261119040732.6daa0e50-0
 - Below glibc 2.34 the wrappers also refuse mpf-check -z=<x> and --zip=<x>: MPF takes a flag written as flag=anything as the flag, so even --zip=false turned log compression on. A later --no-zip now counts, as it does in MPF.
-- Rewrite mpf-cli(1) for this MPF: it still described MPF 3.8.3, with a wrong synopsis, dumper list, config location and install command.
+- Rewrite mpf-cli(1), mpf-check(1) and mpf-gui(1) for this MPF: they still described MPF 3.8.3, with wrong synopses, options, dumper lists, config location and install commands. mpf-check(1) lists the options the program parses, which differ from its own help text.
 
 * Thu Nov 19 2026 gmipf <gmipf64@gmail.com> - 3.11.1~20261119040732.6daa0e50-0
 - Automated rolling-snapshot sync to upstream MPF commit 6daa0e50 (published 20261119040732 UTC).

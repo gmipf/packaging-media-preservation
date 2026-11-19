@@ -1,75 +1,260 @@
-.TH MPF-CHECK 1 "2026-07-12" "MPF 3.8.3" "User Commands"
+.TH MPF-CHECK 1 "2026-11-19" "MPF 3.11.1 (6daa0e50)" "User Commands"
 .SH NAME
-mpf-check \- generate Redump !submissionInfo.txt from finished optical-media dumps
+mpf-check \- write the Redump submission info for a finished disc dump
 .SH SYNOPSIS
 .B mpf-check
-.RI [ OPTIONS ]
-.IR DUMP-DIRECTORY
+.I system
+.B \-u
+.I program
+.RI [ options ]
+.IR path " ..."
+.br
+.B mpf-check
+.I command
 .SH DESCRIPTION
 .B mpf-check
-(upstream \fBMPF.Check\fR) reads the log files left next to a finished
-optical-media dump and writes a \fI!submissionInfo.txt\fR alongside in
-the Redump submission format. It is the validator/finalize step of the
-Media Preservation Frontend (MPF) suite.
-
-Supported dump sources include
-.BR redumper (1),
-.BR aaru (1),
-.BR discimagecreator (1),
-Cleanrip and UmdImageCreator. The tool autodetects which dumper was
-used by looking at the surrounding log filenames and structure.
-
-When run with no arguments
+(upstream \fBMPF.Check\fR) is the checking program of the Media
+Preservation Frontend (MPF). It reads a finished dump and the logs its
+dumping program left next to it, and writes the Redump submission
+information (\fI!submissionInfo.txt\fR) into the same folder. This is the
+step
+.BR mpf-cli (1)
+and
+.BR mpf-gui (1)
+run at the end of a dump; with
 .B mpf-check
-prints its full help text.
-
-A secondary mode performs copy-protection scans via
-\fB--path\fR / \fB--scan\fR. It inspects the files on the mounted medium
-and needs no privileges beyond read access to them.
+it runs on its own, on a dump made earlier or with another program.
+.PP
+.I path
+is the dump's \fI.cue\fR or \fI.iso\fR, or its \fI_logs.zip\fR; several
+paths are checked one after another.
+.I system
+is a system code such as
+.B pc
+or
+.BR psx ;
+.B mpf-check listsystems
+prints them all.
+.I program
+is the program that made the dump (see \fB\-u\fR).
+.PP
+.B mpf-check
+overwrites an existing submission information file and log archive without
+asking. Copy them away first if you need them.
+.SH COMMANDS
+.TP
+.BR ? ", " h ", " help
+Print the help text (but see \fBNOTES\fR).
+.TP
+.B version
+Print the program version.
+.TP
+.BR lc ", " listcodes
+List the comment and content site codes.
+.TP
+.BR lo ", " listconfig
+List the current configuration values.
+.TP
+.BR lpm ", " listpath
+List the path macros (\fB%SYSTEM%\fR, \fB%DATE%\fR, ...).
+.TP
+.BR lm ", " listmedia
+List the media type codes.
+.TP
+.BR ls ", " listsystems
+List the system codes.
+.TP
+.BR lp ", " listprograms
+List the programs whose output MPF reads.
+.TP
+.BR i ", " interactive
+Ask for every setting in a menu instead of taking options.
+.TP
+.B man
+Print a manual page generated from the program's own option list.
+.SH OPTIONS
+Each option sets its value for this run, over the configured one (see
+\fBCONFIGURATION\fR). Where an option comes in a pair, the last one given
+wins.
+.TP
+.BR \-u ", " \-\-use " \fIprogram\fR"
+The program that made the dump:
+.BR redumper ,
+.BR aaru ,
+.B dic
+(DiscImageCreator) or
+.BR dreamdump ;
+or, for dumps MPF only checks,
+.BR cleanrip ,
+.BR generic ,
+.BR ps3cfw ,
+.B uic
+(UmdImageCreator),
+.B wudd
+or
+.B xbc
+(XboxBackupCreator).
+Required until the configuration is in use (see \fBCONFIGURATION\fR).
+.TP
+.BI \-\-load\-seed " file"
+Take the user information from this submission JSON.
+.TP
+.BR \-\-placeholders ", " \-\-no\-placeholders
+Fill the fields MPF cannot determine with placeholder text (default), or
+leave them empty.
+.TP
+.BR \-\-retrieve ", " \-\-no\-retrieve
+Look the dump up on redump.org (default), or work offline.
+.TP
+.BR \-\-pull\-all ", " \-\-no\-pull\-all
+Also take all the other information redump.org has for a match.
+.TP
+.BI \-\-attempt\-count " n"
+How often to try an online request (default 3).
+.TP
+.BI \-\-timeout\-seconds " n"
+How long to wait for an online request (default 30).
+.TP
+.BR \-\-create\-ird ", " \-\-no\-create\-ird
+Create an IRD from the dump (PlayStation 3 Blu-ray discs only).
+.TP
+.BR \-p ", " \-\-path " \fIdirpath\fR"
+Where the disc's filesystem is mounted. MPF.Check reads the files there for
+the additional checks and for the protection scan.
+.TP
+.BR \-s ", " \-\-scan ", " \-\-no\-scan
+Scan the files under \fB\-p\fR for copy protection, and write what it finds
+to a protection information file.
+.TP
+.BR \-\-archives ", " \-\-no\-archives
+Also scan inside archives (default), or not.
+.TP
+.BR \-\-debug\-protection ", " \-\-no\-debug\-protection
+Add the scanner's debug information to the protection output.
+.TP
+.BR \-\-hide\-drive\-letters ", " \-\-show\-drive\-letters
+Hide the drive letters in the protection output, or show them (default).
+.TP
+.BR \-x ", " \-\-suffix ", " \-\-no\-suffix
+Append the dump's file name to the names of the files MPF writes.
+.TP
+.BR \-j ", " \-\-json ", " \-\-no\-json
+Also write the submission information as JSON.
+.TP
+.BR \-\-artifacts ", " \-\-no\-artifacts
+Include the artifacts in the JSON.
+.TP
+.BR \-z ", " \-\-zip ", " \-\-no\-zip
+Pack the logs into \fI<name>_logs.zip\fR (see \fBOLDER SYSTEMS\fR).
+.TP
+.BI \-\-log\-compression " method"
+How to pack them:
+.BR store ,
+.B deflate
+or
+.B deflatemaximum
+(the default). Any other word means
+.BR deflate .
+.TP
+.BR \-d ", " \-\-delete ", " \-\-no\-delete
+Delete the files a submission does not need.
+.SH CONFIGURATION
+MPF reads
+.I ~/.config/mpf/config.json
+when it exists, and only otherwise a
+.I config.json
+next to the binary; the file is shared with
+.BR mpf-cli (1)
+and
+.BR mpf-gui (1).
+As long as it has no
+.B \(dqFirstRun\(dq: \(dqFalse\(dq
+entry,
+.B mpf-check
+ignores it and starts from its own defaults: no dumping program (so
+\fB\-u\fR is required), online lookup and placeholders on, protection scan,
+JSON, log compression and deletion off. The file the wrapper creates has no
+such entry;
+.BR mpf-gui (1)
+writes it the first time its options window is closed. From then on the
+configured values are the defaults, the configured dumping program
+included.
+.PP
+At start
+.B mpf-check
+asks online for a newer MPF release. It does so before it reads the
+configuration, so the
+.B CheckForUpdatesOnStartup
+setting does not turn that off here.
 .SH DRIVE ACCESS
 .B mpf-check
-runs unprivileged and carries no file capabilities: it sends no SCSI
-commands of its own. Read access on
-.I /dev/sr*
-is granted automatically via
-.B uaccess
-when logged in at a local desktop seat; for headless or SSH use add the
-user to the
-.B cdrom
-group:
+sends no commands to a drive and carries no file capabilities. It needs
+read access to the dump, write access to its folder, and with \fB\-p\fR
+read access to the mounted disc.
+.SH OLDER SYSTEMS
+MPF reads and writes its log archives (\fI*_logs.zip\fR) through a library
+that needs glibc 2.34 or newer. Below that (Enterprise Linux 8 has 2.28),
+compressing the logs fails and leaves an empty archive, and extracting an
+archive writes every file from it as 0 bytes, over any copy already in the
+folder, while MPF still reports success. There the wrapper turns
+.B CompressLogFiles
+off in the configuration and refuses to start
+.B mpf-check
+.IP \(bu 2
+with \fB\-z\fR or \fB\-\-zip\fR (also written \fB\-z=\fR... or
+\fB\-\-zip=\fR...), unless a later \fB\-\-no\-zip\fR turns it off again;
+.IP \(bu 2
+on a \fI_logs.zip\fR that lists files, or on a path that has one next to
+it. Extract such an archive with
+.BR unzip ,
+move it out of the folder, and check the extracted files.
 .PP
-.RS
-.B sudo usermod -aG cdrom $USER
-.RE
+The wrapper cannot see what you choose in interactive mode: there leave
+"Compress logs" off and give no path with a log archive next to it.
 .SH EXAMPLES
-Generate submission info next to a finished redumper dump:
+Write the submission information for a redumper dump of a PC disc,
+offline:
+.PP
 .RS
-.B mpf-check ~/dumps/disc01/
+.B mpf-check pc \-u redumper \-\-no\-retrieve ~/ISO/disc/disc.cue
 .RE
 .PP
-Scan a drive for copy protection:
+The same with a protection scan of the disc mounted at
+.IR /mnt/disc :
+.PP
 .RS
-.B mpf-check --path /dev/sr0 --scan
+.B mpf-check pc \-u redumper \-s \-p /mnt/disc ~/ISO/disc/disc.cue
 .RE
 .SH FILES
 .TP
-.I /usr/lib/mpf-check/MPF.Check
-The actual self-contained .NET binary.
-.TP
 .I /usr/bin/mpf-check
-Shell wrapper that exec\(aqs the binary above.
+The wrapper described above; it starts the binary below.
+.TP
+.I /usr/lib/mpf-check/MPF.Check
+The self-contained .NET binary.
+.TP
+.I ~/.config/mpf/config.json
+The configuration, shared with
+.BR mpf-cli (1)
+and
+.BR mpf-gui (1).
 .SH NOTES
-This manpage is handwritten and tracks upstream MPF
-.BR 3.8.3 .
-If the upstream tool grows new flags or changes its syntax in a future
-release, this page may lag behind the binary; consult
-\fImpf-check --help\fR for the authoritative current option set.
+This page is written by hand against MPF 3.11.1 commit 6daa0e50 and lists
+the options that build parses. Its help text is older: it shows
+\fB\-\-disable\-archives\fR, \fB\-\-enable\-debug\fR and
+\fB\-\-include\-artifacts\fR where the program takes \fB\-\-no\-archives\fR,
+\fB\-\-debug\-protection\fR and \fB\-\-artifacts\fR, names
+\fB\-\-username\fR and \fB\-\-password\fR, which the program does not
+take, and says that flags toggle the configured value. A word the program
+does not take as an option is checked as a path. MPF is packaged as a
+rolling build, so the installed binary may be newer than this page.
 .SH SEE ALSO
-.BR redumper (1),
-.BR aaru (1),
-.BR discimagecreator (1),
 .BR mpf-cli (1),
-.BR mpf-gui (1)
+.BR mpf-gui (1),
+.BR redumper (1),
+.BR aaru5 (1),
+.BR discimagecreator (1),
+.BR dreamdump (1)
 .PP
 Upstream project:
 .UR https://github.com/SabreTools/MPF
