@@ -50,6 +50,8 @@ SMOKE = [
     ("{cmd} img -", {"-v", "--debug", "--logfile", "--pause"}, {"--format"}),
     ("{cmd} image convert -", {"--format", "-O", "--fix-subchannel-position"}, {"--debug", "--logfile"}),
     ("{cmd} i -d --logfile x.log cvt --", {"--format", "--geometry"}, {"--pause"}),
+    # aaru also takes --opt:value; readline splits the word at the colon
+    ("{cmd} i --logfile:x.log cvt --", {"--format", "--geometry"}, {"--pause"}),
     ("{cmd} media dump --subchannel ", {"any", "rw", "rw-or-pq", "pq", "none"}, set()),
     ("{cmd} m d --subchannel=r", {"rw", "rw-or-pq"}, {"any"}),
     ("{cmd} media dump --trim ", {"false", "true"}, set()),
@@ -604,7 +606,7 @@ def render(model, cmd, origin, names):
     out += f"""{fn}()
 {{
     local cur prev words cword split
-    _init_completion -s || return
+    _init_completion -s -n : || return
 
     local node='' skip='' w lw i REPLY subs opts vopts tflags args
     local -a pos=() kinds=()

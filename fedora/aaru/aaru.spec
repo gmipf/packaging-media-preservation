@@ -29,7 +29,7 @@ Name:           aaru
 # before this build, so nothing previously published needs to be
 # sort-overridden.
 Version:        %{aaruver}~%{aaruprerel}
-Release:        2%{?dist}
+Release:        3%{?dist}
 Summary:        Data preservation suite for optical, magnetic and solid-state media
 
 License:        GPL-3.0-or-later AND LGPL-2.1-or-later AND MIT
@@ -299,6 +299,11 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
 %{bash_completions_dir}/aaru
 
 %changelog
+* Thu Nov 19 2026 gmipf <gmipf64@gmail.com> - 6.0.0~beta.2-3
+- Bash completion: keep a word with a colon whole (_init_completion -n :).
+  aaru also takes --opt:value, and readline split such a word at the colon,
+  so a following subcommand was not found.
+
 * Thu Nov 19 2026 gmipf <gmipf64@gmail.com> - 6.0.0~beta.2-2
 - Ship a bash completion for aaru, generated from the Aaru source by
   scripts/completions/gen.py. It also offers what --help does not list:

@@ -373,7 +373,7 @@ _mediapres_aaru_devices()
 _mediapres_aaru()
 {
     local cur prev words cword split
-    _init_completion -s || return
+    _init_completion -s -n : || return
 
     local node='' skip='' w lw i REPLY subs opts vopts tflags args
     local -a pos=() kinds=()

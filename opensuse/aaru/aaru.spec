@@ -323,6 +323,9 @@ udevadm trigger --subsystem-match=block --sysname-match='fd[0-9]*' --action=chan
 
 %changelog
 * Thu Nov 19 2026 gmipf <gmipf64@gmail.com> - 6.0.0~beta.2-0
+- Bash completion: keep a word with a colon whole (_init_completion -n :). aaru also takes --opt:value, and readline split such a word at the colon, so a following subcommand was not found.
+
+* Thu Nov 19 2026 gmipf <gmipf64@gmail.com> - 6.0.0~beta.2-0
 - Ship a bash completion for aaru, generated from the Aaru source by scripts/completions/gen.py. It also offers what --help does not list: the gui command, the cli branch, and false after the flags that are on by default.
 
 * Fri Oct 09 2026 gmipf <gmipf64@gmail.com> - 6.0.0~beta.2-0
