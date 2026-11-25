@@ -11,7 +11,7 @@
 %global _build_id_links none
 
 Name:           redumper
-Version:        774
+Version:        775
 Release:        1%{?dist}
 Summary:        A low-level byte-perfect CD disc dumper
 
@@ -107,6 +107,9 @@ install -D -p -m 0644 %{SOURCE5} %{buildroot}%{bash_completions_dir}/redumper
 %{bash_completions_dir}/redumper
 
 %changelog
+* Wed Nov 25 2026 gmipf <gmipf64@gmail.com> - 775-1
+- Automated sync to upstream redumper release b775; Release reset to 1.
+
 * Wed Nov 25 2026 gmipf <gmipf64@gmail.com> - 774-1
 - Automated sync to upstream redumper release b774; Release reset to 1.
 
