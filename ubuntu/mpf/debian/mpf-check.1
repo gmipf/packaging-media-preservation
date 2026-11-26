@@ -1,4 +1,4 @@
-.TH MPF-CHECK 1 "2026-11-19" "MPF 3.11.1 (1217ed66)" "User Commands"
+.TH MPF-CHECK 1 "2026-11-26" "MPF 3.12.0 (c12e7601)" "User Commands"
 .SH NAME
 mpf-check \- write the Redump submission info for a finished disc dump
 .SH SYNOPSIS
@@ -16,7 +16,8 @@ mpf-check \- write the Redump submission info for a finished disc dump
 (upstream \fBMPF.Check\fR) is the checking program of the Media
 Preservation Frontend (MPF). It reads a finished dump and the logs its
 dumping program left next to it, and writes the Redump submission
-information (\fI!submissionInfo.txt\fR) into the same folder. This is the
+information (\fI!submissionInfo.txt\fR, and the same as JSON in
+\fI!submissionInfo.json\fR) into the same folder. This is the
 step
 .BR mpf-cli (1)
 and
@@ -99,10 +100,6 @@ Required until the configuration is in use (see \fBCONFIGURATION\fR).
 .BI \-\-load\-seed " file"
 Take the user information from this submission JSON.
 .TP
-.BR \-\-placeholders ", " \-\-no\-placeholders
-Fill the fields MPF cannot determine with placeholder text (default), or
-leave them empty.
-.TP
 .BR \-\-retrieve ", " \-\-no\-retrieve
 Look the dump up on redump.org (default), or work offline.
 .TP
@@ -138,23 +135,9 @@ Hide the drive letters in the protection output, or show them (default).
 .BR \-x ", " \-\-suffix ", " \-\-no\-suffix
 Append the dump's file name to the names of the files MPF writes.
 .TP
-.BR \-j ", " \-\-json ", " \-\-no\-json
-Also write the submission information as JSON.
-.TP
-.BR \-\-artifacts ", " \-\-no\-artifacts
-Include the artifacts in the JSON.
-.TP
 .BR \-z ", " \-\-zip ", " \-\-no\-zip
-Pack the logs into \fI<name>_logs.zip\fR (see \fBOLDER SYSTEMS\fR).
-.TP
-.BI \-\-log\-compression " method"
-How to pack them:
-.BR store ,
-.B deflate
-or
-.B deflatemaximum
-(the default). Any other word means
-.BR deflate .
+Pack the logs into \fI<name>_logs.zip\fR, compressed with Deflate (see
+\fBOLDER SYSTEMS\fR).
 .TP
 .BR \-d ", " \-\-delete ", " \-\-no\-delete
 Delete the files a submission does not need.
@@ -172,8 +155,8 @@ As long as it has no
 entry,
 .B mpf-check
 ignores it and starts from its own defaults: no dumping program (so
-\fB\-u\fR is required), online lookup and placeholders on, protection scan,
-JSON, log compression and deletion off. The file the wrapper creates has no
+\fB\-u\fR is required), online lookup on, protection scan, log compression
+and deletion off. The file the wrapper creates has no
 such entry;
 .BR mpf-gui (1)
 writes it the first time its options window is closed. From then on the
@@ -239,9 +222,11 @@ The configuration, shared with
 and
 .BR mpf-gui (1).
 .SH NOTES
-This page is written by hand against MPF 3.11.1 commit 1217ed66 and lists
-the options that build parses; its help text lists the same ones. A word
-the program does not take as an option is checked as a path. MPF is
+This page is written by hand against MPF 3.12.0 commit c12e7601 and lists
+the options that build parses. A word the program does not take as an
+option is checked as a path. Its help text also lists
+\fB\-\-log\-compression\fR, which this build no longer takes: that word,
+and the one after it, are checked as paths. MPF is
 packaged as a rolling build, so the installed binary may be newer than
 this page.
 .SH SEE ALSO
