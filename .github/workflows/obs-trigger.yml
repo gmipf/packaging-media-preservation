@@ -71,7 +71,7 @@ jobs:
   trigger:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # OBS fetches every recipe from raw.githubusercontent.com, which answers
       # with `Cache-Control: max-age=300`. Asked right after a push, OBS can get
