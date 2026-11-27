@@ -42,12 +42,12 @@ MPF_ZIPS = $(wildcard MPF.$(1)_*_linux-$(MPF_RID)_*.zip)
 # scripts/mpf-pins.py; lint.sh fails when the three recipes differ.
 # MPF.Check for linux-x64 is the .orig tarball here: dpkg-source has unpacked
 # it before this file runs, so its binary is pinned instead of its zip.
-MPF_SHA256_Check_x64_binary := b5bf203471b3c8a3d4eb3a7d6753e8bcd36e9502ea11986862c8759d3f41429e
-MPF_SHA256_CLI_x64          := 16126ad211c2f6312f6ffd424d8f581bcc33dacb9917e031b11f50764450baac
-MPF_SHA256_Avalonia_x64     := 78d4a0dc4ee8ce0def8d2e03b238097f00f28658ea0e83f6ca7418049d188065
-MPF_SHA256_Check_arm64      := 464e7ba7bd4d07eb957c39fcc48738af8ab57be138928a020263accac10ee7f5
-MPF_SHA256_CLI_arm64        := a02fd7bb089ebf9afbf6738d540da46e9eaf6a6ff4a7fcdf4913c0d08c6699ad
-MPF_SHA256_Avalonia_arm64   := 936e0318129ac59cc1d740595d49e16ab3dd3282bf413b565e34d2e0e013650b
+MPF_SHA256_Check_x64_binary := b3116f177d73da6b5d2b08417478e239ef2647da6227603c40a42353f6a202df
+MPF_SHA256_CLI_x64          := 296fba75cfbe18688185262f31a341f2b08da51b334017ec56688525a57d9035
+MPF_SHA256_Avalonia_x64     := a006f1fedde822640427d1106504ef5220519aa325c844a5577bdca51f1546bc
+MPF_SHA256_Check_arm64      := 774c7335de7b37bf15963f0c29a88f95ce2a857f9f606b3e1da5cdd93524b0df
+MPF_SHA256_CLI_arm64        := 1ddf9c3797ba215e279848f54b2c814f4e5310fe69a3b6f3a225e82bb66e9839
+MPF_SHA256_Avalonia_arm64   := d87ca7ef6592fb5496be0dbb6de8db581529013cd81ecb7650487f2d6178b81c
 MPF_ZIP_FOR = $(wildcard MPF.$(1)_*_linux-$(2)_*.zip)
 
 execute_before_dh_auto_build:
