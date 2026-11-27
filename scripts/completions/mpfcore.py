@@ -315,8 +315,12 @@ def extract(src, project, known_doc_only):
     if doc_verbs - set(verbs):
         die(project, f"the help lists commands the parser does not have: {sorted(doc_verbs - set(verbs))}")
     doc_only = sorted(doc_opts - set(flags))
-    if set(doc_only) != set(known_doc_only):
-        die(project, f"options the help lists but the parser rejects changed: {doc_only} "
+    # Only a new one stops the run: it may be an option the parser takes in a
+    # shape the generator has not learned. A known one leaving the help (MPF
+    # deleting a dead line, 5289666d) is harmless and passes.
+    new = sorted(set(doc_only) - set(known_doc_only))
+    if new:
+        die(project, f"the help lists options the parser rejects, new since the generator was written: {new} "
                      f"(known: {sorted(known_doc_only)})")
     progs = programs(src, project)
     kinds = {k for _f, k in opts}
